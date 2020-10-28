@@ -995,14 +995,13 @@ CObjFunction* cosmoP_compileString(CState *state, const char *source) {
 
     popLocals(&parser, -1); // needed to close over the values
 
-    if (parser.hadError) { // free the function too
-        cosmoO_freeObject(state, (CObj*)parser.compiler->function);
+    if (parser.hadError) { // we don't free the function, the state already has a reference to it in it's linked list of objects!
         endCompiler(&parser, 0);
         freeParseState(&parser);
 
         // the VM still expects a result on the stack TODO: push the error string to the stack
         cosmoV_pushValue(state, cosmoV_newNil());
-         cosmoM_unfreezeGC(state);
+        cosmoM_unfreezeGC(state);
         return NULL;
     }
 
@@ -1012,6 +1011,6 @@ CObjFunction* cosmoP_compileString(CState *state, const char *source) {
 
     endCompiler(&parser, 0);
     freeParseState(&parser);
-     cosmoM_unfreezeGC(state);
+    cosmoM_unfreezeGC(state);
     return resFunc;
 }
