@@ -7,12 +7,18 @@
 
 #include "cmem.h"
 
-static void interpret(const char* script) {
-    CState *state = cosmoV_newState();
+static bool _ACTIVE;
+
+int cosmoB_quitRepl(CState *state, int nargs, CValue *args) {
+    _ACTIVE = false;
+
+    return 0; // we don't do anything to the stack
+}
+
+static void interpret(CState *state, const char* script) {
     
     // cosmoP_compileString pushes the result onto the stack (NIL or COBJ_FUNCTION)
     CObjFunction* func = cosmoP_compileString(state, script);
-    cosmoB_loadlibrary(state);
     if (func != NULL) {
         disasmChunk(&func->chunk, "_main", 0);
         
@@ -22,14 +28,19 @@ static void interpret(const char* script) {
         //cosmoT_printTable(&state->globals, "globals");
         //cosmoT_printTable(&state->strings, "strings");
     }
-    
-    cosmoV_freeState(state);
 }
 
 static void repl() {
     char line[1024];
+    _ACTIVE = true;
 
-    while (true) {
+    CState *state = cosmoV_newState();
+    cosmoB_loadlibrary(state);
+
+    // TODO: there's gotta be a better way to do this
+    cosmoV_register(state, "quit", cosmoV_newObj(cosmoO_newCFunction(state, cosmoB_quitRepl)));
+
+    while (_ACTIVE) {
         printf("> ");
 
         if (!fgets(line, sizeof(line), stdin)) { // better than gets()
@@ -37,8 +48,10 @@ static void repl() {
             break;
         }
 
-        interpret(line);
+        interpret(state, line);
     }
+
+    cosmoV_freeState(state);
 }
 
 static char *readFile(const char* path) {
@@ -75,9 +88,12 @@ static char *readFile(const char* path) {
 
 static void runFile(const char* fileName) {
     char* script = readFile(fileName);
+    CState *state = cosmoV_newState();
 
-    interpret(script);
 
+    interpret(state, script);
+
+    cosmoV_freeState(state);
     free(script);
 }
 
