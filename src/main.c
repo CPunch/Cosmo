@@ -90,7 +90,6 @@ static void runFile(const char* fileName) {
     char* script = readFile(fileName);
     CState *state = cosmoV_newState();
 
-
     interpret(state, script);
 
     cosmoV_freeState(state);

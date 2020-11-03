@@ -42,6 +42,12 @@ void cosmoO_freeObject(CState *state, CObj* obj) {
             cosmoM_free(state, CObjString, objStr);
             break;
         }
+        case COBJ_TABLE: {
+            CObjTable *objTbl = (CObjTable*)obj;
+            cosmoT_clearTable(state, &objTbl->tbl);
+            cosmoM_free(state, CObjTable, objTbl);
+            break;
+        }
         case COBJ_UPVALUE: {
             cosmoM_free(state, CObjUpval, obj);
             break;
@@ -72,9 +78,21 @@ bool cosmoO_equalObject(CObj* obj1, CObj* obj2) {
     switch (obj1->type) {
         case COBJ_STRING:
             return obj1 == obj2; // compare pointers because we already intern all strings :)
+        case COBJ_CFUNCTION: {
+            CObjCFunction *cfunc1 = (CObjCFunction*)obj1;
+            CObjCFunction *cfunc2 = (CObjCFunction*)obj2;
+            return cfunc1->cfunc == cfunc2->cfunc;
+        }
         default:
-            return false; // they're some unknown type, probably malformed :(
+            return false;
     }
+}
+
+CObjTable *cosmoO_newTable(CState *state) {
+    CObjTable *tbl = (CObjTable*)cosmoO_allocateObject(state, sizeof(CObjTable), COBJ_TABLE);
+
+    cosmoT_initTable(state, &tbl->tbl, 8); // start the table at 8
+    return tbl;
 }
 
 CObjFunction *cosmoO_newFunction(CState *state) {
@@ -170,6 +188,11 @@ CObjString *cosmoO_toString(CState *state, CObj *val) {
             CObjFunction *func = (CObjFunction*)val;
             return func->name != NULL ? func->name : cosmoO_copyString(state, UNNAMEDCHUNK, strlen(UNNAMEDCHUNK)); 
         }
+        case COBJ_TABLE: { // TODO: maybe not safe??
+            char buf[64];
+            int sz = sprintf(buf, "<tbl> %p", val) + 1; // +1 for the null character
+            return cosmoO_copyString(state, buf, sz);
+        }
         default:
             return cosmoO_copyString(state, "<unkn>", 6);
     }
@@ -181,6 +204,10 @@ void printObject(CObj *o) {
             CObjString *objStr = (CObjString*)o;
             printf("\"%.*s\"", objStr->length, objStr->str);
             break;
+        }
+        case COBJ_TABLE: {
+            printf("<tbl> %p", o);
+            return;
         }
         case COBJ_UPVALUE: {
             CObjUpval *upval = (CObjUpval*)o;

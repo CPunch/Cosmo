@@ -20,6 +20,11 @@ void *cosmoM_reallocate(CState* state, void *buf, size_t oldSize, size_t newSize
     if (!(cosmoM_isFrozen(state)) && newSize > oldSize) {
         cosmoM_collectGarbage(state);
     }
+#ifdef GC_DEBUG
+    else {
+        printf("GC event ignored! state frozen! [%d]\n", state->freezeGC);
+    }
+#endif
 #else
     // if the state isn't frozen && we've reached the GC event
     if (!(cosmoM_isFrozen(state)) && state->allocatedBytes > state->nextGC) {
@@ -75,12 +80,12 @@ void markArray(CState *state, CValueArray *array) {
 void blackenObject(CState *state, CObj *obj) {
     switch (obj->type) {
         case COBJ_STRING:
+        case COBJ_TABLE: // TODO: when metatables are added, make sure they're marked
         case COBJ_CFUNCTION:
             // stubbed
             break;
         case COBJ_UPVALUE: {
             markValue(state, ((CObjUpval*)obj)->closed);
-
             break;
         }
         case COBJ_FUNCTION: {

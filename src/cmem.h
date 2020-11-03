@@ -28,11 +28,22 @@
 #define cosmoM_isFrozen(state) \
     state->freezeGC > 0
 
+// if debugging, print the locations of when the state is frozen/unfrozen
+#ifdef GC_DEBUG
+#define cosmoM_freezeGC(state) \
+    state->freezeGC++; \
+    printf("freezing state at %s:%d [%d]\n", __FILE__, __LINE__, state->freezeGC)
+
+#define  cosmoM_unfreezeGC(state) \
+    state->freezeGC--; \
+    printf("unfreezing state at %s:%d [%d]\n", __FILE__, __LINE__, state->freezeGC)
+#else
 #define cosmoM_freezeGC(state) \
     state->freezeGC++
 
 #define  cosmoM_unfreezeGC(state) \
     state->freezeGC--
+#endif 
 
 COSMO_API void *cosmoM_reallocate(CState* state, void *buf, size_t oldSize, size_t newSize);
 COSMO_API void cosmoM_collectGarbage(CState* state);

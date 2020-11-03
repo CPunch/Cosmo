@@ -55,10 +55,10 @@ void cosmoV_freeState(CState *state) {
 
 void cosmoV_register(CState *state, const char *identifier, CValue val) {
     // we push the values so the garbage collector can find them
-    cosmoV_pushValue(state, cosmoV_newObj(cosmoO_copyString(state, identifier, strlen(identifier))));
     cosmoV_pushValue(state, val);
+    cosmoV_pushValue(state, cosmoV_newObj(cosmoO_copyString(state, identifier, strlen(identifier))));
 
-    CValue *oldVal = cosmoT_insert(state, &state->globals, *cosmoV_getTop(state, 1));
+    CValue *oldVal = cosmoT_insert(state, &state->globals, *cosmoV_getTop(state, 0));
     *oldVal = val;
     
     cosmoV_setTop(state, 2); // pops the 2 values off the stack
