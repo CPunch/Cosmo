@@ -317,6 +317,63 @@ int cosmoV_execute(CState *state) {
                 cosmoV_pop(state);
                 break;
             }
+            case OP_NEWOBJECT: {
+                uint8_t entries = READBYTE();
+                StkPtr key, val;
+                CObjObject *newObj = cosmoO_newObject(state, entries * 3); // start the table with enough space to hopefully prevent reallocation since that's costly
+                cosmoV_pushValue(state, cosmoV_newObj(newObj)); // so our GC doesn't free our new object
+
+                for (int i = 0; i < entries; i++) {
+                    val = cosmoV_getTop(state, (i*2) + 2);
+                    key = cosmoV_getTop(state, (i*2) + 1);
+
+                    // set key/value pair
+                    CValue *newVal = cosmoT_insert(state, &newObj->tbl, *key);
+                    *newVal = *val;
+                }
+
+                // once done, pop everything off the stack + push new object
+                cosmoV_setTop(state, (entries * 2) + 1);
+                cosmoV_pushValue(state, cosmoV_newObj(newObj));
+                break;
+            }
+            case OP_GETOBJECT: {
+                StkPtr key = cosmoV_getTop(state, 0); // key should be the top of the stack
+                StkPtr temp = cosmoV_getTop(state, 1); // after that should be the object
+
+                // sanity check
+                if (!(temp->type == COSMO_TOBJ) || !(temp->val.obj->type == COBJ_OBJECT)) {
+                    runtimeError(state, "Couldn't get from non-object!");
+                    break;
+                }
+
+                CObjObject *object = (CObjObject*)temp->val.obj;
+                CValue val; // to hold our value
+
+                cosmoT_get(&object->tbl, *key, &val);
+                cosmoV_setTop(state, 2); // pops the object & the key
+                cosmoV_pushValue(state, val); // pushes the field result
+                break;
+            }
+            case OP_SETOBJECT: {
+                StkPtr value = cosmoV_getTop(state, 0); // value is at the top of the stack
+                StkPtr key = cosmoV_getTop(state, 1);
+                StkPtr temp = cosmoV_getTop(state, 2); // object is after the key
+
+                // sanity check
+                if (!(temp->type == COSMO_TOBJ) || !(temp->val.obj->type == COBJ_OBJECT)) {
+                    runtimeError(state, "Couldn't set a field on a non-object!");
+                    break;
+                }
+
+                CObjObject *object = (CObjObject*)temp->val.obj;
+                CValue *newVal = cosmoT_insert(state, &object->tbl, *key);
+                *newVal = *value;
+
+                // pop everything off the stack
+                cosmoV_setTop(state, 3);
+                break;
+            }
             case OP_ADD: { // pop 2 values off the stack & try to add them together
                 BINARYOP(cosmoV_newNumber, +);
                 break;

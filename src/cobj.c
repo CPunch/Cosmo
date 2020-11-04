@@ -42,10 +42,10 @@ void cosmoO_freeObject(CState *state, CObj* obj) {
             cosmoM_free(state, CObjString, objStr);
             break;
         }
-        case COBJ_TABLE: {
-            CObjTable *objTbl = (CObjTable*)obj;
+        case COBJ_OBJECT: {
+            CObjObject *objTbl = (CObjObject*)obj;
             cosmoT_clearTable(state, &objTbl->tbl);
-            cosmoM_free(state, CObjTable, objTbl);
+            cosmoM_free(state, CObjObject, objTbl);
             break;
         }
         case COBJ_UPVALUE: {
@@ -88,10 +88,10 @@ bool cosmoO_equalObject(CObj* obj1, CObj* obj2) {
     }
 }
 
-CObjTable *cosmoO_newTable(CState *state) {
-    CObjTable *tbl = (CObjTable*)cosmoO_allocateObject(state, sizeof(CObjTable), COBJ_TABLE);
+CObjObject *cosmoO_newObject(CState *state, int startCap) {
+    CObjObject *tbl = (CObjObject*)cosmoO_allocateObject(state, sizeof(CObjObject), COBJ_OBJECT);
 
-    cosmoT_initTable(state, &tbl->tbl, 8); // start the table at 8
+    cosmoT_initTable(state, &tbl->tbl, startCap);
     return tbl;
 }
 
@@ -188,9 +188,9 @@ CObjString *cosmoO_toString(CState *state, CObj *val) {
             CObjFunction *func = (CObjFunction*)val;
             return func->name != NULL ? func->name : cosmoO_copyString(state, UNNAMEDCHUNK, strlen(UNNAMEDCHUNK)); 
         }
-        case COBJ_TABLE: { // TODO: maybe not safe??
+        case COBJ_OBJECT: { // TODO: maybe not safe??
             char buf[64];
-            int sz = sprintf(buf, "<tbl> %p", val) + 1; // +1 for the null character
+            int sz = sprintf(buf, "<obj> %p", val) + 1; // +1 for the null character
             return cosmoO_copyString(state, buf, sz);
         }
         default:
@@ -205,8 +205,8 @@ void printObject(CObj *o) {
             printf("\"%.*s\"", objStr->length, objStr->str);
             break;
         }
-        case COBJ_TABLE: {
-            printf("<tbl> %p", o);
+        case COBJ_OBJECT: {
+            printf("<obj> %p", o);
             return;
         }
         case COBJ_UPVALUE: {

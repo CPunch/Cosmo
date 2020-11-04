@@ -29,6 +29,9 @@ typedef enum {
     OP_CALL, // calls top[-uint8_t]
     OP_CLOSURE,
     OP_CLOSE,
+    OP_NEWOBJECT,
+    OP_GETOBJECT,
+    OP_SETOBJECT,
 
     // ARITHMETIC
     OP_ADD, 

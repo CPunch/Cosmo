@@ -10,7 +10,7 @@ typedef struct CState CState;
 
 typedef enum {
     COBJ_STRING,
-    COBJ_TABLE,
+    COBJ_OBJECT,
     COBJ_FUNCTION,
     COBJ_CFUNCTION,
     // internal use
@@ -35,11 +35,11 @@ typedef struct CObjString {
     uint32_t hash; // for hashtable lookup
 } CObjString;
 
-typedef struct CObjTable {
+typedef struct CObjObject {
     CommonHeader; // "is a" CObj
     CTable tbl;
-    //struct CObjTable *meta; // metatable, used to describe table behavior
-} CObjTable;
+    //struct CObjObject *meta; // metaobject, used to describe object behavior
+} CObjObject;
 
 typedef struct CObjFunction {
     CommonHeader; // "is a" CObj
@@ -69,13 +69,13 @@ typedef struct CObjUpval {
 } CObjUpval;
 
 #define IS_STRING(x)    isObjType(x, COBJ_STRING)
-#define IS_TABLE(x)     isObjType(x, COBJ_TABLE)
+#define IS_TABLE(x)     isObjType(x, COBJ_OBJECT)
 #define IS_FUNCTION(x)  isObjType(x, COBJ_FUNCTION)
 #define IS_CFUNCTION(x) isObjType(x, COBJ_CFUNCTION)
 #define IS_CLOSURE(x)   isObjType(x, COBJ_CLOSURE)
 
 #define cosmoV_readString(x)    ((CObjString*)cosmoV_readObj(x))
-#define cosmoV_readTable(x)     ((CObjTable*)cosmoV_readObj(x))
+#define cosmoV_readObject(x)     ((CObjObject*)cosmoV_readObj(x))
 #define cosmoV_readFunction(x)  ((CObjFunction*)cosmoV_readObj(x))
 #define cosmoV_readCFunction(x) (((CObjCFunction*)cosmoV_readObj(x))->cfunc)
 #define cosmoV_readClosure(x)   ((CObjClosure*)cosmoV_readObj(x))
@@ -89,7 +89,7 @@ void cosmoO_freeObject(CState *state, CObj* obj);
 
 bool cosmoO_equalObject(CObj* obj1, CObj* obj2);
 
-CObjTable *cosmoO_newTable(CState *state);
+CObjObject *cosmoO_newObject(CState *state, int startCap);
 CObjFunction *cosmoO_newFunction(CState *state);
 CObjCFunction *cosmoO_newCFunction(CState *state, CosmoCFunction func);
 CObjClosure *cosmoO_newClosure(CState *state, CObjFunction *func);

@@ -8,13 +8,13 @@
 #define MAX_TABLE_FILL 0.75
 
 void cosmoT_initTable(CState *state, CTable *tbl, int startCap) {
-    tbl->capacity = startCap;
+    tbl->capacity = startCap != 0 ? startCap : ARRAY_START; // sanity check :P
     tbl->count = 0;
     tbl->table = NULL; // to let out GC know we're initalizing
-    tbl->table = cosmoM_xmalloc(state, sizeof(CTableEntry) * startCap);
+    tbl->table = cosmoM_xmalloc(state, sizeof(CTableEntry) * tbl->capacity);
 
     // init everything to NIL
-    for (int i = 0; i < startCap; i++) {
+    for (int i = 0; i < tbl->capacity; i++) {
         tbl->table[i].key = cosmoV_newNil();
         tbl->table[i].val = cosmoV_newNil();
     }
