@@ -1,0 +1,7 @@
+var test = {}
+
+if !test.hello then
+    test.hello = "hello world!"
+end
+
+print(test.hello .. "!!!!")

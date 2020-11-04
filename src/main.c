@@ -89,6 +89,7 @@ static char *readFile(const char* path) {
 static void runFile(const char* fileName) {
     char* script = readFile(fileName);
     CState *state = cosmoV_newState();
+    cosmoB_loadlibrary(state);
 
     interpret(state, script);
 
