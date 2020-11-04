@@ -98,9 +98,6 @@ static void runFile(const char* fileName) {
 }
 
 int main(int argc, const char *argv[]) {
-
-    //interpret("\"hello world!\"");
-
     if (argc == 1) {
         repl();
     } else if (argc >= 2) { // they passed a file (or more lol)
@@ -108,40 +105,6 @@ int main(int argc, const char *argv[]) {
             runFile(argv[i]);
         }
     }
-
-
-    /*
-    CChunk *chnk = newChunk(1);
-    CState *state = cosmoV_newState();
-
-    // adds our constant values
-    int constIndx = addConstant(chnk, cosmoV_newNumber(2));
-    int const2Indx = addConstant(chnk, cosmoV_newNumber(4));
-    
-    // pushes constant to the stack
-    writeu8Chunk(chnk, OP_LOADCONST, 1);
-    writeu16Chunk(chnk, constIndx, 1);
-
-    writeu8Chunk(chnk, OP_LOADCONST, 1);
-    writeu16Chunk(chnk, const2Indx, 1);
-
-    // pops 2 values off the stack, multiples them together and pushes the result
-    writeu8Chunk(chnk, OP_MULT, 1);
-
-    // pops a value off the stack, negates it, and pushes the result
-    writeu8Chunk(chnk, OP_NEGATE, 2);
-
-    // prints to the console
-    writeu8Chunk(chnk, OP_RETURN, 2);
-    disasmChunk(chnk, "test");
-
-    // load chunk to the state & run it
-    cosmoV_loadChunk(state, chnk);
-    cosmoV_execute(state, 0);
-
-    // clean up :)
-    freeChunk(chnk);
-    cosmoV_freeState(state);*/
 
     return 0;
 }
