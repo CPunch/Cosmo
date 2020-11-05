@@ -80,10 +80,14 @@ void markArray(CState *state, CValueArray *array) {
 void blackenObject(CState *state, CObj *obj) {
     switch (obj->type) {
         case COBJ_STRING:
-        case COBJ_OBJECT: // TODO: when metatables are added, make sure they're marked
         case COBJ_CFUNCTION:
             // stubbed
             break;
+        case COBJ_OBJECT: {
+            // mark everything this object is keeping track of
+            markTable(state, &((CObjObject*)obj)->tbl);
+            break;
+        }
         case COBJ_UPVALUE: {
             markValue(state, ((CObjUpval*)obj)->closed);
             break;
