@@ -48,8 +48,15 @@ uint32_t getValueHash(CValue *val) {
     switch (val->type) {
         case COSMO_TOBJ:
             return getObjectHash(val->val.obj);
-        case COSMO_TNUMBER:
-            // how the fuck
+        case COSMO_TNUMBER: {
+            uint32_t buf[sizeof(cosmo_Number)/sizeof(uint32_t)];
+            if (val->val.num == 0)
+                return 0;
+            memcpy(buf, &val->val.num, sizeof(buf));
+            for (int i = 0; i < sizeof(cosmo_Number)/sizeof(uint32_t); i++) buf[0] += buf[i];
+            return buf[0];
+        }
+            
         // TODO: add support for other types
         default:
             return 0;
