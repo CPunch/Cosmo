@@ -16,7 +16,7 @@ uint32_t hashString(const char *str, size_t sz) {
     return hash;
 }
 
-CObj *cosmoO_allocateObject(CState *state, size_t sz, CObjType type) {
+CObj *cosmoO_allocateBase(CState *state, size_t sz, CObjType type) {
     CObj* obj = (CObj*)cosmoM_xmalloc(state, sz);
     obj->type = type;
     obj->isMarked = false;
@@ -29,7 +29,7 @@ CObj *cosmoO_allocateObject(CState *state, size_t sz, CObjType type) {
     return obj;
 }
 
-void cosmoO_freeObject(CState *state, CObj* obj) {
+void cosmoO_free(CState *state, CObj* obj) {
 #ifdef GC_DEBUG
     printf("freeing %p [", obj);
     printObject(obj);
@@ -71,7 +71,7 @@ void cosmoO_freeObject(CState *state, CObj* obj) {
     }
 }
 
-bool cosmoO_equalObject(CObj* obj1, CObj* obj2) {
+bool cosmoO_equal(CObj* obj1, CObj* obj2) {
     if (obj1->type != obj2->type)
         return false;
 
@@ -89,14 +89,14 @@ bool cosmoO_equalObject(CObj* obj1, CObj* obj2) {
 }
 
 CObjObject *cosmoO_newObject(CState *state, int startCap) {
-    CObjObject *tbl = (CObjObject*)cosmoO_allocateObject(state, sizeof(CObjObject), COBJ_OBJECT);
+    CObjObject *tbl = (CObjObject*)cosmoO_allocateBase(state, sizeof(CObjObject), COBJ_OBJECT);
 
     cosmoT_initTable(state, &tbl->tbl, startCap);
     return tbl;
 }
 
 CObjFunction *cosmoO_newFunction(CState *state) {
-    CObjFunction *func = (CObjFunction*)cosmoO_allocateObject(state, sizeof(CObjFunction), COBJ_FUNCTION);
+    CObjFunction *func = (CObjFunction*)cosmoO_allocateBase(state, sizeof(CObjFunction), COBJ_FUNCTION);
     func->args = 0;
     func->upvals = 0;
     func->name = NULL;
@@ -106,7 +106,7 @@ CObjFunction *cosmoO_newFunction(CState *state) {
 }
 
 CObjCFunction *cosmoO_newCFunction(CState *state, CosmoCFunction func) {
-    CObjCFunction *cfunc = (CObjCFunction*)cosmoO_allocateObject(state, sizeof(CObjCFunction), COBJ_CFUNCTION);
+    CObjCFunction *cfunc = (CObjCFunction*)cosmoO_allocateBase(state, sizeof(CObjCFunction), COBJ_CFUNCTION);
     cfunc->cfunc = func;
     return cfunc;
 }
@@ -119,7 +119,7 @@ CObjClosure *cosmoO_newClosure(CState *state, CObjFunction *func) {
         upvalues[i] = NULL;
     }
 
-    CObjClosure *closure = (CObjClosure*)cosmoO_allocateObject(state, sizeof(CObjClosure), COBJ_CLOSURE);
+    CObjClosure *closure = (CObjClosure*)cosmoO_allocateBase(state, sizeof(CObjClosure), COBJ_CLOSURE);
     closure->function = func;
     closure->upvalues = upvalues;
     closure->upvalueCount = func->upvals;
@@ -128,7 +128,7 @@ CObjClosure *cosmoO_newClosure(CState *state, CObjFunction *func) {
 }
 
 CObjUpval *cosmoO_newUpvalue(CState *state, CValue *val) {
-    CObjUpval *upval = (CObjUpval*)cosmoO_allocateObject(state, sizeof(CObjUpval), COBJ_UPVALUE);
+    CObjUpval *upval = (CObjUpval*)cosmoO_allocateBase(state, sizeof(CObjUpval), COBJ_UPVALUE);
     upval->val = val;
     upval->closed = cosmoV_newNil();
     upval->next = NULL;
@@ -166,7 +166,7 @@ CObjString *cosmoO_takeString(CState *state, char *str, size_t sz) {
 }
 
 CObjString *cosmoO_allocateString(CState *state, const char *str, size_t sz, uint32_t hash) {
-    CObjString *strObj = (CObjString*)cosmoO_allocateObject(state, sizeof(CObjString), COBJ_STRING);
+    CObjString *strObj = (CObjString*)cosmoO_allocateBase(state, sizeof(CObjString), COBJ_STRING);
     strObj->str = (char*)str;
     strObj->length = sz;
     strObj->hash = hash;
@@ -177,6 +177,15 @@ CObjString *cosmoO_allocateString(CState *state, const char *str, size_t sz, uin
     cosmoV_pop(state);
 
     return strObj;
+}
+
+bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val) {
+    return cosmoT_get(&object->tbl, key, val);
+}
+
+void cosmoO_setObject(CState *state, CObjObject *object, CValue key, CValue val) {
+    CValue *newVal = cosmoT_insert(state, &object->tbl, key);
+    *newVal = val;
 }
 
 CObjString *cosmoO_toString(CState *state, CObj *val) {

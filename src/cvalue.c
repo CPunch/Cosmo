@@ -26,7 +26,7 @@ bool cosmoV_equal(CValue valA, CValue valB) {
     switch (valA.type) {
         case COSMO_TBOOLEAN: return valA.val.b == valB.val.b;
         case COSMO_TNUMBER: return valA.val.num == valB.val.num;
-        case COSMO_TOBJ: return cosmoO_equalObject(valA.val.obj, valB.val.obj);
+        case COSMO_TOBJ: return cosmoO_equal(valA.val.obj, valB.val.obj);
         case COSMO_TNIL: return true;
         default:
             return false;

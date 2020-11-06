@@ -30,7 +30,6 @@ typedef enum {
     PREC_TERM,          // + -
     PREC_FACTOR,        // * /
     PREC_UNARY,         // ! -
-    PREC_OBJ,           // {}
     PREC_CALL,          // . ()
     PREC_PRIMARY        // everything else
 } Precedence;
@@ -515,11 +514,24 @@ static void object(CParseState *pstate, bool canAssign) {
 }
 
 static void dot(CParseState *pstate, bool canAssign) {
-    consume(pstate, TOKEN_IDENTIFIER, "Expect property name after '.'.");
+    consume(pstate, TOKEN_IDENTIFIER, "Expected property name after '.'.");
     uint8_t name = identifierConstant(pstate, &pstate->previous);
     writeu8(pstate, OP_LOADCONST);
     writeu16(pstate, name);
-    valuePushed(pstate, 1);
+
+    if (canAssign && match(pstate, TOKEN_EQUAL)) {
+        expression(pstate);
+        writeu8(pstate, OP_SETOBJECT);
+        valuePopped(pstate, 2); // pops key, value & object
+    } else {
+        writeu8(pstate, OP_GETOBJECT);
+        // pops key & object but also pushes the field so total popped is 1
+    }
+}
+
+static void _index(CParseState *pstate, bool canAssign) {
+    expression(pstate);
+    consume(pstate, TOKEN_RIGHT_BRACKET, "Expected ']' to end index.");
 
     if (canAssign && match(pstate, TOKEN_EQUAL)) {
         expression(pstate);
@@ -534,9 +546,9 @@ static void dot(CParseState *pstate, bool canAssign) {
 ParseRule ruleTable[] = {
     [TOKEN_LEFT_PAREN]      = {group, call_, PREC_CALL},
     [TOKEN_RIGHT_PAREN]     = {NULL, NULL, PREC_NONE},
-    [TOKEN_LEFT_BRACE]      = {object, NULL, PREC_OBJ},
+    [TOKEN_LEFT_BRACE]      = {object, NULL, PREC_NONE},
     [TOKEN_RIGHT_BRACE]     = {NULL, NULL, PREC_NONE},
-    [TOKEN_LEFT_BRACKET]    = {NULL, NULL, PREC_NONE},
+    [TOKEN_LEFT_BRACKET]    = {NULL, _index, PREC_CALL},
     [TOKEN_RIGHT_BRACKET]   = {NULL, NULL, PREC_NONE},
     [TOKEN_COMMA]           = {NULL, NULL, PREC_NONE},
     [TOKEN_DOT]             = {NULL, dot, PREC_CALL},

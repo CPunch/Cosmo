@@ -84,10 +84,10 @@ static inline bool isObjType(CValue val, CObjType type) {
     return IS_OBJ(val) && cosmoV_readObj(val)->type == type;
 }
 
-CObj *cosmoO_allocateObject(CState *state, size_t sz, CObjType type);
-void cosmoO_freeObject(CState *state, CObj* obj);
+CObj *cosmoO_allocateBase(CState *state, size_t sz, CObjType type);
+void cosmoO_free(CState *state, CObj* obj);
 
-bool cosmoO_equalObject(CObj* obj1, CObj* obj2);
+bool cosmoO_equal(CObj* obj1, CObj* obj2);
 
 CObjObject *cosmoO_newObject(CState *state, int startCap);
 CObjFunction *cosmoO_newFunction(CState *state);
@@ -95,6 +95,9 @@ CObjCFunction *cosmoO_newCFunction(CState *state, CosmoCFunction func);
 CObjClosure *cosmoO_newClosure(CState *state, CObjFunction *func);
 CObjString *cosmoO_toString(CState *state, CObj *val);
 CObjUpval *cosmoO_newUpvalue(CState *state, CValue *val);
+
+bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val);
+void cosmoO_setObject(CState *state, CObjObject *object, CValue key, CValue val);
 
 // copies the *str buffer to the heap and returns a CObjString struct which is also on the heap
 CObjString *cosmoO_copyString(CState *state, const char *str, size_t sz);

@@ -92,7 +92,7 @@ static CTableEntry *findEntry(CTableEntry *entries, int mask, CValue key) {
 
 static void growTbl(CState *state, CTable *tbl, size_t newCapacity) {
     CTableEntry *entries = cosmoM_xmalloc(state, sizeof(CTableEntry) * newCapacity);
-    int newCount;
+    int newCount = 0;
 
     // set all nodes as NIL : NIL
     for (int i = 0; i < newCapacity; i++) {
@@ -124,7 +124,7 @@ static void growTbl(CState *state, CTable *tbl, size_t newCapacity) {
 // returns a pointer to the allocated value
 COSMO_API CValue* cosmoT_insert(CState *state, CTable *tbl, CValue key) {
     // make sure we have enough space allocated
-    if (tbl->count + 1 > tbl->capacity * MAX_TABLE_FILL) {
+    if (tbl->count + 1 > (int)(tbl->capacity * MAX_TABLE_FILL)) {
         int newCap = tbl->capacity * GROW_FACTOR;
         growTbl(state, tbl, newCap);
     }

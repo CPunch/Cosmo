@@ -350,7 +350,7 @@ int cosmoV_execute(CState *state) {
                 CObjObject *object = (CObjObject*)temp->val.obj;
                 CValue val; // to hold our value
 
-                cosmoT_get(&object->tbl, *key, &val);
+                cosmoO_getObject(state, object, *key, &val);
                 cosmoV_setTop(state, 2); // pops the object & the key
                 cosmoV_pushValue(state, val); // pushes the field result
                 break;
@@ -367,8 +367,7 @@ int cosmoV_execute(CState *state) {
                 }
 
                 CObjObject *object = (CObjObject*)temp->val.obj;
-                CValue *newVal = cosmoT_insert(state, &object->tbl, *key);
-                *newVal = *value;
+                cosmoO_setObject(state, object, *key, *value);
 
                 // pop everything off the stack
                 cosmoV_setTop(state, 3);

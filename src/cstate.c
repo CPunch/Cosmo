@@ -40,7 +40,7 @@ void cosmoV_freeState(CState *state) {
     CObj *objs = state->objects;
     while (objs != NULL) {
         CObj *next = objs->next;
-        cosmoO_freeObject(state, objs);
+        cosmoO_free(state, objs);
         objs = next;
     }
 

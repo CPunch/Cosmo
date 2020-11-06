@@ -178,7 +178,7 @@ void sweep(CState *state) {
                 prev->next = object;
             }
 
-            cosmoO_freeObject(state, oldObj);
+            cosmoO_free(state, oldObj);
         }
     }
 }
