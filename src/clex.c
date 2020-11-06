@@ -21,6 +21,7 @@ CReservedWord reservedWords[] = {
     {TOKEN_THEN, "then", 4},
     {TOKEN_TRUE, "true", 4},
     {TOKEN_VAR, "var", 3},
+    {TOKEN_THIS, "this", 4},
     {TOKEN_WHILE, "while", 5}
 };
 
@@ -198,6 +199,8 @@ _scanTokenEnter:
         case ')': state->openedBraces--; return makeToken(state, TOKEN_RIGHT_PAREN);
         case '{': state->openedBraces++; return makeToken(state, TOKEN_LEFT_BRACE);
         case '}': state->openedBraces--; return makeToken(state, TOKEN_RIGHT_BRACE);
+        case '[': state->openedBraces++; return makeToken(state, TOKEN_LEFT_BRACKET);
+        case ']': state->openedBraces--; return makeToken(state, TOKEN_RIGHT_BRACKET);
         case '\0':
             state->isEnd = true;
             if (state->lastType == TOKEN_EOS)
