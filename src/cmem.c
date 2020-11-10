@@ -85,7 +85,9 @@ void blackenObject(CState *state, CObj *obj) {
             break;
         case COBJ_OBJECT: {
             // mark everything this object is keeping track of
-            markTable(state, &((CObjObject*)obj)->tbl);
+            CObjObject *cobj = (CObjObject*)obj;
+            markTable(state, &cobj->tbl);
+            markObject(state, (CObj*)cobj->meta);
             break;
         }
         case COBJ_UPVALUE: {
@@ -97,6 +99,12 @@ void blackenObject(CState *state, CObj *obj) {
             markObject(state, (CObj*)func->name);
             markArray(state, &func->chunk.constants);
 
+            break;
+        }
+        case COBJ_METHOD: {
+            CObjMethod *method = (CObjMethod*)obj;
+            markObject(state, (CObj*)method->closure);
+            markObject(state, (CObj*)method->obj);
             break;
         }
         case COBJ_CLOSURE: {
@@ -200,6 +208,7 @@ void markRoots(CState *state) {
     }
 
     markTable(state, &state->globals);
+    markObject(state, (CObj*)state->initString);
 
     traceGrays(state);
 }

@@ -62,6 +62,10 @@ void cosmoO_free(CState *state, CObj* obj) {
             cosmoM_free(state, CObjCFunction, obj);
             break;
         }
+        case COBJ_METHOD: {
+            cosmoM_free(state, CObjMethod, obj); // we don't own the closure or the object so /shrug
+            break;
+        }
         case COBJ_CLOSURE: {
             CObjClosure* closure = (CObjClosure*)obj;
             cosmoM_freearray(state, CObjUpval*, closure->upvalues, closure->upvalueCount);
@@ -88,11 +92,14 @@ bool cosmoO_equal(CObj* obj1, CObj* obj2) {
     }
 }
 
-CObjObject *cosmoO_newObject(CState *state, int startCap) {
-    CObjObject *tbl = (CObjObject*)cosmoO_allocateBase(state, sizeof(CObjObject), COBJ_OBJECT);
+CObjObject *cosmoO_newObject(CState *state) {
+    CObjObject *obj = (CObjObject*)cosmoO_allocateBase(state, sizeof(CObjObject), COBJ_OBJECT);
+    obj->meta = NULL;
+    cosmoV_pushValue(state, cosmoV_newObj(obj)); // so out GC can keep track of it
+    cosmoT_initTable(state, &obj->tbl, ARRAY_START);
+    cosmoV_pop(state);
 
-    cosmoT_initTable(state, &tbl->tbl, startCap);
-    return tbl;
+    return obj;
 }
 
 CObjFunction *cosmoO_newFunction(CState *state) {
@@ -109,6 +116,13 @@ CObjCFunction *cosmoO_newCFunction(CState *state, CosmoCFunction func) {
     CObjCFunction *cfunc = (CObjCFunction*)cosmoO_allocateBase(state, sizeof(CObjCFunction), COBJ_CFUNCTION);
     cfunc->cfunc = func;
     return cfunc;
+}
+
+CObjMethod *cosmoO_newMethod(CState *state, CObjClosure *func, CObjObject *obj) {
+    CObjMethod *method = (CObjMethod*)cosmoO_allocateBase(state, sizeof(CObjMethod), COBJ_METHOD);
+    method->closure = func;
+    method->obj = obj;
+    return method;
 }
 
 CObjClosure *cosmoO_newClosure(CState *state, CObjFunction *func) {
@@ -180,7 +194,11 @@ CObjString *cosmoO_allocateString(CState *state, const char *str, size_t sz, uin
 }
 
 bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val) {
-    return cosmoT_get(&object->tbl, key, val);
+    if (!cosmoT_get(&object->tbl, key, val) && object->meta != NULL) { // if the field doesn't exist in the object, check the meta
+        return cosmoO_getObject(state, object->meta, key, val);
+    }
+
+    return true;
 }
 
 void cosmoO_setObject(CState *state, CObjObject *object, CValue key, CValue val) {
@@ -188,22 +206,22 @@ void cosmoO_setObject(CState *state, CObjObject *object, CValue key, CValue val)
     *newVal = val;
 }
 
-CObjString *cosmoO_toString(CState *state, CObj *val) {
-    switch (val->type) {
+CObjString *cosmoO_toString(CState *state, CObj *obj) {
+    switch (obj->type) {
         case COBJ_STRING: {
-            return (CObjString*)val;
+            return (CObjString*)obj;
         }
         case COBJ_FUNCTION: {
-            CObjFunction *func = (CObjFunction*)val;
+            CObjFunction *func = (CObjFunction*)obj;
             return func->name != NULL ? func->name : cosmoO_copyString(state, UNNAMEDCHUNK, strlen(UNNAMEDCHUNK)); 
         }
         case COBJ_OBJECT: { // TODO: maybe not safe??
             char buf[64];
-            int sz = sprintf(buf, "<obj> %p", val) + 1; // +1 for the null character
+            int sz = sprintf(buf, "<obj> %p", obj) + 1; // +1 for the null character
             return cosmoO_copyString(state, buf, sz);
         }
         default:
-            return cosmoO_copyString(state, "<unkn>", 6);
+            return cosmoO_copyString(state, "<unkn obj>", 10);
     }
 }
 
@@ -229,12 +247,21 @@ void printObject(CObj *o) {
             if (objFunc->name != NULL)
                 printf("<function> %.*s", objFunc->name->length, objFunc->name->str);
             else
-                printf("<function> _main");
+                printf("<function> %s", UNNAMEDCHUNK);
             break;
         }
         case COBJ_CFUNCTION: {
             CObjCFunction *objCFunc = (CObjCFunction*)o;
             printf("<c function> %p", objCFunc->cfunc);
+            break;
+        }
+        case COBJ_METHOD: {
+            CObjMethod *method = (CObjMethod*)o;
+            if (method->closure->function->name != NULL) {
+                printf("<method> %p : %.*s", method->obj, method->closure->function->name->length, method->closure->function->name->str);
+            } else {
+                printf("<method> %p : %s", method->obj, UNNAMEDCHUNK);
+            }
             break;
         }
         case COBJ_CLOSURE: {
@@ -243,6 +270,6 @@ void printObject(CObj *o) {
             break;
         }
         default:
-            printf("<unkn>");
+            printf("<unkn obj>");
     }
 }

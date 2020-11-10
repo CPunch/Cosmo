@@ -46,6 +46,7 @@ typedef enum {
     TOKEN_END,
     TOKEN_FOR,
     TOKEN_FUNCTION,
+    TOKEN_CLASS,
     TOKEN_IF,
     TOKEN_LOCAL,
     TOKEN_NOT,
@@ -53,7 +54,6 @@ typedef enum {
     TOKEN_RETURN,
     TOKEN_THEN,
     TOKEN_VAR,
-    TOKEN_THIS,
     TOKEN_WHILE,
 
     TOKEN_ERROR,
@@ -78,7 +78,6 @@ typedef struct {
     char *startChar;
     int line; // current line
     int lastLine; // line of the previous consumed token
-    int openedBraces; // tracks open [], {}, or ()
     bool isEnd;
     CTokenType lastType;
 } CLexState;

@@ -10,6 +10,36 @@
 // we define all of this here because we only need it in this file, no need for it to be in the header /shrug
 
 typedef struct {
+    CToken name;
+    int depth;
+    bool isCaptured; // is the Local referenced in an upvalue?
+} Local;
+
+typedef struct {
+    uint8_t index;
+    bool isLocal;
+} Upvalue;
+
+typedef enum {
+    FTYPE_FUNCTION,
+    FTYPE_METHOD, // a function bounded to an object (can use "this" identifer to access the current object :pog:)
+    FTYPE_SCRIPT
+} FunctionType;
+
+typedef struct CCompilerState {
+    CObjFunction *function;
+    FunctionType type;
+
+    Local locals[256];
+    Upvalue upvalues[256];
+    int localCount;
+    int scopeDepth;
+    int pushedValues;
+    int savedPushed;
+    struct CCompilerState* enclosing;
+} CCompilerState;
+
+typedef struct {
     CLexState *lex;
     CCompilerState* compiler;
     CState *state;
@@ -50,7 +80,7 @@ static void declaration(CParseState *pstate);
 static void function(CParseState *pstate, FunctionType type);
 static void expressionStatement(CParseState *pstate);
 static ParseRule* getRule(CTokenType type);
-static CObjFunction *endCompiler(CParseState *pstate, int results);
+static CObjFunction *endCompiler(CParseState *pstate);
 
 // ================================================================ [FRONT END/TALK TO LEXER] ================================================================
 
@@ -66,16 +96,15 @@ static void initCompilerState(CParseState* pstate, CCompilerState *ccstate, Func
     ccstate->type = type;
     ccstate->function = cosmoO_newFunction(pstate->state);
 
-
     if (type != FTYPE_SCRIPT) 
         ccstate->function->name = cosmoO_copyString(pstate->state, pstate->previous.start, pstate->previous.length);
 
-    // mark first local slot as used (this'll hold the CObjFunction of the current function)
+    // mark first local slot as used (this'll hold the CObjFunction of the current function, or if it's a method it'll hold the currently bounded object)
     Local *local = &ccstate->locals[ccstate->localCount++];
     local->depth = 0;
     local->isCaptured = false;
-    local->name.length = 0;
     local->name.start = "";
+    local->name.length = 0;
 }
 
 static void initParseState(CParseState *pstate, CCompilerState *ccstate, CState *s, const char *source) {
@@ -168,6 +197,16 @@ static void inline valuePushed(CParseState *pstate, int values) {
 
 static void inline valuePopped(CParseState *pstate, int values) {
     pstate->compiler->pushedValues -= values;
+}
+
+static bool blockFollow(CToken token) {
+    switch (token.type) {
+        case TOKEN_END: case TOKEN_ELSE:
+        case TOKEN_ELSEIF: case TOKEN_EOS:
+            return true;
+        default:
+            return false;
+    }
 }
 
 // ================================================================ [WRITE TO CHUNK] ================================================================
@@ -491,22 +530,46 @@ static void call_(CParseState *pstate, bool canAssign) {
     valuePopped(pstate, argCount + 1); // all of these values will be popped off the stack when returned (+1 for the function)
     writeu8(pstate, OP_CALL);
     writeu8(pstate, argCount);
-
-    // hacky hacky hacky hACKY GACJ HACK!!!!!!!!
-    if (pstate->compiler->pushedValues < pstate->compiler->savedPushed) { // there's empty spots on the stack waiting to be filled, lets make OP_CALL fill those spots for us
-        writeu8(pstate, pstate->compiler->savedPushed - pstate->compiler->pushedValues); // number of expected results
-        pstate->compiler->pushedValues = pstate->compiler->savedPushed; // either way the stack will be balanaced after this call
-    } else {
-        writeu8(pstate, 1); // we expect 1 result by default
-        valuePushed(pstate, 1);
-    }
+    valuePushed(pstate, 1);
 }
 
 static void object(CParseState *pstate, bool canAssign) {
     // already consumed the beginning '{'
     int entries = 0;
 
-    consume(pstate, TOKEN_RIGHT_BRACE, "Expected '}' to end object definition!");
+    if (!match(pstate, TOKEN_RIGHT_BRACE)) {
+        do {
+            if (match(pstate, TOKEN_IDENTIFIER)) {
+                uint16_t fieldIdent = identifierConstant(pstate, &pstate->previous);
+
+                // OP_NEWOBJECT expects the key on the stack before the value
+                writeu8(pstate, OP_LOADCONST);
+                writeu16(pstate, fieldIdent);
+
+                consume(pstate, TOKEN_EQUAL, "Invalid syntax!");
+
+                // parse field
+                expression(pstate);
+                valuePopped(pstate, 1);
+            } else if (match(pstate, TOKEN_LEFT_BRACKET)) {
+                // parse the key first
+                expression(pstate); // should parse until end bracket
+
+                consume(pstate, TOKEN_RIGHT_BRACKET, "Expected ']' to end index definition.");
+                consume(pstate, TOKEN_EQUAL, "Expected '='.");
+
+                // now, parse the value (until comma)
+                expression(pstate);
+                valuePopped(pstate, 2);
+            } else {
+                error(pstate, "Invalid syntax!");
+            }
+            
+            entries++;
+        } while (match(pstate, TOKEN_COMMA) && !pstate->hadError);
+
+        consume(pstate, TOKEN_RIGHT_BRACE, "Expected '}' to end object definition.");
+    }
 
     writeu8(pstate, OP_NEWOBJECT);
     writeu8(pstate, entries);
@@ -515,7 +578,7 @@ static void object(CParseState *pstate, bool canAssign) {
 
 static void dot(CParseState *pstate, bool canAssign) {
     consume(pstate, TOKEN_IDENTIFIER, "Expected property name after '.'.");
-    uint8_t name = identifierConstant(pstate, &pstate->previous);
+    uint16_t name = identifierConstant(pstate, &pstate->previous);
     writeu8(pstate, OP_LOADCONST);
     writeu16(pstate, name);
 
@@ -579,6 +642,7 @@ ParseRule ruleTable[] = {
     [TOKEN_END]             = {NULL, NULL, PREC_NONE},
     [TOKEN_FOR]             = {NULL, NULL, PREC_NONE},
     [TOKEN_FUNCTION]        = {anonFunction, NULL, PREC_NONE},
+    [TOKEN_CLASS]           = {NULL, NULL, PREC_NONE},
     [TOKEN_IF]              = {NULL, NULL, PREC_NONE},
     [TOKEN_LOCAL]           = {NULL, NULL, PREC_NONE},
     [TOKEN_NOT]             = {NULL, NULL, PREC_NONE},
@@ -588,7 +652,6 @@ ParseRule ruleTable[] = {
     [TOKEN_WHILE]           = {NULL, NULL, PREC_NONE},
     [TOKEN_ERROR]           = {NULL, NULL, PREC_NONE},
     [TOKEN_VAR]             = {NULL, NULL, PREC_NONE},
-    [TOKEN_THIS]            = {NULL, NULL, PREC_NONE},
     [TOKEN_EOF]             = {NULL, NULL, PREC_NONE}
 };
 
@@ -601,9 +664,8 @@ static void parsePrecedence(CParseState *pstate, Precedence prec) {
 
     ParseFunc prefix = getRule(pstate->previous.type)->prefix;
 
-    if (prefix == NULL) {
-        return error(pstate, "Expected expression!");
-    }
+    if (prefix == NULL)
+        return;
 
     bool canAssign = prec <= PREC_ASSIGNMENT;
     prefix(pstate, canAssign);
@@ -666,6 +728,33 @@ static void defineVariable(CParseState *pstate, uint16_t global, bool forceLocal
     valuePopped(pstate, 1);
 }
 
+static void _class(CParseState *pstate) {
+    uint16_t var = parseVariable(pstate, "Expected identifer!", false);
+    int entries = 0;
+    
+    while (!match(pstate, TOKEN_END) && !match(pstate, TOKEN_EOF) && !pstate->hadError) {
+        if (match(pstate, TOKEN_FUNCTION)) {
+            // define method
+            consume(pstate, TOKEN_IDENTIFIER, "Expected identifier!");
+            uint16_t fieldIdent = identifierConstant(pstate, &pstate->previous);
+
+            // OP_NEWOBJECT expects the key on the stack before the value
+            writeu8(pstate, OP_LOADCONST);
+            writeu16(pstate, fieldIdent);
+
+            function(pstate, FTYPE_METHOD);
+            valuePopped(pstate, 1);
+        }
+
+        entries++;
+    }
+
+    writeu8(pstate, OP_NEWOBJECT);
+    writeu8(pstate, entries);
+    valuePushed(pstate, 1);
+    defineVariable(pstate, var, false);
+}
+
 static void popLocals(CParseState *pstate, int toScope) {
     if (pstate->hadError)
         return;
@@ -708,7 +797,7 @@ static void endScope(CParseState *pstate) {
 
 // parses expressionStatements until a TOKEN_END is consumed
 static void block(CParseState *pstate) {
-    while(!check(pstate, TOKEN_END) && !check(pstate, TOKEN_EOF)) {
+    while(!check(pstate, TOKEN_END) && !check(pstate, TOKEN_EOF) && !check(pstate, TOKEN_ERROR)) {
         declaration(pstate);
     }
 
@@ -760,7 +849,7 @@ static void ifStatement(CParseState *pstate) {
     // parse until 'end' or 'else'
     beginScope(pstate);
     
-    while(!check(pstate, TOKEN_END) && !check(pstate, TOKEN_ELSE) && !check(pstate, TOKEN_ELSEIF) && !check(pstate, TOKEN_EOF)) {
+    while(!check(pstate, TOKEN_END) && !check(pstate, TOKEN_ELSE) && !check(pstate, TOKEN_ELSEIF) && !check(pstate, TOKEN_EOF) && !check(pstate, TOKEN_ERROR)) {
         declaration(pstate);
     }
 
@@ -828,7 +917,7 @@ static void function(CParseState *pstate, FunctionType type) {
             }
 
             // parse identifier for param (force them to be a local)
-            uint8_t funcIdent = parseVariable(pstate, "Expected identifier for function!", true);
+            uint16_t funcIdent = parseVariable(pstate, "Expected identifier for function!", true);
             defineVariable(pstate, funcIdent, true);
             valuePushed(pstate, 1); // they *will* be populated during runtime
         } while (match(pstate, TOKEN_COMMA));
@@ -840,7 +929,7 @@ static void function(CParseState *pstate, FunctionType type) {
     alignStack(pstate, savedPushed);
     endScope(pstate);
 
-    CObjFunction *objFunc = endCompiler(pstate, 0);
+    CObjFunction *objFunc = endCompiler(pstate);
 
     // push closure
     writeu8(pstate, OP_CLOSURE);
@@ -855,7 +944,7 @@ static void function(CParseState *pstate, FunctionType type) {
 }
 
 static void functionDeclaration(CParseState *pstate) {
-    uint8_t var = parseVariable(pstate, "Expected identifer!", false);
+    uint16_t var = parseVariable(pstate, "Expected identifer!", false);
 
     if (pstate->compiler->scopeDepth > 0)
         markInitialized(pstate, var);
@@ -871,27 +960,19 @@ static void returnStatement(CParseState *pstate) {
         return;
     }
 
-    // can return multiple results
-    int results = 0;
-    if (!check(pstate, TOKEN_EOS)) { // make sure its not an end of a statement
-        do {
-            expression(pstate);
-            results++;
-        } while (match(pstate, TOKEN_COMMA));
-
-        if (results > UINT8_MAX) {
-            error(pstate, "Too many results returned!");
-            return;
-        }
+    if (blockFollow(pstate->current)) { // does this return have a value
+        writeu8(pstate, OP_NIL);
+        writeu8(pstate, OP_RETURN);
+        return;
     }
 
+    expression(pstate);
     writeu8(pstate, OP_RETURN);
-    writeu8(pstate, results);
-    valuePopped(pstate, results);
+    valuePopped(pstate, 1);
 }
 
 static void localFunction(CParseState *pstate) {
-    uint8_t var = parseVariable(pstate, "Expected identifer!", true);
+    uint16_t var = parseVariable(pstate, "Expected identifer!", true);
     markInitialized(pstate, var);
 
     function(pstate, FTYPE_FUNCTION);
@@ -907,6 +988,7 @@ static void forLoop(CParseState *pstate) {
     // parse initalizer
     if (!match(pstate, TOKEN_EOS)) {
         expressionStatement(pstate);
+        consume(pstate, TOKEN_EOS, "Expected ';' after initalizer!");
     }
 
     int loopStart = getChunk(pstate)->count;
@@ -985,14 +1067,13 @@ static void expressionStatement(CParseState *pstate) {
         forLoop(pstate);
     } else if (match(pstate, TOKEN_FUNCTION)) {
         functionDeclaration(pstate);
+    } else if (match(pstate, TOKEN_CLASS)) {
+        _class(pstate);
     } else if (match(pstate, TOKEN_RETURN)) {
         returnStatement(pstate);
-    } else if (check(pstate, TOKEN_EOS)) {
-        // do nothing, just consume it
     } else {
         expression(pstate);
     }
-    consume(pstate, TOKEN_EOS, "Expected end of statement after expression.");
 
     // realign the stack
     alignStack(pstate, pstate->compiler->savedPushed);
@@ -1010,10 +1091,10 @@ static void declaration(CParseState *pstate) {
         synchronize(pstate);
 }
 
-static CObjFunction *endCompiler(CParseState *pstate, int results) {
+static CObjFunction *endCompiler(CParseState *pstate) {
     popLocals(pstate, pstate->compiler->scopeDepth); // remove the locals from other scopes
+    writeu8(pstate, OP_NIL);
     writeu8(pstate, OP_RETURN);
-    writeu8(pstate, results);
 
     // update pstate to next compiler state
     CCompilerState *cachedCCState = pstate->compiler;
@@ -1041,7 +1122,7 @@ CObjFunction* cosmoP_compileString(CState *state, const char *source) {
     popLocals(&parser, -1); // needed to close over the values
 
     if (parser.hadError) { // we don't free the function, the state already has a reference to it in it's linked list of objects!
-        endCompiler(&parser, 0);
+        endCompiler(&parser);
         freeParseState(&parser);
 
         // the VM still expects a result on the stack TODO: push the error string to the stack
@@ -1054,7 +1135,7 @@ CObjFunction* cosmoP_compileString(CState *state, const char *source) {
     // VM expects the closure on the stack :P (we do this before ending the compiler so our GC doesn't free it)
     cosmoV_pushValue(state, cosmoV_newObj((CObj*)cosmoO_newClosure(state, resFunc)));
 
-    endCompiler(&parser, 0);
+    endCompiler(&parser);
     freeParseState(&parser);
     cosmoM_unfreezeGC(state);
     return resFunc;

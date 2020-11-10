@@ -6,8 +6,6 @@
 #include "cobj.h"
 #include "ctable.h"
 
-typedef struct CCompilerState CCompilerState;
-
 typedef struct CCallFrame {
     CObjClosure *closure;
     INSTRUCTION *pc;
@@ -32,6 +30,8 @@ typedef struct CState {
     CValue stack[STACK_MAX]; // stack
     CCallFrame callFrame[FRAME_MAX]; // call frames
     int frameCount;
+
+    CObjString *initString;
 } CState;
 
 COSMO_API CState *cosmoV_newState();

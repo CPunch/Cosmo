@@ -7,12 +7,12 @@
 
 #include "cmem.h"
 
-static bool _ACTIVE;
+static bool _ACTIVE = false;
 
-int cosmoB_quitRepl(CState *state, int nargs, CValue *args) {
+CValue cosmoB_quitRepl(CState *state, int nargs, CValue *args) {
     _ACTIVE = false;
 
-    return 0; // we don't do anything to the stack
+    return cosmoV_newNil(); // we don't return anything
 }
 
 static void interpret(CState *state, const char* script) {
@@ -22,11 +22,10 @@ static void interpret(CState *state, const char* script) {
     if (func != NULL) {
         disasmChunk(&func->chunk, "_main", 0);
         
-        cosmoV_call(state, 0, 0); // 0 args being passed, 0 results expected
+        COSMOVMRESULT res = cosmoV_call(state, 0); // 0 args being passed
 
-        //cosmoV_printStack(state);
-        //cosmoT_printTable(&state->globals, "globals");
-        //cosmoT_printTable(&state->strings, "strings");
+        if (res == COSMOVM_RUNTIME_ERR)
+            state->panic = false; // so our repl isn't broken
     }
 }
 

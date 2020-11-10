@@ -46,8 +46,11 @@ COSMO_API CObjString *cosmoV_toString(CState *state, CValue val) {
         case COSMO_TOBJ: {
             return cosmoO_toString(state, val.val.obj);
         }
+        case COSMO_TNIL: {
+            return cosmoO_copyString(state, "nil", 3); 
+        }
         default:
-            return cosmoO_copyString(state, "<unkn>", 6);
+            return cosmoO_copyString(state, "<unkn val>", 10);
     }
 }
 
@@ -67,6 +70,6 @@ void printValue(CValue val) {
             printf("nil");
             break;
         default:
-            printf("<unkn>");
+            printf("<unkn val>");
     }
 }

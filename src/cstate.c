@@ -2,6 +2,7 @@
 #include "cchunk.h"
 #include "cobj.h"
 #include "cvm.h"
+#include "cmem.h"
 
 #include <string.h>
 
@@ -32,10 +33,16 @@ CState *cosmoV_newState() {
 
     cosmoT_initTable(state, &state->strings, 8); // init string table
     cosmoT_initTable(state, &state->globals, 8); // init global table
+
+    state->initString = NULL;
+    state->initString = cosmoO_copyString(state, "__init", 6);
     return state;
 }
 
 void cosmoV_freeState(CState *state) {
+#ifdef GC_DEBUG
+    printf("state %p is being free'd!\n", state);
+#endif
     // frees all the objects
     CObj *objs = state->objects;
     while (objs != NULL) {
@@ -45,6 +52,7 @@ void cosmoV_freeState(CState *state) {
     }
 
     // free our string & global table
+    state->initString = NULL;
     cosmoT_clearTable(state, &state->strings);
     cosmoT_clearTable(state, &state->globals);
 

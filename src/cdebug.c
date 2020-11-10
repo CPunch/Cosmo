@@ -32,14 +32,6 @@ int constInstruction(const char *name, CChunk *chunk, int offset, int indent) {
     return offset + 1 + (sizeof(uint16_t) / sizeof(INSTRUCTION)); // consume opcode + uint
 }
 
-int ABOperandInstruction(const char *name, CChunk *chunk, int offset) {
-    int args = readu8Chunk(chunk, offset + 1);
-    int nresults = readu8Chunk(chunk, offset + 2);
-
-    printf("%-16s [%03d] [%03d]", name, args, nresults);
-    return offset + 3;
-}
-
 // public methods in the cdebug.h header
 
 void disasmChunk(CChunk *chunk, const char *name, int indent) {
@@ -91,7 +83,7 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
         case OP_POP:
             return shortOperandInstruction("OP_POP", chunk, offset);
         case OP_CALL:
-            return ABOperandInstruction("OP_CALL", chunk, offset);
+            return shortOperandInstruction("OP_CALL", chunk, offset);
         case OP_CLOSURE: {
             int index = readu16Chunk(chunk, offset + 1);
             printf("%-16s [%05d] - ", "OP_CLOSURE", index);
@@ -153,7 +145,7 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
         case OP_CONCAT:
             return shortOperandInstruction("OP_CONCAT", chunk, offset);
         case OP_RETURN:
-            return shortOperandInstruction("OP_RETURN", chunk, offset);
+            return simpleInstruction("OP_RETURN", offset);
         default:
             printf("Unknown opcode! [%d]\n", i);
             exit(0);

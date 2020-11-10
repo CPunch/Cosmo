@@ -105,19 +105,40 @@ CObjString *cosmoV_concat(CState *state, CObjString *strA, CObjString *strB) {
     return cosmoO_takeString(state, buf, sz);
 }
 
-int cosmoV_execute(CState *state);
+bool cosmoV_execute(CState *state);
 
 typedef enum {
     CALL_CLOSURE,
     CALL_CFUNCTION
 } preCallResult;
 
-int cosmoV_preCall(CState *state, int args, int nresults) {
-    return -1;
+bool call(CState *state, CObjClosure *closure, int args) {
+    // missmatched args, thats an obvious user error, so error.
+    if (args != closure->function->args) {
+        runtimeError(state, "Expected %d parameters for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args);
+        return false;
+    }
+    
+    // load function into callframe
+    pushCallFrame(state, closure, closure->function->args);
+
+    // execute
+    if (!cosmoV_execute(state))
+        return false;
+
+    // remember where the return value is
+    CValue* result = cosmoV_getTop(state, 0);
+
+    // pop the callframe and return result :)
+    popCallFrame(state);
+
+    // push the return value back onto the stack
+    cosmoV_pushValue(state, *result);
+    return true;
 }
 
-// args = # of pass parameters, nresults = # of expected results
-COSMOVMRESULT cosmoV_call(CState *state, int args, int nresults) {
+// args = # of pass parameters
+COSMOVMRESULT cosmoV_call(CState *state, int args) {
     StkPtr val = cosmoV_getTop(state, args); // function will always be right above the args
 
     if (!(val->type == COSMO_TOBJ)) {
@@ -128,9 +149,18 @@ COSMOVMRESULT cosmoV_call(CState *state, int args, int nresults) {
     switch (val->val.obj->type) {
         case COBJ_CLOSURE: {
             CObjClosure *closure = (CObjClosure*)(val->val.obj);
+            if (!call(state, closure, args)) {
+                return COSMOVM_RUNTIME_ERR;
+            }
+            break;
+        }
+        case COBJ_METHOD: {
+            CObjMethod *method = (CObjMethod*)val->val.obj;
+            *val = cosmoV_newObj(method->obj); // sets the object on the stack so the function can reference it in it's first argument
 
-            // missmatched args, thats an obvious user error, so error.
-            if (args != closure->function->args) {
+            CObjClosure *closure = method->closure;
+
+            if (args+1 != closure->function->args) {
                 runtimeError(state, "Expected %d parameters for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args);
                 return COSMOVM_RUNTIME_ERR;
             }
@@ -139,22 +169,53 @@ COSMOVMRESULT cosmoV_call(CState *state, int args, int nresults) {
             pushCallFrame(state, closure, closure->function->args);
 
             // execute
-            int res = cosmoV_execute(state);
+            if (!cosmoV_execute(state)) 
+                return COSMOVM_RUNTIME_ERR;
+            CValue* result = state->top;
 
-            // so, since we can have any # of results, we need to move the expected results to the original call frame (that means popping/adding however many results)
-            CValue* results = state->top;
-
-            // pop the callframe and return result :)
+            // pop the callframe and return result
             popCallFrame(state);
+            state->top++; // adjust stack back into place
+            cosmoV_pushValue(state, *result); // and push return value
+            break;
+        }
+        case COBJ_OBJECT: {
+            CObjObject *metaObj = (CObjObject*)val->val.obj;
+            CObjObject *newObj = cosmoO_newObject(state);
+            newObj->meta = metaObj;
+            *val = cosmoV_newObj(newObj);
+            CValue ret;
 
-            // return the results to the stack
-            for (int i = 1; i <= nresults; i++) {
-                if (i <= res)
-                    cosmoV_pushValue(state, results[-i]);
-                else
-                    cosmoV_pushValue(state, cosmoV_newNil());
+            // check if they defined an initalizer
+            if (cosmoO_getObject(state, metaObj, cosmoV_newObj(state->initString), &ret) && IS_CLOSURE(ret)) {
+                CObjClosure *closure = cosmoV_readClosure(ret);
+
+                if (args+1 != closure->function->args) {
+                    runtimeError(state, "Expected %d parameters for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args);
+                    return COSMOVM_RUNTIME_ERR;
+                }
+                
+                // load function into callframe
+                pushCallFrame(state, closure, closure->function->args);
+
+                // execute
+                if (!cosmoV_execute(state))
+                    return COSMOVM_RUNTIME_ERR;
+                
+                // we throw away the return result, it's unused
+                // pop the callframe and return result :)
+                popCallFrame(state);
+                state->top++; // adjust stack back into place
+            } else {
+                // no default initalizer
+                if (args != 0) {
+                    runtimeError(state, "Expected 0 parameters, got %d!", args);
+                    return COSMOVM_RUNTIME_ERR;
+                }
+                state->top--;
             }
 
+            cosmoV_pushValue(state, cosmoV_newObj(newObj));
             break;
         }
         case COBJ_CFUNCTION: {
@@ -163,21 +224,11 @@ COSMOVMRESULT cosmoV_call(CState *state, int args, int nresults) {
             CValue *savedBase = state->top - args - 1;
 
             cosmoM_freezeGC(state); // we don't want a GC event during c api because we don't actually trust the user to know how to evade the GC
-            int res = cfunc(state, args, state->top - args);
+            CValue res = cfunc(state, args, state->top - args);
             cosmoM_unfreezeGC(state);
 
-            // so, since we can have any # of results, we need to move the expected results to the original call frame
-            CValue* results = state->top;
             state->top = savedBase;
-
-            // return the results to the stack
-            for (int i = 1; i <= nresults; i++) {
-                if (i <= res)
-                    cosmoV_pushValue(state, results[-i]);
-                else
-                    cosmoV_pushValue(state, cosmoV_newNil());
-            }
-            
+            cosmoV_pushValue(state, res);
             break;
         }
         default: 
@@ -199,12 +250,11 @@ static inline bool isFalsey(StkPtr val) {
         cosmoV_setTop(state, 2); /* pop the 2 values */ \
         cosmoV_pushValue(state, typeConst((valA->val.num) op (valB->val.num))); \
     } else { \
-        runtimeError(state, "Expected number! got %d and %d", valA->type, valB->type); \
+        runtimeError(state, "Expected number!"); \
     } \
 
-
-// returns -1 if error, otherwise returns ammount of results
-int cosmoV_execute(CState *state) {
+// returns false if panic
+bool cosmoV_execute(CState *state) {
     CCallFrame* frame = &state->callFrame[state->frameCount - 1]; // grabs the current frame
     CValue *constants = frame->closure->function->chunk.constants.values; // cache the pointer :)
 
@@ -285,8 +335,7 @@ int cosmoV_execute(CState *state) {
             }
             case OP_CALL: {
                 uint8_t args = READBYTE();
-                uint8_t results = READBYTE();
-                COSMOVMRESULT result = cosmoV_call(state, args, results);
+                COSMOVMRESULT result = cosmoV_call(state, args);
                 if (result != COSMOVM_OK) {
                     return result;
                 }
@@ -320,12 +369,12 @@ int cosmoV_execute(CState *state) {
             case OP_NEWOBJECT: {
                 uint8_t entries = READBYTE();
                 StkPtr key, val;
-                CObjObject *newObj = cosmoO_newObject(state, entries * 3); // start the table with enough space to hopefully prevent reallocation since that's costly
+                CObjObject *newObj = cosmoO_newObject(state); // start the table with enough space to hopefully prevent reallocation since that's costly
                 cosmoV_pushValue(state, cosmoV_newObj(newObj)); // so our GC doesn't free our new object
 
                 for (int i = 0; i < entries; i++) {
-                    val = cosmoV_getTop(state, (i*2) + 2);
-                    key = cosmoV_getTop(state, (i*2) + 1);
+                    val = cosmoV_getTop(state, (i*2) + 1);
+                    key = cosmoV_getTop(state, (i*2) + 2);
 
                     // set key/value pair
                     CValue *newVal = cosmoT_insert(state, &newObj->tbl, *key);
@@ -351,6 +400,10 @@ int cosmoV_execute(CState *state) {
                 CValue val; // to hold our value
 
                 cosmoO_getObject(state, object, *key, &val);
+                if (IS_CLOSURE(val)) { // is it a function? if so, make it a method to the current object
+                    CObjMethod *method = cosmoO_newMethod(state, cosmoV_readClosure(val), object);
+                    val = cosmoV_newObj(method);
+                }
                 cosmoV_setTop(state, 2); // pops the object & the key
                 cosmoV_pushValue(state, val); // pushes the field result
                 break;
@@ -453,8 +506,7 @@ int cosmoV_execute(CState *state) {
             case OP_FALSE:  cosmoV_pushValue(state, cosmoV_newBoolean(false)); break;
             case OP_NIL:    cosmoV_pushValue(state, cosmoV_newNil()); break;
             case OP_RETURN: {
-                uint8_t results = READBYTE();
-                return results;
+                return true;
             }
             default:
                 CERROR("unknown opcode!");
@@ -467,7 +519,7 @@ int cosmoV_execute(CState *state) {
 #undef READUINT
 
     // we'll only reach this is state->panic is true
-    return COSMOVM_RUNTIME_ERR;
+    return false;
 }
 
 #undef BINARYOP

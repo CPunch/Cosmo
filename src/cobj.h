@@ -13,14 +13,15 @@ typedef enum {
     COBJ_OBJECT,
     COBJ_FUNCTION,
     COBJ_CFUNCTION,
+    COBJ_METHOD,
     // internal use
     COBJ_CLOSURE,
     COBJ_UPVALUE,
 } CObjType;
 
-#define CommonHeader CObj obj;
+#define CommonHeader CObj _obj;
 
-typedef int (*CosmoCFunction)(CState *state, int argCount, CValue *args);
+typedef CValue (*CosmoCFunction)(CState *state, int argCount, CValue *args);
 
 typedef struct CObj {
     CObjType type;
@@ -38,7 +39,7 @@ typedef struct CObjString {
 typedef struct CObjObject {
     CommonHeader; // "is a" CObj
     CTable tbl;
-    //struct CObjObject *meta; // metaobject, used to describe object behavior
+    struct CObjObject *meta; // metaobject, describes the behavior of the object
 } CObjObject;
 
 typedef struct CObjFunction {
@@ -61,6 +62,12 @@ typedef struct CObjClosure {
     int upvalueCount;
 } CObjClosure;
 
+typedef struct CObjMethod {
+    CommonHeader; // "is a " CObj
+    CObjObject *obj; // obj this method is bound too
+    CObjClosure *closure; // TODO: change this to a union to a pointer to a closure object or a c function object
+} CObjMethod;
+
 typedef struct CObjUpval {
     CommonHeader; // "is a" CObj
     CValue *val;
@@ -72,12 +79,14 @@ typedef struct CObjUpval {
 #define IS_TABLE(x)     isObjType(x, COBJ_OBJECT)
 #define IS_FUNCTION(x)  isObjType(x, COBJ_FUNCTION)
 #define IS_CFUNCTION(x) isObjType(x, COBJ_CFUNCTION)
+#define IS_METHOD(x)    isObjType(x, COBJ_METHOD)
 #define IS_CLOSURE(x)   isObjType(x, COBJ_CLOSURE)
 
 #define cosmoV_readString(x)    ((CObjString*)cosmoV_readObj(x))
-#define cosmoV_readObject(x)     ((CObjObject*)cosmoV_readObj(x))
+#define cosmoV_readObject(x)    ((CObjObject*)cosmoV_readObj(x))
 #define cosmoV_readFunction(x)  ((CObjFunction*)cosmoV_readObj(x))
 #define cosmoV_readCFunction(x) (((CObjCFunction*)cosmoV_readObj(x))->cfunc)
+#define cosmoV_readMethod(x)    ((CObjMethod*)cosmoV_readObj(x))
 #define cosmoV_readClosure(x)   ((CObjClosure*)cosmoV_readObj(x))
 
 static inline bool isObjType(CValue val, CObjType type) {
@@ -89,9 +98,10 @@ void cosmoO_free(CState *state, CObj* obj);
 
 bool cosmoO_equal(CObj* obj1, CObj* obj2);
 
-CObjObject *cosmoO_newObject(CState *state, int startCap);
+CObjObject *cosmoO_newObject(CState *state);
 CObjFunction *cosmoO_newFunction(CState *state);
 CObjCFunction *cosmoO_newCFunction(CState *state, CosmoCFunction func);
+CObjMethod *cosmoO_newMethod(CState *state, CObjClosure *func, CObjObject *obj);
 CObjClosure *cosmoO_newClosure(CState *state, CObjFunction *func);
 CObjString *cosmoO_toString(CState *state, CObj *val);
 CObjUpval *cosmoO_newUpvalue(CState *state, CValue *val);

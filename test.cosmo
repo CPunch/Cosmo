@@ -1,7 +1,26 @@
-var test = {}
+class test
+    function __init(self, str)
+        self.hello = str
+    end
 
-if !test.hello then
-    test.hello = "hello world!"
+    function print(self, i)
+        local str = self.hello
+
+        for (var x = i; x > 0; x=x-1) do
+            str = str .. "!"
+        end
+
+        print(str)
+    end
 end
 
-print(test.hello .. "!!!!")
+var obj = test("Hello world")
+for (var i = 1; i <= 10; i=i+1) do
+    obj.print(i)
+end
+
+test.debug = function(self)
+    print("hi from " .. self)
+end
+
+obj.debug()

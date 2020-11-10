@@ -12,6 +12,7 @@ CReservedWord reservedWords[] = {
     {TOKEN_FALSE, "false", 5},
     {TOKEN_FOR, "for", 3},
     {TOKEN_FUNCTION, "function", 8},
+    {TOKEN_CLASS, "class", 5},
     {TOKEN_IF, "if", 2},
     {TOKEN_LOCAL, "local", 5},
     {TOKEN_NIL, "nil", 3},
@@ -21,10 +22,8 @@ CReservedWord reservedWords[] = {
     {TOKEN_THEN, "then", 4},
     {TOKEN_TRUE, "true", 4},
     {TOKEN_VAR, "var", 3},
-    {TOKEN_THIS, "this", 4},
     {TOKEN_WHILE, "while", 5}
 };
-
 
 static CToken makeToken(CLexState *state, CTokenType type) {
     CToken token;
@@ -49,7 +48,7 @@ static CToken makeError(CLexState *state, const char *msg) {
 }
 
 static inline bool isEnd(CLexState *state) {
-    return state->isEnd;
+    return *state->currentChar == '\0';
 }
 
 static inline bool isNumerical(char c) {
@@ -103,14 +102,13 @@ void skipWhitespace(CLexState *state) {
     while (true) {
         char c = peek(state);
         switch (c) {
+            case '\n': // mark new line
+                state->line++;
             case ' ':
             case '\r':
             case '\t':
                 next(state); // consume the whitespace
                 break;
-            case '\n': // mark new line, make the main loop consume it
-                state->line++;
-                return;
             case '-': // consume comments
                 if (peekNext(state) == '-') {
                     
@@ -171,8 +169,6 @@ CLexState *cosmoL_newLexState(CState *cstate, const char *source) {
     state->currentChar = (char*)source;
     state->line = 1;
     state->lastLine = 0;
-    state->openedBraces = 0;
-    state->isEnd = false;
     state->lastType = TOKEN_ERROR;
 
     return state;
@@ -195,16 +191,12 @@ _scanTokenEnter:
 
     switch (c) {
         // single character tokens
-        case '(': state->openedBraces++; return makeToken(state, TOKEN_LEFT_PAREN);
-        case ')': state->openedBraces--; return makeToken(state, TOKEN_RIGHT_PAREN);
-        case '{': state->openedBraces++; return makeToken(state, TOKEN_LEFT_BRACE);
-        case '}': state->openedBraces--; return makeToken(state, TOKEN_RIGHT_BRACE);
-        case '[': state->openedBraces++; return makeToken(state, TOKEN_LEFT_BRACKET);
-        case ']': state->openedBraces--; return makeToken(state, TOKEN_RIGHT_BRACKET);
-        case '\0':
-            state->isEnd = true;
-            if (state->lastType == TOKEN_EOS)
-                return makeToken(state, TOKEN_EOF);
+        case '(': return makeToken(state, TOKEN_LEFT_PAREN);
+        case ')': return makeToken(state, TOKEN_RIGHT_PAREN);
+        case '{': return makeToken(state, TOKEN_LEFT_BRACE);
+        case '}': return makeToken(state, TOKEN_RIGHT_BRACE);
+        case '[': return makeToken(state, TOKEN_LEFT_BRACKET);
+        case ']': return makeToken(state, TOKEN_RIGHT_BRACKET);
             // fall through
         case ';': return makeToken(state, TOKEN_EOS);
         case ',': return makeToken(state, TOKEN_COMMA);
@@ -212,12 +204,6 @@ _scanTokenEnter:
         case '-': return makeToken(state, TOKEN_MINUS);
         case '*': return makeToken(state, TOKEN_STAR);
         case '/': return makeToken(state, TOKEN_SLASH);
-        case '\n': { // might be treated like a TOKEN_EOS
-            if (state->openedBraces == 0 && state->lastType != TOKEN_EOS)
-                return makeToken(state, TOKEN_EOS);
-            else // go back to the start
-                goto _scanTokenEnter;
-        }
         // two character tokens
         case '.': 
             return match(state, '.') ? makeToken(state, TOKEN_DOT_DOT) : makeToken(state, TOKEN_DOT);

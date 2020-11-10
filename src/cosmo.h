@@ -18,6 +18,8 @@ typedef struct CObjString CObjString;
 typedef struct CObjUpval CObjUpval;
 typedef struct CObjFunction CObjFunction;
 typedef struct CObjCFunction CObjCFunction;
+typedef struct CObjMethod CObjMethod;
+typedef struct CObjClass CObjClass;
 typedef struct CObjClosure CObjClosure;
 
 typedef uint8_t INSTRUCTION;

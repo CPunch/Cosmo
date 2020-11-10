@@ -32,6 +32,7 @@ typedef enum {
     OP_NEWOBJECT,
     OP_GETOBJECT,
     OP_SETOBJECT,
+    OP_NEWCLASS,
 
     // ARITHMETIC
     OP_ADD, 
