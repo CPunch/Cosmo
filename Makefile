@@ -1,8 +1,8 @@
 # make clean && make && ./bin/cosmo
 
 CC=clang
-CFLAGS=-fPIE -O3
-LDFLAGS=#-fsanitize=address
+CFLAGS=-fPIE -g3 #-O3
+LDFLAGS=-fsanitize=address
 OUT=bin/cosmo
 
 CHDR=\

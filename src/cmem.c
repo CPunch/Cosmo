@@ -208,7 +208,10 @@ void markRoots(CState *state) {
     }
 
     markTable(state, &state->globals);
-    markObject(state, (CObj*)state->initString);
+
+    // mark all internal strings
+    for (int i = 0; i < INTERNALSTRING_MAX; i++)
+        markObject(state, (CObj*)state->internalStrings[i]);
 
     traceGrays(state);
 }

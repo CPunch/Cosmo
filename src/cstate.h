@@ -12,6 +12,12 @@ typedef struct CCallFrame {
     CValue* base;
 } CCallFrame;
 
+typedef enum {
+    INTERNALSTRING_INIT, // __init
+    INTERNALSTRING_EQUAL, // __equal
+    INTERNALSTRING_MAX
+} InternalStringEnum;
+
 typedef struct CState {
     bool panic;
     int freezeGC; // when > 0, GC events will be ignored (for internal use)
@@ -31,7 +37,7 @@ typedef struct CState {
     CCallFrame callFrame[FRAME_MAX]; // call frames
     int frameCount;
 
-    CObjString *initString;
+    CObjString *internalStrings[INTERNALSTRING_MAX]; // strings used internally by the VM, eg. __init
 } CState;
 
 COSMO_API CState *cosmoV_newState();

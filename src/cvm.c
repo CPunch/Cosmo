@@ -187,7 +187,7 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
             CValue ret;
 
             // check if they defined an initalizer
-            if (cosmoO_getObject(state, metaObj, cosmoV_newObj(state->initString), &ret) && IS_CLOSURE(ret)) {
+            if (cosmoO_getObject(state, metaObj, cosmoV_newObj(state->internalStrings[INTERNALSTRING_INIT]), &ret) && IS_CLOSURE(ret)) {
                 CObjClosure *closure = cosmoV_readClosure(ret);
 
                 if (args+1 != closure->function->args) {
@@ -202,8 +202,8 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
                 if (!cosmoV_execute(state))
                     return COSMOVM_RUNTIME_ERR;
                 
-                // we throw away the return result, it's unused
-                // pop the callframe and return result :)
+                // we throw away the return result, it's ignored
+                // pop the callframe and return the new object :)
                 popCallFrame(state);
                 state->top++; // adjust stack back into place
             } else {
