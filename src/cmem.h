@@ -5,7 +5,7 @@
 
 #include "cstate.h"
 
-#define GC_STRESS
+//#define GC_STRESS
 //#define GC_DEBUG
 // arrays will grow by a factor of 2
 #define GROW_FACTOR 2
