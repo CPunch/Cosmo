@@ -243,6 +243,25 @@ static inline bool isFalsey(StkPtr val) {
     return val->type == COSMO_TNIL || (val->type == COSMO_TBOOLEAN && !val->val.b);
 }
 
+COSMO_API void cosmoV_pushObject(CState *state, int pairs) {
+    StkPtr key, val;
+    CObjObject *newObj = cosmoO_newObject(state); // start the table with enough space to hopefully prevent reallocation since that's costly
+    cosmoV_pushValue(state, cosmoV_newObj(newObj)); // so our GC doesn't free our new object
+
+    for (int i = 0; i < pairs; i++) {
+        val = cosmoV_getTop(state, (i*2) + 1);
+        key = cosmoV_getTop(state, (i*2) + 2);
+
+        // set key/value pair
+        CValue *newVal = cosmoT_insert(state, &newObj->tbl, *key);
+        *newVal = *val;
+    }
+
+    // once done, pop everything off the stack + push new object
+    cosmoV_setTop(state, (pairs * 2) + 1);
+    cosmoV_pushValue(state, cosmoV_newObj(newObj));
+}
+
 #define BINARYOP(typeConst, op)  \
     StkPtr valA = cosmoV_getTop(state, 1); \
     StkPtr valB = cosmoV_getTop(state, 0); \
@@ -367,23 +386,8 @@ bool cosmoV_execute(CState *state) {
                 break;
             }
             case OP_NEWOBJECT: {
-                uint8_t entries = READBYTE();
-                StkPtr key, val;
-                CObjObject *newObj = cosmoO_newObject(state); // start the table with enough space to hopefully prevent reallocation since that's costly
-                cosmoV_pushValue(state, cosmoV_newObj(newObj)); // so our GC doesn't free our new object
-
-                for (int i = 0; i < entries; i++) {
-                    val = cosmoV_getTop(state, (i*2) + 1);
-                    key = cosmoV_getTop(state, (i*2) + 2);
-
-                    // set key/value pair
-                    CValue *newVal = cosmoT_insert(state, &newObj->tbl, *key);
-                    *newVal = *val;
-                }
-
-                // once done, pop everything off the stack + push new object
-                cosmoV_setTop(state, (entries * 2) + 1);
-                cosmoV_pushValue(state, cosmoV_newObj(newObj));
+                uint8_t pairs = READBYTE();
+                cosmoV_pushObject(state, pairs);
                 break;
             }
             case OP_GETOBJECT: {

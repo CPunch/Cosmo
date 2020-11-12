@@ -1,4 +1,5 @@
 #include "cbaselib.h"
+#include "cvm.h"
 #include "cvalue.h"
 #include "cobj.h"
 #include "cmem.h"
