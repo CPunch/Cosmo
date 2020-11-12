@@ -1018,7 +1018,9 @@ static void forLoop(CParseState *pstate) {
 
     consume(pstate, TOKEN_DO, "Expected 'do'");
 
+    beginScope(pstate); // fixes stack issues
     block(pstate); // parses until 'end'
+    endScope(pstate);
 
     writeJmpBack(pstate, loopStart);
 

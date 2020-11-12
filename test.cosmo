@@ -4,7 +4,7 @@ class test
     end
 
     function print(self, i)
-        local str = self.hello
+        var str = self.hello
 
         for (var x = i; x > 0; x=x-1) do
             str = str .. "!"
