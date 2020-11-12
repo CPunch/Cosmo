@@ -763,7 +763,7 @@ static void popLocals(CParseState *pstate, int toScope) {
     int localsToPop = 0;
 
     while (pstate->compiler->localCount > 0 && pstate->compiler->locals[pstate->compiler->localCount - 1].depth > toScope) {
-        Local *local = &pstate->compiler->locals[localsToPop];
+        Local *local = &pstate->compiler->locals[pstate->compiler->localCount - 1];
 
         if (local->isCaptured) { // local needs to be closed over so other closures can reference it
             // first though, if there are other locals in queue to pop first, go ahead and pop those :)

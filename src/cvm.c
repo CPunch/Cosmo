@@ -171,7 +171,7 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
             // execute
             if (!cosmoV_execute(state)) 
                 return COSMOVM_RUNTIME_ERR;
-            CValue* result = state->top;
+            CValue* result = state->top - 1;
 
             // pop the callframe and return result
             popCallFrame(state);
