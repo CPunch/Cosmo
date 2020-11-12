@@ -161,7 +161,7 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
             CObjClosure *closure = method->closure;
 
             if (args+1 != closure->function->args) {
-                runtimeError(state, "Expected %d parameters for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args);
+                runtimeError(state, "Expected %d parameters for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args+1);
                 return COSMOVM_RUNTIME_ERR;
             }
             
@@ -191,7 +191,7 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
                 CObjClosure *closure = cosmoV_readClosure(ret);
 
                 if (args+1 != closure->function->args) {
-                    runtimeError(state, "Expected %d parameters for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args);
+                    runtimeError(state, "Expected %d parameters for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args+1);
                     return COSMOVM_RUNTIME_ERR;
                 }
                 
