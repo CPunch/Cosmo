@@ -137,6 +137,43 @@ bool call(CState *state, CObjClosure *closure, int args) {
     return true;
 }
 
+bool callMethod(CState* state, CObjMethod *method, int args) {
+    if (method->isCFunc) {
+        StkPtr savedBase = state->top - args - 1;
+
+        cosmoM_freezeGC(state);
+        CValue res = method->cfunc->cfunc(state, args+1, savedBase);
+        cosmoM_unfreezeGC(state);
+        
+        state->top = savedBase;
+        cosmoV_pushValue(state, res);
+    } else {
+        CObjClosure *closure = method->closure;
+
+        StkPtr val = state->top - args - 1;
+
+        if (args+1 != closure->function->args) {
+            runtimeError(state, "Expected %d parameters for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args+1);
+            return false;
+        }
+        
+        // load function into callframe
+        pushCallFrame(state, closure, closure->function->args);
+
+        // execute
+        if (!cosmoV_execute(state)) 
+            return false;
+        CValue* result = state->top - 1;
+
+        // pop the callframe and return result
+        popCallFrame(state);
+        state->top++;
+        cosmoV_pushValue(state, *result); // and push return value
+    }
+
+    return true;
+}
+
 // args = # of pass parameters
 COSMOVMRESULT cosmoV_call(CState *state, int args) {
     StkPtr val = cosmoV_getTop(state, args); // function will always be right above the args
@@ -157,26 +194,7 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
         case COBJ_METHOD: {
             CObjMethod *method = (CObjMethod*)val->val.obj;
             *val = cosmoV_newObj(method->obj); // sets the object on the stack so the function can reference it in it's first argument
-
-            CObjClosure *closure = method->closure;
-
-            if (args+1 != closure->function->args) {
-                runtimeError(state, "Expected %d parameters for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args+1);
-                return COSMOVM_RUNTIME_ERR;
-            }
-            
-            // load function into callframe
-            pushCallFrame(state, closure, closure->function->args);
-
-            // execute
-            if (!cosmoV_execute(state)) 
-                return COSMOVM_RUNTIME_ERR;
-            CValue* result = state->top - 1;
-
-            // pop the callframe and return result
-            popCallFrame(state);
-            state->top++; // adjust stack back into place
-            cosmoV_pushValue(state, *result); // and push return value
+            callMethod(state, method, args);
             break;
         }
         case COBJ_OBJECT: {
@@ -187,25 +205,9 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
             CValue ret;
 
             // check if they defined an initalizer
-            if (cosmoO_getObject(state, metaObj, cosmoV_newObj(state->internalStrings[INTERNALSTRING_INIT]), &ret) && IS_CLOSURE(ret)) {
-                CObjClosure *closure = cosmoV_readClosure(ret);
-
-                if (args+1 != closure->function->args) {
-                    runtimeError(state, "Expected %d parameters for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args+1);
-                    return COSMOVM_RUNTIME_ERR;
-                }
-                
-                // load function into callframe
-                pushCallFrame(state, closure, closure->function->args);
-
-                // execute
-                if (!cosmoV_execute(state))
-                    return COSMOVM_RUNTIME_ERR;
-                
-                // we throw away the return result, it's ignored
-                // pop the callframe and return the new object :)
-                popCallFrame(state);
-                state->top++; // adjust stack back into place
+            if (cosmoV_getObject(state, metaObj, cosmoV_newObj(state->internalStrings[INTERNALSTRING_INIT]), &ret) && IS_METHOD(ret)) {
+                callMethod(state, cosmoV_readMethod(ret), args);
+                cosmoV_pop(state);
             } else {
                 // no default initalizer
                 if (args != 0) {
@@ -221,13 +223,13 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
         case COBJ_CFUNCTION: {
             // it's a C function, so call it
             CosmoCFunction cfunc = ((CObjCFunction*)(val->val.obj))->cfunc;
-            CValue *savedBase = state->top - args - 1;
+            CValue *savedBase = state->top - args;
 
             cosmoM_freezeGC(state); // we don't want a GC event during c api because we don't actually trust the user to know how to evade the GC
-            CValue res = cfunc(state, args, state->top - args);
+            CValue res = cfunc(state, args, savedBase);
             cosmoM_unfreezeGC(state);
 
-            state->top = savedBase;
+            state->top = savedBase - 1;
             cosmoV_pushValue(state, res);
             break;
         }
@@ -260,6 +262,24 @@ COSMO_API void cosmoV_pushObject(CState *state, int pairs) {
     // once done, pop everything off the stack + push new object
     cosmoV_setTop(state, (pairs * 2) + 1);
     cosmoV_pushValue(state, cosmoV_newObj(newObj));
+}
+
+COSMO_API bool cosmoV_getObject(CState *state, CObjObject *object, CValue key, CValue *val) {
+    if (cosmoO_getObject(state, object, key, val)) {
+        if (val->type == COSMO_TOBJ ) {
+            if (val->val.obj->type == COBJ_CLOSURE) { // is it a function? if so, make it a method to the current object
+                CObjMethod *method = cosmoO_newMethod(state, (CObjClosure*)val->val.obj, object);
+                *val = cosmoV_newObj(method);
+            } else if (val->val.obj->type == COBJ_CFUNCTION) {
+                CObjMethod *method = cosmoO_newCMethod(state, (CObjCFunction*)val->val.obj, object);
+                *val = cosmoV_newObj(method);
+            }
+        }
+
+        return true;
+    }
+
+    return false;
 }
 
 #define BINARYOP(typeConst, op)  \
@@ -403,11 +423,7 @@ bool cosmoV_execute(CState *state) {
                 CObjObject *object = (CObjObject*)temp->val.obj;
                 CValue val; // to hold our value
 
-                cosmoO_getObject(state, object, *key, &val);
-                if (IS_CLOSURE(val)) { // is it a function? if so, make it a method to the current object
-                    CObjMethod *method = cosmoO_newMethod(state, cosmoV_readClosure(val), object);
-                    val = cosmoV_newObj(method);
-                }
+                cosmoV_getObject(state, object, *key, &val);
                 cosmoV_setTop(state, 2); // pops the object & the key
                 cosmoV_pushValue(state, val); // pushes the field result
                 break;

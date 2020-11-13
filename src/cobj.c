@@ -94,7 +94,7 @@ bool cosmoO_equal(CObj* obj1, CObj* obj2) {
 
 CObjObject *cosmoO_newObject(CState *state) {
     CObjObject *obj = (CObjObject*)cosmoO_allocateBase(state, sizeof(CObjObject), COBJ_OBJECT);
-    obj->meta = NULL;
+    obj->meta = state->metaObj;
     cosmoV_pushValue(state, cosmoV_newObj(obj)); // so out GC can keep track of it
     cosmoT_initTable(state, &obj->tbl, ARRAY_START);
     cosmoV_pop(state);
@@ -118,10 +118,19 @@ CObjCFunction *cosmoO_newCFunction(CState *state, CosmoCFunction func) {
     return cfunc;
 }
 
+CObjMethod *cosmoO_newCMethod(CState *state, CObjCFunction *func, CObjObject *obj) {
+    CObjMethod *method = (CObjMethod*)cosmoO_allocateBase(state, sizeof(CObjMethod), COBJ_METHOD);
+    method->cfunc = func;
+    method->obj = obj;
+    method->isCFunc = true;
+    return method;
+}
+
 CObjMethod *cosmoO_newMethod(CState *state, CObjClosure *func, CObjObject *obj) {
     CObjMethod *method = (CObjMethod*)cosmoO_allocateBase(state, sizeof(CObjMethod), COBJ_METHOD);
     method->closure = func;
     method->obj = obj;
+    method->isCFunc = false;
     return method;
 }
 

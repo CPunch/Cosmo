@@ -4,6 +4,7 @@
 #include "ctable.h"
 #include "cparse.h"
 #include "cobj.h"
+#include "cbaselib.h"
 
 /*
     copy buffer to new larger buffer, and free the old buffer
@@ -213,6 +214,8 @@ void markRoots(CState *state) {
     for (int i = 0; i < INTERNALSTRING_MAX; i++)
         markObject(state, (CObj*)state->internalStrings[i]);
 
+    // mark our meta object
+    markObject(state, (CObj*)state->metaObj);
     traceGrays(state);
 }
 

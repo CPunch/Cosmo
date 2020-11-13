@@ -955,7 +955,7 @@ static void functionDeclaration(CParseState *pstate) {
 }
 
 static void returnStatement(CParseState *pstate) {
-    if (pstate->compiler->type != FTYPE_FUNCTION) {
+    if (pstate->compiler->type != FTYPE_FUNCTION && pstate->compiler->type != FTYPE_METHOD) {
         error(pstate, "Expected 'return' in function!");
         return;
     }

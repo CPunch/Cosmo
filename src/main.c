@@ -48,7 +48,8 @@ static void repl() {
     _ACTIVE = true;
 
     CState *state = cosmoV_newState();
-    cosmoB_loadlibrary(state);
+    cosmoB_loadLibrary(state);
+    cosmoB_loadDebug(state);
 
     // TODO: there's gotta be a better way to do this
     cosmoV_register(state, "quit", cosmoV_newObj(cosmoO_newCFunction(state, cosmoB_quitRepl)));
@@ -103,7 +104,7 @@ static char *readFile(const char* path) {
 static void runFile(const char* fileName) {
     char* script = readFile(fileName);
     CState *state = cosmoV_newState();
-    cosmoB_loadlibrary(state);
+    cosmoB_loadLibrary(state);
 
     cosmoV_register(state, "input", cosmoV_newObj(cosmoO_newCFunction(state, cosmoB_input)));
 

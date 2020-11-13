@@ -65,7 +65,11 @@ typedef struct CObjClosure {
 typedef struct CObjMethod {
     CommonHeader; // "is a " CObj
     CObjObject *obj; // obj this method is bound too
-    CObjClosure *closure; // TODO: change this to a union to a pointer to a closure object or a c function object
+    union {
+        CObjClosure *closure;
+        CObjCFunction *cfunc;
+    };
+    bool isCFunc;
 } CObjMethod;
 
 typedef struct CObjUpval {
@@ -82,12 +86,12 @@ typedef struct CObjUpval {
 #define IS_METHOD(x)    isObjType(x, COBJ_METHOD)
 #define IS_CLOSURE(x)   isObjType(x, COBJ_CLOSURE)
 
-#define cosmoV_readString(x)    ((CObjString*)cosmoV_readObj(x))
-#define cosmoV_readObject(x)    ((CObjObject*)cosmoV_readObj(x))
-#define cosmoV_readFunction(x)  ((CObjFunction*)cosmoV_readObj(x))
-#define cosmoV_readCFunction(x) (((CObjCFunction*)cosmoV_readObj(x))->cfunc)
-#define cosmoV_readMethod(x)    ((CObjMethod*)cosmoV_readObj(x))
-#define cosmoV_readClosure(x)   ((CObjClosure*)cosmoV_readObj(x))
+#define cosmoV_readString(x)    ((CObjString*)cosmoV_readObj((x)))
+#define cosmoV_readObject(x)    ((CObjObject*)cosmoV_readObj((x)))
+#define cosmoV_readFunction(x)  ((CObjFunction*)cosmoV_readObj((x)))
+#define cosmoV_readCFunction(x) (((CObjCFunction*)cosmoV_readObj((x)))->cfunc)
+#define cosmoV_readMethod(x)    ((CObjMethod*)cosmoV_readObj((x)))
+#define cosmoV_readClosure(x)   ((CObjClosure*)cosmoV_readObj((x)))
 
 static inline bool isObjType(CValue val, CObjType type) {
     return IS_OBJ(val) && cosmoV_readObj(val)->type == type;
@@ -102,6 +106,7 @@ CObjObject *cosmoO_newObject(CState *state);
 CObjFunction *cosmoO_newFunction(CState *state);
 CObjCFunction *cosmoO_newCFunction(CState *state, CosmoCFunction func);
 CObjMethod *cosmoO_newMethod(CState *state, CObjClosure *func, CObjObject *obj);
+CObjMethod *cosmoO_newCMethod(CState *state,  CObjCFunction *func, CObjObject *obj);
 CObjClosure *cosmoO_newClosure(CState *state, CObjFunction *func);
 CObjString *cosmoO_toString(CState *state, CObj *val);
 CObjUpval *cosmoO_newUpvalue(CState *state, CValue *val);

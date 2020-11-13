@@ -1,8 +1,15 @@
--- makes a hundred thousand entries in the hashtable
-var test = {}
+class test
+    function __init(self, x)
+        self.x = x
+    end
 
-for (var i = 0; i < 100000; i=i+1) do 
-	test[i] = "" .. i*i
+    function print(self)
+        print(self.x)
+
+        return self.x
+    end
 end
 
-print(test[4]) -- should print '16'
+var t = test("hello")
+
+print(t.print())

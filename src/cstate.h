@@ -38,6 +38,7 @@ typedef struct CState {
     int frameCount;
 
     CObjString *internalStrings[INTERNALSTRING_MAX]; // strings used internally by the VM, eg. __init
+    CObjObject *metaObj; // start met obj for all objects (NULL by default)
 } CState;
 
 COSMO_API CState *cosmoV_newState();
