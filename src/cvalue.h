@@ -33,11 +33,11 @@ typedef struct CValueArray {
     CValue *values;
 } CValueArray;
 
-COSMO_API void initValArray(CState *state, CValueArray *val, size_t startCapacity);
-COSMO_API void cleanValArray(CState *state, CValueArray *array); // cleans array
-COSMO_API void appendValArray(CState *state, CValueArray *array, CValue val);
+void initValArray(CState *state, CValueArray *val, size_t startCapacity);
+void cleanValArray(CState *state, CValueArray *array); // cleans array
+void appendValArray(CState *state, CValueArray *array, CValue val);
 
-COSMO_API void printValue(CValue val);
+void printValue(CValue val);
 COSMO_API bool cosmoV_equal(CValue valA, CValue valB);
 COSMO_API CObjString *cosmoV_toString(CState *state, CValue val);
 

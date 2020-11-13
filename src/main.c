@@ -15,6 +15,20 @@ CValue cosmoB_quitRepl(CState *state, int nargs, CValue *args) {
     return cosmoV_newNil(); // we don't return anything
 }
 
+CValue cosmoB_input(CState *state, int nargs, CValue *args) {
+    // input() accepts the same params as print()!
+    for (int i = 0; i < nargs; i++) {
+        CObjString *str = cosmoV_toString(state, args[i]);
+        printf("%s", cosmoO_readCString(str));
+    }
+
+    // but, we return user input instead!
+    char line[1024];
+    fgets(line, sizeof(line), stdin);
+
+    return cosmoV_newObj(cosmoO_copyString(state, line, strlen(line)-1)); // -1 for the \n
+}
+
 static void interpret(CState *state, const char* script) {
     
     // cosmoP_compileString pushes the result onto the stack (NIL or COBJ_FUNCTION)
@@ -38,6 +52,7 @@ static void repl() {
 
     // TODO: there's gotta be a better way to do this
     cosmoV_register(state, "quit", cosmoV_newObj(cosmoO_newCFunction(state, cosmoB_quitRepl)));
+    cosmoV_register(state, "input", cosmoV_newObj(cosmoO_newCFunction(state, cosmoB_input)));
 
     while (_ACTIVE) {
         printf("> ");
@@ -89,6 +104,8 @@ static void runFile(const char* fileName) {
     char* script = readFile(fileName);
     CState *state = cosmoV_newState();
     cosmoB_loadlibrary(state);
+
+    cosmoV_register(state, "input", cosmoV_newObj(cosmoO_newCFunction(state, cosmoB_input)));
 
     interpret(state, script);
 
