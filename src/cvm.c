@@ -425,7 +425,7 @@ bool cosmoV_execute(CState *state) {
                 cosmoV_setTop(state, 3);
                 break;
             }
-            case OP_INVOKE: {
+            case OP_INVOKE: { // this is an optimization made by the parser, instead of allocating a CObjMethod every time we want to invoke a method, we shrink it down into one minimal instruction!
                 uint8_t args = READBYTE();
                 StkPtr key = cosmoV_getTop(state, args); // grabs key from stack
                 StkPtr temp = cosmoV_getTop(state, args+1); // grabs object from stack
@@ -439,7 +439,7 @@ bool cosmoV_execute(CState *state) {
                 CObjObject *object = (CObjObject*)temp->val.obj;
                 CValue val; // to hold our value
 
-                cosmoO_getObject(state, object, *key, &val);
+                cosmoO_getObject(state, object, *key, &val); // we use cosmoO_getObject instead of the cosmoV_getObject wrapper so we get the raw value from the object instead of the CObjMethod wrapper
 
                 // now set the key stack location to the object, and call it!
                 *key = *temp;
