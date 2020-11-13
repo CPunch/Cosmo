@@ -87,10 +87,11 @@ void pushCallFrame(CState *state, CObjClosure *closure, int args) {
     frame->closure = closure;
 }
 
-void popCallFrame(CState *state) {
+// offset is the offset of the callframe base we set the state->top back too (useful for passing values in the stack as arguments, like methods)
+void popCallFrame(CState *state, int offset) {
     closeUpvalues(state, state->callFrame[state->frameCount - 1].base); // close any upvalue still open
 
-    state->top = state->callFrame[state->frameCount - 1].base; // resets the stack
+    state->top = state->callFrame[state->frameCount - 1].base + offset; // resets the stack
     state->frameCount--;
 }
 
@@ -112,7 +113,18 @@ typedef enum {
     CALL_CFUNCTION
 } preCallResult;
 
-bool call(CState *state, CObjClosure *closure, int args) {
+static inline void callCFunction(CState *state, CosmoCFunction cfunc, int args, int offset) {
+    StkPtr savedBase = cosmoV_getTop(state, args);
+
+    cosmoM_freezeGC(state); // we don't want a GC event during c api because we don't actually trust the user to know how to evade the GC
+    CValue res = cfunc(state, args, savedBase + 1);
+    cosmoM_unfreezeGC(state);
+    
+    state->top = savedBase + offset;
+    cosmoV_pushValue(state, res);
+}
+
+bool call(CState *state, CObjClosure *closure, int args, int offset) {
     // missmatched args, thats an obvious user error, so error.
     if (args != closure->function->args) {
         cosmoV_error(state, "Expected %d parameters for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args);
@@ -130,7 +142,7 @@ bool call(CState *state, CObjClosure *closure, int args) {
     CValue* result = cosmoV_getTop(state, 0);
 
     // pop the callframe and return result :)
-    popCallFrame(state);
+    popCallFrame(state, offset);
 
     // push the return value back onto the stack
     cosmoV_pushValue(state, *result);
@@ -139,36 +151,10 @@ bool call(CState *state, CObjClosure *closure, int args) {
 
 bool callMethod(CState* state, CObjMethod *method, int args) {
     if (method->isCFunc) {
-        StkPtr savedBase = state->top - args - 1;
-
-        cosmoM_freezeGC(state);
-        CValue res = method->cfunc->cfunc(state, args+1, savedBase);
-        cosmoM_unfreezeGC(state);
-        
-        state->top = savedBase;
-        cosmoV_pushValue(state, res);
+        callCFunction(state, method->cfunc->cfunc, args+1, 1);
     } else {
         CObjClosure *closure = method->closure;
-
-        StkPtr val = state->top - args - 1;
-
-        if (args+1 != closure->function->args) {
-            cosmoV_error(state, "Expected %d parameters for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args+1);
-            return false;
-        }
-        
-        // load function into callframe
-        pushCallFrame(state, closure, closure->function->args);
-
-        // execute
-        if (!cosmoV_execute(state)) 
-            return false;
-        CValue* result = state->top - 1;
-
-        // pop the callframe and return result
-        popCallFrame(state);
-        state->top++;
-        cosmoV_pushValue(state, *result); // and push return value
+        call(state, closure, args+1, 1); // offset = 1 so our stack is properly reset
     }
 
     return true;
@@ -186,7 +172,7 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
     switch (val->val.obj->type) {
         case COBJ_CLOSURE: {
             CObjClosure *closure = (CObjClosure*)(val->val.obj);
-            if (!call(state, closure, args)) {
+            if (!call(state, closure, args, 0)) {
                 return COSMOVM_RUNTIME_ERR;
             }
             break;
@@ -223,14 +209,7 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
         case COBJ_CFUNCTION: {
             // it's a C function, so call it
             CosmoCFunction cfunc = ((CObjCFunction*)(val->val.obj))->cfunc;
-            CValue *savedBase = state->top - args;
-
-            cosmoM_freezeGC(state); // we don't want a GC event during c api because we don't actually trust the user to know how to evade the GC
-            CValue res = cfunc(state, args, savedBase);
-            cosmoM_unfreezeGC(state);
-
-            state->top = savedBase - 1;
-            cosmoV_pushValue(state, res);
+            callCFunction(state, cfunc, args, 0);
             break;
         }
         default: 
@@ -444,6 +423,37 @@ bool cosmoV_execute(CState *state) {
 
                 // pop everything off the stack
                 cosmoV_setTop(state, 3);
+                break;
+            }
+            case OP_INVOKE: {
+                uint8_t args = READBYTE();
+                StkPtr key = cosmoV_getTop(state, args); // grabs key from stack
+                StkPtr temp = cosmoV_getTop(state, args+1); // grabs object from stack
+
+                // sanity check
+                if (!(temp->type == COSMO_TOBJ) || !(temp->val.obj->type == COBJ_OBJECT)) {
+                    cosmoV_error(state, "Couldn't get from non-object!");
+                    break;
+                }
+
+                CObjObject *object = (CObjObject*)temp->val.obj;
+                CValue val; // to hold our value
+
+                cosmoO_getObject(state, object, *key, &val);
+
+                // now set the key stack location to the object, and call it!
+                *key = *temp;
+                if (IS_CLOSURE(val)) {
+                    call(state, cosmoV_readClosure(val), args+1, 1);
+                } else if (IS_CFUNCTION(val)) {
+                    callCFunction(state, cosmoV_readCFunction(val), args+1, 1);
+                } else {
+                    cosmoV_error(state, "Cannot call non-function value! got %d", val.val.obj->type);
+                }
+
+                // moves return value & resets stack (key now points to the stack location of our return value)
+                *temp = *key;
+                state->top = key;
                 break;
             }
             case OP_ADD: { // pop 2 values off the stack & try to add them together

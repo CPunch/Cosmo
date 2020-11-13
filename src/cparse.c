@@ -153,8 +153,6 @@ static void advance(CParseState *pstate) {
     pstate->previous = pstate->current;
     pstate->current = cosmoL_scanToken(pstate->lex);
 
-    //printf("got %d [%.*s]\n", pstate->current.type, pstate->current.length, pstate->current.start);
-
     if (pstate->current.type == TOKEN_ERROR) {
         // go ahead and consume the rest of the errors so it doesn't cascade
         CToken temp;
@@ -586,6 +584,11 @@ static void dot(CParseState *pstate, bool canAssign) {
         expression(pstate);
         writeu8(pstate, OP_SETOBJECT);
         valuePopped(pstate, 2); // pops key, value & object
+    } else if (match(pstate, TOKEN_LEFT_PAREN)) { // it's an invoked call
+        uint8_t args = parseArguments(pstate);
+        writeu8(pstate, OP_INVOKE);
+        writeu8(pstate, args);
+        valuePopped(pstate, args); // pops the function & the object but pushes a result
     } else {
         writeu8(pstate, OP_GETOBJECT);
         // pops key & object but also pushes the field so total popped is 1
@@ -815,22 +818,7 @@ static void varDeclaration(CParseState *pstate, bool forceLocal) {
             expression(pstate);
         } while (match(pstate, TOKEN_COMMA));
 
-        if (pstate->compiler->pushedValues < pstate->compiler->savedPushed) {
-            writeu8(pstate, OP_NIL); // didn't get expected result
-            valuePushed(pstate, 1);
-        }
-
         valuePushed(pstate, 1);
-    } else if (match(pstate, TOKEN_COMMA)) {
-        valuePopped(pstate, 1); // we are expecting a value
-        varDeclaration(pstate, forceLocal);
-
-        if (pstate->compiler->pushedValues < pstate->compiler->savedPushed) {
-            writeu8(pstate, OP_NIL); // didn't get expected result
-            valuePushed(pstate, 1);
-        }
-
-        valuePushed(pstate, 1); // we already popped, & when we call defineVariable it'll pop, so go ahead and fix it here
     } else {
         writeu8(pstate, OP_NIL);
         valuePushed(pstate, 1);

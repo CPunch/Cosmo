@@ -7,8 +7,7 @@ typedef enum {
     COSMO_TNIL,
     COSMO_TBOOLEAN,
     COSMO_TNUMBER,
-    COSMO_TOBJ,
-    COSMO_TUSERDATA
+    COSMO_TOBJ
 } CosmoType;
 
 typedef double cosmo_Number;
@@ -21,7 +20,6 @@ typedef struct CValue {
     union {
         cosmo_Number num;
         bool b; // boolean
-        void *ptr; // userdata
         CObj *obj;
     } val;
 } CValue;

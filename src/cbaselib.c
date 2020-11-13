@@ -32,6 +32,7 @@ CValue cosmoB_dsetMeta(CState *state, int nargs, CValue *args) {
 
     return cosmoV_newNil(); // nothing
 }
+
 CValue cosmoB_dgetMeta(CState *state, int nargs, CValue *args) {
     if (nargs != 1) {
         cosmoV_error(state, "Expected 1 parameter, got %d!", nargs);

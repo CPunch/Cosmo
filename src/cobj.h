@@ -13,8 +13,8 @@ typedef enum {
     COBJ_OBJECT,
     COBJ_FUNCTION,
     COBJ_CFUNCTION,
-    COBJ_METHOD,
     // internal use
+    COBJ_METHOD,
     COBJ_CLOSURE,
     COBJ_UPVALUE,
 } CObjType;
@@ -39,6 +39,7 @@ typedef struct CObjString {
 typedef struct CObjObject {
     CommonHeader; // "is a" CObj
     CTable tbl;
+    void *user; // userdata (NULL by default)
     struct CObjObject *meta; // metaobject, describes the behavior of the object
 } CObjObject;
 

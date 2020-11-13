@@ -1,15 +1,29 @@
 class test
     function __init(self, x)
-        self.x = x
+        self.setArg(x)
     end
 
-    function print(self)
-        print(self.x)
+    function fact(self)
+        var total = 1
 
-        return self.x
+        for (var i = self.x; i > 0; i = i - 1) do
+            total = total * i;
+        end
+
+        return total
+    end
+
+    function setArg(self, x)
+        self.x = x
     end
 end
 
-var t = test("hello")
+var t = test(1)
 
-print(t.print())
+for (var x = 1; x < 1000; x = x + 1) do
+    for (var i = 1; i < 100; i = i + 1) do
+        t.setArg(i)
+
+        print(t.fact())
+    end
+end

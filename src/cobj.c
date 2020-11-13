@@ -95,7 +95,8 @@ bool cosmoO_equal(CObj* obj1, CObj* obj2) {
 CObjObject *cosmoO_newObject(CState *state) {
     CObjObject *obj = (CObjObject*)cosmoO_allocateBase(state, sizeof(CObjObject), COBJ_OBJECT);
     obj->meta = state->metaObj;
-    cosmoV_pushValue(state, cosmoV_newObj(obj)); // so out GC can keep track of it
+    obj->user = NULL; // reserved for C API
+    cosmoV_pushValue(state, cosmoV_newObj(obj)); // so our GC can keep track of it
     cosmoT_initTable(state, &obj->tbl, ARRAY_START);
     cosmoV_pop(state);
 
