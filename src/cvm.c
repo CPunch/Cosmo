@@ -6,7 +6,7 @@
 #include <stdarg.h>
 #include <string.h>
 
-void runtimeError(CState *state, const char *format, ...) {
+void cosmoV_error(CState *state, const char *format, ...) {
     if (state->panic)
         return;
 
@@ -115,7 +115,7 @@ typedef enum {
 bool call(CState *state, CObjClosure *closure, int args) {
     // missmatched args, thats an obvious user error, so error.
     if (args != closure->function->args) {
-        runtimeError(state, "Expected %d parameters for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args);
+        cosmoV_error(state, "Expected %d parameters for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args);
         return false;
     }
     
@@ -153,7 +153,7 @@ bool callMethod(CState* state, CObjMethod *method, int args) {
         StkPtr val = state->top - args - 1;
 
         if (args+1 != closure->function->args) {
-            runtimeError(state, "Expected %d parameters for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args+1);
+            cosmoV_error(state, "Expected %d parameters for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args+1);
             return false;
         }
         
@@ -179,7 +179,7 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
     StkPtr val = cosmoV_getTop(state, args); // function will always be right above the args
 
     if (!(val->type == COSMO_TOBJ)) {
-        runtimeError(state, "Cannot call non-function value!");
+        cosmoV_error(state, "Cannot call non-function value!");
         return COSMOVM_RUNTIME_ERR;
     }
 
@@ -211,7 +211,7 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
             } else {
                 // no default initalizer
                 if (args != 0) {
-                    runtimeError(state, "Expected 0 parameters, got %d!", args);
+                    cosmoV_error(state, "Expected 0 parameters, got %d!", args);
                     return COSMOVM_RUNTIME_ERR;
                 }
                 state->top--;
@@ -234,7 +234,7 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
             break;
         }
         default: 
-            runtimeError(state, "Cannot call non-function value!");
+            cosmoV_error(state, "Cannot call non-function value!");
             return COSMOVM_RUNTIME_ERR;
     }
 
@@ -289,7 +289,7 @@ COSMO_API bool cosmoV_getObject(CState *state, CObjObject *object, CValue key, C
         cosmoV_setTop(state, 2); /* pop the 2 values */ \
         cosmoV_pushValue(state, typeConst((valA->val.num) op (valB->val.num))); \
     } else { \
-        runtimeError(state, "Expected number!"); \
+        cosmoV_error(state, "Expected number!"); \
     } \
 
 // returns false if panic
@@ -416,7 +416,7 @@ bool cosmoV_execute(CState *state) {
 
                 // sanity check
                 if (!(temp->type == COSMO_TOBJ) || !(temp->val.obj->type == COBJ_OBJECT)) {
-                    runtimeError(state, "Couldn't get from non-object!");
+                    cosmoV_error(state, "Couldn't get from non-object!");
                     break;
                 }
 
@@ -435,7 +435,7 @@ bool cosmoV_execute(CState *state) {
 
                 // sanity check
                 if (!(temp->type == COSMO_TOBJ) || !(temp->val.obj->type == COBJ_OBJECT)) {
-                    runtimeError(state, "Couldn't set a field on a non-object!");
+                    cosmoV_error(state, "Couldn't set a field on a non-object!");
                     break;
                 }
 
@@ -473,7 +473,7 @@ bool cosmoV_execute(CState *state) {
                     cosmoV_pop(state);
                     cosmoV_pushValue(state, cosmoV_newNumber(-(val->val.num)));
                 } else {
-                    runtimeError(state, "Expected number!");
+                    cosmoV_error(state, "Expected number!");
                 }
                 break;
             }

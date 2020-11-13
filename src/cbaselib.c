@@ -26,11 +26,17 @@ CValue cosmoB_dsetMeta(CState *state, int nargs, CValue *args) {
         CObjObject *meta = cosmoV_readObject(args[1]);
 
         obj->meta = meta; // boom done
-    } 
+    } else {
+        cosmoV_error(state, "Expected 2 parameters, got %d!", nargs);
+    }
 
     return cosmoV_newNil(); // nothing
 }
 CValue cosmoB_dgetMeta(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "Expected 1 parameter, got %d!", nargs);
+    }
+
     return cosmoV_newObj(cosmoV_readObject(args[0])->meta); // just return the meta
 }
 
