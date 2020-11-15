@@ -20,12 +20,12 @@ CValue cosmoB_print(CState *state, int nargs, CValue *args) {
     return cosmoV_newNil(); // print doesn't return any args
 }
 
-CValue cosmoB_dsetMeta(CState *state, int nargs, CValue *args) {
+CValue cosmoB_dsetProto(CState *state, int nargs, CValue *args) {
     if (nargs == 2) {
-        CObjObject *obj = cosmoV_readObject(args[0]); // object to set meta too
-        CObjObject *meta = cosmoV_readObject(args[1]);
+        CObjObject *obj = cosmoV_readObject(args[0]); // object to set proto too
+        CObjObject *proto = cosmoV_readObject(args[1]);
 
-        obj->meta = meta; // boom done
+        obj->proto = proto; // boom done
     } else {
         cosmoV_error(state, "Expected 2 parameters, got %d!", nargs);
     }
@@ -33,20 +33,20 @@ CValue cosmoB_dsetMeta(CState *state, int nargs, CValue *args) {
     return cosmoV_newNil(); // nothing
 }
 
-CValue cosmoB_dgetMeta(CState *state, int nargs, CValue *args) {
+CValue cosmoB_dgetProto(CState *state, int nargs, CValue *args) {
     if (nargs != 1) {
         cosmoV_error(state, "Expected 1 parameter, got %d!", nargs);
     }
 
-    return cosmoV_newObj(cosmoV_readObject(args[0])->meta); // just return the meta
+    return cosmoV_newObj(cosmoV_readObject(args[0])->proto); // just return the proto
 }
 
 void cosmoB_loadDebug(CState *state) {
-    cosmoV_pushString(state, "getMeta");
-    cosmoV_pushCFunction(state, cosmoB_dgetMeta);
-    cosmoV_pushString(state, "setMeta");
-    cosmoV_pushCFunction(state, cosmoB_dsetMeta);
+    cosmoV_pushString(state, "getProto");
+    cosmoV_pushCFunction(state, cosmoB_dgetProto);
+    cosmoV_pushString(state, "setProto");
+    cosmoV_pushCFunction(state, cosmoB_dsetProto);
     cosmoV_pushObject(state, 2);
 
-    state->metaObj = cosmoV_readObject(*cosmoV_pop(state));
+    state->protoObj = cosmoV_readObject(*cosmoV_pop(state));
 }

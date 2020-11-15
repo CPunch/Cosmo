@@ -40,7 +40,7 @@ typedef struct CObjObject {
     CommonHeader; // "is a" CObj
     CTable tbl;
     void *user; // userdata (NULL by default)
-    struct CObjObject *meta; // metaobject, describes the behavior of the object
+    struct CObjObject *proto; // protoobject, describes the behavior of the object
 } CObjObject;
 
 typedef struct CObjFunction {

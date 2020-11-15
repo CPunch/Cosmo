@@ -88,7 +88,7 @@ void blackenObject(CState *state, CObj *obj) {
             // mark everything this object is keeping track of
             CObjObject *cobj = (CObjObject*)obj;
             markTable(state, &cobj->tbl);
-            markObject(state, (CObj*)cobj->meta);
+            markObject(state, (CObj*)cobj->proto);
             break;
         }
         case COBJ_UPVALUE: {
@@ -214,8 +214,8 @@ void markRoots(CState *state) {
     for (int i = 0; i < INTERNALSTRING_MAX; i++)
         markObject(state, (CObj*)state->internalStrings[i]);
 
-    // mark our meta object
-    markObject(state, (CObj*)state->metaObj);
+    // mark our proto object
+    markObject(state, (CObj*)state->protoObj);
     traceGrays(state);
 }
 

@@ -184,14 +184,14 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
             break;
         }
         case COBJ_OBJECT: {
-            CObjObject *metaObj = (CObjObject*)val->val.obj;
+            CObjObject *protoObj = (CObjObject*)val->val.obj;
             CObjObject *newObj = cosmoO_newObject(state);
-            newObj->meta = metaObj;
+            newObj->proto = protoObj;
             *val = cosmoV_newObj(newObj);
             CValue ret;
 
             // check if they defined an initalizer
-            if (cosmoV_getObject(state, metaObj, cosmoV_newObj(state->internalStrings[INTERNALSTRING_INIT]), &ret) && IS_METHOD(ret)) {
+            if (cosmoV_getObject(state, protoObj, cosmoV_newObj(state->internalStrings[INTERNALSTRING_INIT]), &ret) && IS_METHOD(ret)) {
                 callMethod(state, cosmoV_readMethod(ret), args);
                 cosmoV_pop(state);
             } else {

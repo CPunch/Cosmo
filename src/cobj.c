@@ -94,7 +94,7 @@ bool cosmoO_equal(CObj* obj1, CObj* obj2) {
 
 CObjObject *cosmoO_newObject(CState *state) {
     CObjObject *obj = (CObjObject*)cosmoO_allocateBase(state, sizeof(CObjObject), COBJ_OBJECT);
-    obj->meta = state->metaObj;
+    obj->proto = state->protoObj;
     obj->user = NULL; // reserved for C API
     cosmoV_pushValue(state, cosmoV_newObj(obj)); // so our GC can keep track of it
     cosmoT_initTable(state, &obj->tbl, ARRAY_START);
@@ -204,8 +204,8 @@ CObjString *cosmoO_allocateString(CState *state, const char *str, size_t sz, uin
 }
 
 bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val) {
-    if (!cosmoT_get(&object->tbl, key, val) && object->meta != NULL) { // if the field doesn't exist in the object, check the meta
-        return cosmoO_getObject(state, object->meta, key, val);
+    if (!cosmoT_get(&object->tbl, key, val) && object->proto != NULL) { // if the field doesn't exist in the object, check the proto
+        return cosmoO_getObject(state, object->proto, key, val);
     }
 
     return true;
