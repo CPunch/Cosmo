@@ -123,17 +123,15 @@ CObjCFunction *cosmoO_newCFunction(CState *state, CosmoCFunction func) {
 
 CObjMethod *cosmoO_newCMethod(CState *state, CObjCFunction *func, CObjObject *obj) {
     CObjMethod *method = (CObjMethod*)cosmoO_allocateBase(state, sizeof(CObjMethod), COBJ_METHOD);
-    method->cfunc = func;
+    method->func = cosmoV_newObj(func);
     method->obj = obj;
-    method->isCFunc = true;
     return method;
 }
 
 CObjMethod *cosmoO_newMethod(CState *state, CObjClosure *func, CObjObject *obj) {
     CObjMethod *method = (CObjMethod*)cosmoO_allocateBase(state, sizeof(CObjMethod), COBJ_METHOD);
-    method->closure = func;
+    method->func = cosmoV_newObj(func);
     method->obj = obj;
-    method->isCFunc = false;
     return method;
 }
 
@@ -297,11 +295,8 @@ void printObject(CObj *o) {
         }
         case COBJ_METHOD: {
             CObjMethod *method = (CObjMethod*)o;
-            if (method->closure->function->name != NULL) {
-                printf("<method> %p : %.*s", method->obj, method->closure->function->name->length, method->closure->function->name->str);
-            } else {
-                printf("<method> %p : %s", method->obj, UNNAMEDCHUNK);
-            }
+            printf("<method> %p : ", method->obj);
+            printValue(method->func);
             break;
         }
         case COBJ_CLOSURE: {

@@ -71,11 +71,7 @@ typedef struct CObjClosure {
 typedef struct CObjMethod {
     CommonHeader; // "is a " CObj
     CObjObject *obj; // obj this method is bound too
-    union {
-        CObjClosure *closure;
-        CObjCFunction *cfunc;
-    };
-    bool isCFunc;
+    CValue func;
 } CObjMethod;
 
 typedef struct CObjUpval {

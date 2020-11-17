@@ -149,12 +149,17 @@ bool call(CState *state, CObjClosure *closure, int args, int offset) {
     return true;
 }
 
-bool callMethod(CState* state, CObjMethod *method, int args) {
-    if (method->isCFunc) {
-        callCFunction(state, method->cfunc->cfunc, args+1, 1);
+bool invokeMethod(CState* state, CObjObject *obj, CValue func, int args) {
+    // first, set the first argument to the object
+    StkPtr temp = cosmoV_getTop(state, args);
+    *temp = cosmoV_newObj(obj);
+
+    if (IS_CFUNCTION(func)) {
+        callCFunction(state, cosmoV_readCFunction(func), args+1, 1);
+    } else if (IS_CLOSURE(func)) {
+        call(state, cosmoV_readClosure(func), args+1, 1); // offset = 1 so our stack is properly reset
     } else {
-        CObjClosure *closure = method->closure;
-        call(state, closure, args+1, 1); // offset = 1 so our stack is properly reset
+        cosmoV_error(state, "Cannot call non-function value!");
     }
 
     return true;
@@ -179,30 +184,27 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
         }
         case COBJ_METHOD: {
             CObjMethod *method = (CObjMethod*)val->val.obj;
-            *val = cosmoV_newObj(method->obj); // sets the object on the stack so the function can reference it in it's first argument
-            callMethod(state, method, args);
+            invokeMethod(state, method->obj, method->func, args);
             break;
         }
         case COBJ_OBJECT: {
             CObjObject *protoObj = (CObjObject*)val->val.obj;
             CObjObject *newObj = cosmoO_newObject(state);
             newObj->proto = protoObj;
-            *val = cosmoV_newObj(newObj);
             CValue ret;
 
             // check if they defined an initalizer
-            if (cosmoV_getObject(state, protoObj, cosmoV_newObj(state->iStrings[ISTRING_INIT]), &ret) && IS_METHOD(ret)) {
-                callMethod(state, cosmoV_readMethod(ret), args);
-                cosmoV_pop(state);
+            if (cosmoO_getIString(state, protoObj, ISTRING_INIT, &ret)) {
+                invokeMethod(state, newObj, ret, args);
             } else {
                 // no default initalizer
                 if (args != 0) {
                     cosmoV_error(state, "Expected 0 parameters, got %d!", args);
                     return COSMOVM_RUNTIME_ERR;
                 }
-                state->top--;
             }
 
+            cosmoV_pop(state); // pops the return value, it's unused
             cosmoV_pushValue(state, cosmoV_newObj(newObj));
             break;
         }
@@ -443,15 +445,8 @@ bool cosmoV_execute(CState *state) {
 
                 cosmoO_getObject(state, object, *key, &val); // we use cosmoO_getObject instead of the cosmoV_getObject wrapper so we get the raw value from the object instead of the CObjMethod wrapper
 
-                // now set the key stack location to the object, and call it!
-                *key = *temp;
-                if (IS_CLOSURE(val)) {
-                    call(state, cosmoV_readClosure(val), args+1, 1);
-                } else if (IS_CFUNCTION(val)) {
-                    callCFunction(state, cosmoV_readCFunction(val), args+1, 1);
-                } else {
-                    cosmoV_error(state, "Cannot call non-function value! got %d", val.val.obj->type);
-                }
+                // now invoke the method!
+                invokeMethod(state, object, val, args);
 
                 // moves return value & resets stack (key now points to the stack location of our return value)
                 *temp = *key;

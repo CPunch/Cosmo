@@ -111,7 +111,7 @@ void blackenObject(CState *state, CObj *obj) {
         }
         case COBJ_METHOD: {
             CObjMethod *method = (CObjMethod*)obj;
-            markObject(state, (CObj*)method->closure);
+            markValue(state, method->func);
             markObject(state, (CObj*)method->obj);
             break;
         }

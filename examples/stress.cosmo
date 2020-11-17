@@ -1,0 +1,18 @@
+class Test
+    function __init(self, x)
+        self.x = x
+    end
+
+    function print(self)
+        print(self.x)
+    end
+end
+
+-- stressing the GC
+local i = 0
+while true do
+    var x = Test("Hello world " .. i)
+    x.print()
+
+    i = i + 1
+end
