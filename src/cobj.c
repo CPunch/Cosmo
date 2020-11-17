@@ -39,7 +39,7 @@ void cosmoO_free(CState *state, CObj* obj) {
     switch(obj->type) {
         case COBJ_STRING: {
             CObjString *objStr = (CObjString*)obj;
-            cosmoM_freearray(state, char, objStr->str, objStr->length);
+            cosmoM_freearray(state, char, objStr->str, objStr->length + 1);
             cosmoM_free(state, CObjString, objStr);
             break;
         }

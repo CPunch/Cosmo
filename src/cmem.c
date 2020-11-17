@@ -66,7 +66,7 @@ void tableRemoveWhite(CState *state, CTable *tbl) {
     for (int i = 0; i < tbl->capacity; i++) {
         CTableEntry *entry = &tbl->table[i];
         if (IS_OBJ(entry->key) && !(entry->key.val.obj)->isMarked) { // if the key is a object and it's white (unmarked), remove it from the table
-            cosmoT_remove(tbl, entry->key);
+            cosmoT_remove(state, tbl, entry->key);
         }
     }
 }
@@ -224,6 +224,7 @@ COSMO_API void cosmoM_collectGarbage(CState *state) {
     printf("-- GC start\n");
     size_t start = state->allocatedBytes;
 #endif
+    cosmoM_freezeGC(state); // we don't want a recursive garbage collection event!
 
     markRoots(state);
 
@@ -232,10 +233,16 @@ COSMO_API void cosmoM_collectGarbage(CState *state) {
     sweep(state);
 
     // set our next GC event
-    state->nextGC = state->allocatedBytes * HEAP_GROW_FACTOR;
+    cosmoM_updateThreshhold(state);
 
+    cosmoM_unfreezeGC(state);
 #ifdef GC_DEBUG
     printf("-- GC end, reclaimed %ld bytes (started at %ld, ended at %ld), next garbage collection scheduled at %ld bytes\n",
             start - state->allocatedBytes, start, state->allocatedBytes, state->nextGC);
+    getchar(); // pauses execution
 #endif
+}
+
+COSMO_API void cosmoM_updateThreshhold(CState *state) {
+    state->nextGC = state->allocatedBytes * HEAP_GROW_FACTOR;
 }

@@ -6,10 +6,27 @@
 #include <string.h>
 
 #define MAX_TABLE_FILL 0.75
+// at 30% capacity with capacity > ARRAY_START, shrink the array
+#define MIN_TABLE_CAPACITY ARRAY_START
+
+// bit-twiddling hacks, gets the next power of 2
+unsigned int nextPow2(unsigned int x) {
+    if (x <= ARRAY_START - 1) return ARRAY_START; // sanity check
+    x--;
+
+    int power = 2;
+    while (x >>= 1) power <<= 1;
+
+    if (power < ARRAY_START)
+        return ARRAY_START;
+
+    return power;
+}
 
 void cosmoT_initTable(CState *state, CTable *tbl, int startCap) {
     tbl->capacity = startCap != 0 ? startCap : ARRAY_START; // sanity check :P
     tbl->count = 0;
+    tbl->tombstones = 0;
     tbl->table = NULL; // to let out GC know we're initalizing
     tbl->table = cosmoM_xmalloc(state, sizeof(CTableEntry) * tbl->capacity);
 
@@ -90,8 +107,26 @@ static CTableEntry *findEntry(CTableEntry *entries, int mask, CValue key) {
     }
 }
 
-static void growTbl(CState *state, CTable *tbl, size_t newCapacity) {
+static void resizeTbl(CState *state, CTable *tbl, size_t newCapacity) {
     CTableEntry *entries = cosmoM_xmalloc(state, sizeof(CTableEntry) * newCapacity);
+
+    /* Before someone asks, no we shouldn't move the tombstone check to before the entries allocation.
+    The garbage collector is threshhold based, based on the currently allocated bytes. There's an 
+    edgecase where if GC_STRESS is not enabled the GC will really only be called on growth of the 
+    string interning table (this.) However the new size of the table is accounted for in the next threshhold
+    cycle, causing allocations to become less and less frequent until your computer develops dementia.
+    */
+
+    // if count > 8 and active entries < tombstones 
+    if (tbl->count > MIN_TABLE_CAPACITY && tbl->count - tbl->tombstones < tbl->tombstones) {
+        cosmoM_freearray(state, CTableEntry, entries, newCapacity);
+        int tombs = tbl->tombstones;
+        tbl->tombstones = 0;
+        resizeTbl(state, tbl, nextPow2((tbl->count - tombs) * GROW_FACTOR));
+        cosmoM_updateThreshhold(state); // force a threshhold update since this *could* be such a huge memory difference
+        return;
+    }
+
     int newCount = 0;
 
     // set all nodes as NIL : NIL
@@ -119,14 +154,16 @@ static void growTbl(CState *state, CTable *tbl, size_t newCapacity) {
     tbl->table = entries;
     tbl->capacity = newCapacity;
     tbl->count = newCount;
+    tbl->tombstones = 0;
 }
 
 // returns a pointer to the allocated value
 COSMO_API CValue* cosmoT_insert(CState *state, CTable *tbl, CValue key) {
     // make sure we have enough space allocated
     if (tbl->count + 1 > (int)(tbl->capacity * MAX_TABLE_FILL)) {
+        // grow table
         int newCap = tbl->capacity * GROW_FACTOR;
-        growTbl(state, tbl, newCap);
+        resizeTbl(state, tbl, newCap);
     }
 
     // insert into the table
@@ -151,7 +188,7 @@ bool cosmoT_get(CTable *tbl, CValue key, CValue *val) {
     return !(IS_NIL(entry->key));
 }
 
-bool cosmoT_remove(CTable *tbl, CValue key) {
+bool cosmoT_remove(CState* state, CTable *tbl, CValue key) {
     if (tbl->count == 0) return 0; // sanity check
 
     CTableEntry *entry = findEntry(tbl->table, tbl->capacity - 1, key);
@@ -161,6 +198,7 @@ bool cosmoT_remove(CTable *tbl, CValue key) {
     // crafts tombstone
     entry->key = cosmoV_newNil(); // this has to be nil
     entry->val = cosmoV_newBoolean(false); // doesn't reall matter what this is, as long as it isn't nil
+    tbl->tombstones++;
 
     return true;
 }

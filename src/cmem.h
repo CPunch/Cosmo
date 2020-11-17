@@ -45,8 +45,9 @@
     state->freezeGC--
 #endif 
 
-COSMO_API void *cosmoM_reallocate(CState* state, void *buf, size_t oldSize, size_t newSize);
-COSMO_API void cosmoM_collectGarbage(CState* state);
+COSMO_API void *cosmoM_reallocate(CState *state, void *buf, size_t oldSize, size_t newSize);
+COSMO_API void cosmoM_collectGarbage(CState *state);
+COSMO_API void cosmoM_updateThreshhold(CState *state);
 
 /*
     wrapper for cosmoM_reallocate so we can track our memory usage (it's also safer :P)

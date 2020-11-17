@@ -12,6 +12,7 @@ typedef struct CTableEntry {
 typedef struct CTable {
     int count;
     int capacity;
+    int tombstones;
     CTableEntry *table;
 } CTable;
 
@@ -22,7 +23,7 @@ COSMO_API CValue *cosmoT_insert(CState *state, CTable *tbl, CValue key);
 
 CObjString *cosmoT_lookupString(CTable *tbl, const char *str, size_t length, uint32_t hash);
 bool cosmoT_get(CTable *tbl, CValue key, CValue *val);
-bool cosmoT_remove(CTable *tbl, CValue key);
+bool cosmoT_remove(CState *state, CTable *tbl, CValue key);
 
 void cosmoT_printTable(CTable *tbl, const char *name);
 
