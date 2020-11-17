@@ -2,6 +2,7 @@
 #include "ctable.h"
 #include "cobj.h"
 #include "cmem.h"
+#include "cvm.h"
 
 #include <string.h>
 
@@ -95,6 +96,7 @@ bool cosmoO_equal(CObj* obj1, CObj* obj2) {
 CObjObject *cosmoO_newObject(CState *state) {
     CObjObject *obj = (CObjObject*)cosmoO_allocateBase(state, sizeof(CObjObject), COBJ_OBJECT);
     obj->proto = state->protoObj;
+    obj->istringFlags = 0;
     obj->user = NULL; // reserved for C API
     cosmoV_pushValue(state, cosmoV_newObj(obj)); // so our GC can keep track of it
     cosmoT_initTable(state, &obj->tbl, ARRAY_START);
@@ -204,16 +206,44 @@ CObjString *cosmoO_allocateString(CState *state, const char *str, size_t sz, uin
 }
 
 bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val) {
-    if (!cosmoT_get(&object->tbl, key, val) && object->proto != NULL) { // if the field doesn't exist in the object, check the proto
-        return cosmoO_getObject(state, object->proto, key, val);
+    if (!cosmoT_get(&object->tbl, key, val)) { // if the field doesn't exist in the object, check the proto
+        if (object->proto != NULL) { // sanity check
+            // first though, check for __index, if that exists, call it
+            if (cosmoO_getIString(state, object->proto, ISTRING_INDEX, val)) {
+                cosmoV_pushValue(state, *val); // push function
+                cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
+                cosmoV_pushValue(state, key); // push key
+                cosmoV_call(state, 2); // call the function with the 2 arguments
+                *val = *cosmoV_pop(state); // set value to the return value of __index
+                return true;
+            }
+
+            return cosmoO_getObject(state, object->proto, key, val);
+        }
+        
+        return false; // no protoobject to check against
     }
 
     return true;
 }
 
 void cosmoO_setObject(CState *state, CObjObject *object, CValue key, CValue val) {
+    object->istringFlags = 0; // reset cache
     CValue *newVal = cosmoT_insert(state, &object->tbl, key);
     *newVal = val;
+}
+
+bool cosmoO_getIString(CState *state, CObjObject *object, int flag, CValue *val) {
+    if (readFlag(object->istringFlags, flag))
+        return false; // it's been cached as bad
+        
+    if (!cosmoO_getObject(state, object, cosmoV_newObj(state->iStrings[flag]), val)) {
+        // mark it bad!
+        setFlagOn(object->istringFlags, flag);
+        return false;
+    }
+
+    return true; // :)
 }
 
 CObjString *cosmoO_toString(CState *state, CObj *obj) {

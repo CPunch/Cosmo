@@ -2,11 +2,13 @@
 #define COBJ_H
 
 #include "cosmo.h"
+#include "cstate.h"
 #include "cchunk.h"
 #include "cvalue.h"
 #include "ctable.h"
 
 typedef struct CState CState;
+typedef uint32_t cosmo_Flag;
 
 typedef enum {
     COBJ_STRING,
@@ -20,6 +22,8 @@ typedef enum {
 } CObjType;
 
 #define CommonHeader CObj _obj;
+#define readFlag(x, flag)   (x & (1u << flag))
+#define setFlagOn(x, flag)  (x |= (1u << flag))
 
 typedef CValue (*CosmoCFunction)(CState *state, int argCount, CValue *args);
 
@@ -38,6 +42,7 @@ typedef struct CObjString {
 
 typedef struct CObjObject {
     CommonHeader; // "is a" CObj
+    cosmo_Flag istringFlags; // enables us to have a much faster lookup for reserved IStrings (like __init, __index, etc.)
     CTable tbl;
     void *user; // userdata (NULL by default)
     struct CObjObject *proto; // protoobject, describes the behavior of the object
@@ -80,6 +85,8 @@ typedef struct CObjUpval {
     struct CObjUpval *next;
 } CObjUpval;
 
+#undef CommonHeader
+
 #define IS_STRING(x)    isObjType(x, COBJ_STRING)
 #define IS_TABLE(x)     isObjType(x, COBJ_OBJECT)
 #define IS_FUNCTION(x)  isObjType(x, COBJ_FUNCTION)
@@ -114,6 +121,9 @@ CObjUpval *cosmoO_newUpvalue(CState *state, CValue *val);
 
 bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val);
 void cosmoO_setObject(CState *state, CObjObject *object, CValue key, CValue val);
+
+// internal string
+bool cosmoO_getIString(CState *state, CObjObject *object, int flag, CValue *val);
 
 // copies the *str buffer to the heap and returns a CObjString struct which is also on the heap
 CObjString *cosmoO_copyString(CState *state, const char *str, size_t sz);

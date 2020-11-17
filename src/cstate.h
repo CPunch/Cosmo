@@ -12,11 +12,12 @@ typedef struct CCallFrame {
     CValue* base;
 } CCallFrame;
 
-typedef enum {
-    INTERNALSTRING_INIT, // __init
-    INTERNALSTRING_EQUAL, // __equal
-    INTERNALSTRING_MAX
-} InternalStringEnum;
+typedef enum IStringEnum {
+    ISTRING_INIT, // __init
+    ISTRING_EQUAL, // __equal
+    ISTRING_INDEX,
+    ISTRING_MAX
+} IStringEnum;
 
 typedef struct CState {
     bool panic;
@@ -37,7 +38,7 @@ typedef struct CState {
     CCallFrame callFrame[FRAME_MAX]; // call frames
     int frameCount;
 
-    CObjString *internalStrings[INTERNALSTRING_MAX]; // strings used internally by the VM, eg. __init
+    CObjString *iStrings[ISTRING_MAX]; // strings used internally by the VM, eg. __init, __index & friends
     CObjObject *protoObj; // start met obj for all objects (NULL by default)
 } CState;
 

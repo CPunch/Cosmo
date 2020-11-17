@@ -36,11 +36,12 @@ CState *cosmoV_newState() {
     cosmoT_initTable(state, &state->globals, 8); // init global table
 
     // first, set all strings to NULL so our GC doesn't read garbage data
-    for (int i = 0; i < INTERNALSTRING_MAX; i++)
-        state->internalStrings[i] = NULL;
+    for (int i = 0; i < ISTRING_MAX; i++)
+        state->iStrings[i] = NULL;
 
     // setup all strings used by the VM
-    state->internalStrings[INTERNALSTRING_INIT] = cosmoO_copyString(state, "__init", 6);
+    state->iStrings[ISTRING_INIT] = cosmoO_copyString(state, "__init", 6);
+    state->iStrings[ISTRING_INDEX] = cosmoO_copyString(state, "__index", 7);
     return state;
 }
 
@@ -57,8 +58,8 @@ void cosmoV_freeState(CState *state) {
     }
 
     // mark our internal VM strings NULL
-    for (int i = 0; i < INTERNALSTRING_MAX; i++)
-        state->internalStrings[i] = NULL;
+    for (int i = 0; i < ISTRING_MAX; i++)
+        state->iStrings[i] = NULL;
 
     // free our string & global table (the string table includes the internal VM strings)
     cosmoT_clearTable(state, &state->strings);

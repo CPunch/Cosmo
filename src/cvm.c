@@ -191,7 +191,7 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
             CValue ret;
 
             // check if they defined an initalizer
-            if (cosmoV_getObject(state, protoObj, cosmoV_newObj(state->internalStrings[INTERNALSTRING_INIT]), &ret) && IS_METHOD(ret)) {
+            if (cosmoV_getObject(state, protoObj, cosmoV_newObj(state->iStrings[ISTRING_INIT]), &ret) && IS_METHOD(ret)) {
                 callMethod(state, cosmoV_readMethod(ret), args);
                 cosmoV_pop(state);
             } else {
