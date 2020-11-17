@@ -27,10 +27,7 @@ void *cosmoM_reallocate(CState* state, void *buf, size_t oldSize, size_t newSize
     }
 #endif
 #else
-    // if the state isn't frozen && we've reached the GC event
-    if (!(cosmoM_isFrozen(state)) && state->allocatedBytes > state->nextGC) {
-        cosmoM_collectGarbage(state); // cya lol
-    }
+    cosmoM_checkGarbage(state, 0);
 #endif
 
     // otherwise just use realloc to do all the heavy lifting
@@ -43,6 +40,16 @@ void *cosmoM_reallocate(CState* state, void *buf, size_t oldSize, size_t newSize
 
     return newBuf;
 }
+
+COSMO_API bool cosmoM_checkGarbage(CState *state, size_t needed) {
+    if (!(cosmoM_isFrozen(state)) && state->allocatedBytes + needed > state->nextGC) {
+        cosmoM_collectGarbage(state); // cya lol
+        return true;
+    }
+
+    return false;
+}
+
 
 void markObject(CState *state, CObj *obj);
 void markValue(CState *state, CValue val);

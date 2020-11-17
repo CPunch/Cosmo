@@ -46,6 +46,7 @@
 #endif 
 
 COSMO_API void *cosmoM_reallocate(CState *state, void *buf, size_t oldSize, size_t newSize);
+COSMO_API bool cosmoM_checkGarbage(CState *state, size_t needed); // returns true if GC event was triggered
 COSMO_API void cosmoM_collectGarbage(CState *state);
 COSMO_API void cosmoM_updateThreshhold(CState *state);
 

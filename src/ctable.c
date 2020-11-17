@@ -108,25 +108,19 @@ static CTableEntry *findEntry(CTableEntry *entries, int mask, CValue key) {
 }
 
 static void resizeTbl(CState *state, CTable *tbl, size_t newCapacity) {
-    CTableEntry *entries = cosmoM_xmalloc(state, sizeof(CTableEntry) * newCapacity);
-
-    /* Before someone asks, no we shouldn't move the tombstone check to before the entries allocation.
-    The garbage collector is threshhold based, based on the currently allocated bytes. There's an 
-    edgecase where if GC_STRESS is not enabled the GC will really only be called on growth of the 
-    string interning table (this.) However the new size of the table is accounted for in the next threshhold
-    cycle, causing allocations to become less and less frequent until your computer develops dementia.
-    */
+    size_t size = sizeof(CTableEntry) * newCapacity;
+    cosmoM_checkGarbage(state, size);
 
     // if count > 8 and active entries < tombstones 
     if (tbl->count > MIN_TABLE_CAPACITY && tbl->count - tbl->tombstones < tbl->tombstones) {
-        cosmoM_freearray(state, CTableEntry, entries, newCapacity);
         int tombs = tbl->tombstones;
-        tbl->tombstones = 0;
+        tbl->tombstones = 0; // set this to 0 so in our recursive call to resizeTbl() this branch isn't run again
         resizeTbl(state, tbl, nextPow2((tbl->capacity - tombs) * GROW_FACTOR));
         cosmoM_updateThreshhold(state); // force a threshhold update since this *could* be such a huge memory difference
         return;
     }
 
+    CTableEntry *entries = cosmoM_xmalloc(state, size);
     int newCount = 0;
 
     // set all nodes as NIL : NIL
@@ -154,6 +148,7 @@ static void resizeTbl(CState *state, CTable *tbl, size_t newCapacity) {
     tbl->table = entries;
     tbl->capacity = newCapacity;
     tbl->count = newCount;
+    tbl->tombstones = 0;
 }
 
 // returns a pointer to the allocated value
