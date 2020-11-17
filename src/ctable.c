@@ -115,7 +115,7 @@ static void resizeTbl(CState *state, CTable *tbl, size_t newCapacity) {
     if (tbl->count > MIN_TABLE_CAPACITY && tbl->count - tbl->tombstones < tbl->tombstones) {
         int tombs = tbl->tombstones;
         tbl->tombstones = 0; // set this to 0 so in our recursive call to resizeTbl() this branch isn't run again
-        resizeTbl(state, tbl, nextPow2((tbl->capacity - tombs) * GROW_FACTOR));
+        resizeTbl(state, tbl, nextPow2((tbl->count - tombs)) * GROW_FACTOR);
         cosmoM_updateThreshhold(state); // force a threshhold update since this *could* be such a huge memory difference
         return;
     }
