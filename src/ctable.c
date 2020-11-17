@@ -168,11 +168,12 @@ COSMO_API CValue* cosmoT_insert(CState *state, CTable *tbl, CValue key) {
     // insert into the table
     CTableEntry *entry = findEntry(tbl->table, tbl->capacity - 1, key); // -1 for our capacity mask
 
-    if (IS_NIL(entry->key))
+    if (IS_NIL(entry->key)) {
         if (IS_NIL(entry->val)) // is it empty?
             tbl->count++;
         else // it's a tombstone, mark it alive!
             tbl->tombstones--;
+    }
 
     entry->key = key;
     return &entry->val;
