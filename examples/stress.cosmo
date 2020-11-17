@@ -9,10 +9,7 @@ class Test
 end
 
 -- stressing the GC
-local i = 0
-while true do
+for (var i = 0; ; i=i+1) do
     var x = Test("Hello world " .. i)
     x.print()
-
-    i = i + 1
 end

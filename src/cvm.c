@@ -108,11 +108,6 @@ CObjString *cosmoV_concat(CState *state, CObjString *strA, CObjString *strB) {
 
 bool cosmoV_execute(CState *state);
 
-typedef enum {
-    CALL_CLOSURE,
-    CALL_CFUNCTION
-} preCallResult;
-
 static inline void callCFunction(CState *state, CosmoCFunction cfunc, int args, int offset) {
     StkPtr savedBase = cosmoV_getTop(state, args);
 
