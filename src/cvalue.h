@@ -39,10 +39,10 @@ void printValue(CValue val);
 COSMO_API bool cosmoV_equal(CValue valA, CValue valB);
 COSMO_API CObjString *cosmoV_toString(CState *state, CValue val);
 
-#define IS_NUMBER(x)    x.type == COSMO_TNUMBER
-#define IS_BOOLEAN(x)   x.type == COSMO_TBOOLEAN
-#define IS_NIL(x)       x.type == COSMO_TNIL
-#define IS_OBJ(x)       x.type == COSMO_TOBJ
+#define IS_NUMBER(x)    (x.type == COSMO_TNUMBER)
+#define IS_BOOLEAN(x)   (x.type == COSMO_TBOOLEAN)
+#define IS_NIL(x)       (x.type == COSMO_TNIL)
+#define IS_OBJ(x)       (x.type == COSMO_TOBJ)
 
 // create CValues
 

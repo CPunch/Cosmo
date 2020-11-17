@@ -122,7 +122,7 @@ static void resizeTbl(CState *state, CTable *tbl, size_t newCapacity) {
         cosmoM_freearray(state, CTableEntry, entries, newCapacity);
         int tombs = tbl->tombstones;
         tbl->tombstones = 0;
-        resizeTbl(state, tbl, nextPow2((tbl->count - tombs) * GROW_FACTOR));
+        resizeTbl(state, tbl, nextPow2((tbl->capacity - tombs) * GROW_FACTOR));
         cosmoM_updateThreshhold(state); // force a threshhold update since this *could* be such a huge memory difference
         return;
     }
@@ -154,7 +154,6 @@ static void resizeTbl(CState *state, CTable *tbl, size_t newCapacity) {
     tbl->table = entries;
     tbl->capacity = newCapacity;
     tbl->count = newCount;
-    tbl->tombstones = 0;
 }
 
 // returns a pointer to the allocated value
@@ -169,8 +168,11 @@ COSMO_API CValue* cosmoT_insert(CState *state, CTable *tbl, CValue key) {
     // insert into the table
     CTableEntry *entry = findEntry(tbl->table, tbl->capacity - 1, key); // -1 for our capacity mask
 
-    if (IS_NIL(entry->key) && IS_NIL(entry->val)) // is it empty?
-        tbl->count++;
+    if (IS_NIL(entry->key))
+        if (IS_NIL(entry->val)) // is it empty?
+            tbl->count++;
+        else // it's a tombstone, mark it alive!
+            tbl->tombstones--;
 
     entry->key = key;
     return &entry->val;
