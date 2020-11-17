@@ -179,7 +179,6 @@ void cosmoL_freeLexState(CState *state, CLexState *lstate) {
 }
 
 CToken cosmoL_scanToken(CLexState *state) {
-_scanTokenEnter:
     skipWhitespace(state);
 
     state->startChar = state->currentChar;

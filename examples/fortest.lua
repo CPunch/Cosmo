@@ -8,6 +8,6 @@ end
 
 for (var x = 0; x < 1000; x=x+1) do
     for (var z = 0; z < 100; z=z+1) do
-        print("The factorial of " .. z .. " is " .. fact(z))
+        print("The factorial of " .. x .. "." .. z .. " is " .. fact(z))
     end
 end

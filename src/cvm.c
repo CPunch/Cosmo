@@ -304,11 +304,13 @@ bool cosmoV_execute(CState *state) {
                 break;
             }
             case OP_SETLOCAL: {
-                frame->base[READBYTE()] = *cosmoV_pop(state);
+                uint8_t indx = READBYTE();
+                frame->base[indx] = *cosmoV_pop(state);
                 break;
             }
             case OP_GETLOCAL: {
-                cosmoV_pushValue(state, frame->base[READBYTE()]);
+                uint8_t indx = READBYTE();
+                cosmoV_pushValue(state, frame->base[indx]);
                 break;
             }
             case OP_GETUPVAL: {
@@ -491,7 +493,6 @@ bool cosmoV_execute(CState *state) {
                 uint8_t vals = READBYTE();
                 StkPtr start = state->top - vals;
                 StkPtr end = cosmoV_getTop(state, 0);
-                StkPtr current;
 
                 CObjString *result = cosmoV_toString(state, *start);
                 for (StkPtr current = start + 1; current <= end; current++) {
