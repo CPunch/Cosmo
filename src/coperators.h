@@ -13,23 +13,23 @@ typedef enum {
 // instructions 
 
 typedef enum {
-    // STACK MANIPULATION
-    OP_LOADCONST,
-    OP_SETGLOBAL, 
-    OP_GETGLOBAL,
-    OP_SETLOCAL,
-    OP_GETLOCAL,
-    OP_GETUPVAL,
-    OP_SETUPVAL,
+    // STACK/STATE MANIPULATION
+    OP_LOADCONST, // pushes const[uint8_t] to the stack
+    OP_SETGLOBAL, // pops and sets global[const[uint16_t]]
+    OP_GETGLOBAL, // pushes global[const[uint16_t]]
+    OP_SETLOCAL, // pops and sets base[uint8_t]
+    OP_GETLOCAL, // pushes base[uint8_t]
+    OP_GETUPVAL, // pushes closure->upvals[uint8_t]
+    OP_SETUPVAL, // pops and sets closure->upvals[uint8_t]
     OP_PEJMP, // pops, if false jumps uint16_t
     OP_EJMP, // if peek(0) is falsey jumps uint16_t
     OP_JMP, // always jumps uint16_t
     OP_JMPBACK, // jumps -uint16_t
     OP_POP, // - pops[uint8_t] from stack
     OP_CALL, // calls top[-uint8_t]
-    OP_CLOSURE,
+    OP_CLOSURE, 
     OP_CLOSE,
-    OP_NEWOBJECT,
+    OP_NEWOBJECT, // 
     OP_GETOBJECT,
     OP_SETOBJECT,
     OP_INVOKE,
@@ -55,9 +55,8 @@ typedef enum {
     OP_FALSE,
     OP_NIL,
 
-    OP_RETURN,
+    OP_RETURN
 
-    OP_NONE // used as an error result
 } COPCODE;
 
 #endif

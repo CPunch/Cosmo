@@ -384,7 +384,7 @@ bool cosmoV_execute(CState *state) {
                 break;
             }
             case OP_NEWOBJECT: {
-                uint8_t pairs = READBYTE();
+                uint16_t pairs = READUINT();
                 cosmoV_pushObject(state, pairs);
                 break;
             }

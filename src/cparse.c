@@ -570,7 +570,7 @@ static void object(CParseState *pstate, bool canAssign) {
     }
 
     writeu8(pstate, OP_NEWOBJECT);
-    writeu8(pstate, entries);
+    writeu16(pstate, entries);
     valuePushed(pstate, 1);
 }
 
@@ -753,7 +753,7 @@ static void _class(CParseState *pstate) {
     }
 
     writeu8(pstate, OP_NEWOBJECT);
-    writeu8(pstate, entries);
+    writeu16(pstate, entries);
     valuePushed(pstate, 1);
     defineVariable(pstate, var, false);
 }

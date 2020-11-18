@@ -109,7 +109,7 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
         case OP_CLOSE:
             return simpleInstruction("OP_CLOSE", offset);
         case OP_NEWOBJECT:
-            return shortOperandInstruction("OP_NEWOBJECT", chunk, offset);
+            return longOperandInstruction("OP_NEWOBJECT", chunk, offset);
         case OP_GETOBJECT:
             return simpleInstruction("OP_GETOBJECT", offset);
         case OP_SETOBJECT:
