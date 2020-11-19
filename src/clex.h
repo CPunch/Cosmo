@@ -15,7 +15,9 @@ typedef enum {
     TOKEN_DOT,
     TOKEN_DOT_DOT,
     TOKEN_MINUS,
+    TOKEN_MINUS_MINUS,
     TOKEN_PLUS,
+    TOKEN_PLUS_PLUS,
     TOKEN_SLASH,
     TOKEN_STAR,
     TOKEN_EOS, // end of statement

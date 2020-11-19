@@ -22,6 +22,7 @@ COSMO_API void cosmoT_addTable(CState *state, CTable *from, CTable *to);
 COSMO_API CValue *cosmoT_insert(CState *state, CTable *tbl, CValue key);
 
 CObjString *cosmoT_lookupString(CTable *tbl, const char *str, size_t length, uint32_t hash);
+bool cosmoT_checkShrink(CState *state, CTable *tbl);
 bool cosmoT_get(CTable *tbl, CValue key, CValue *val);
 bool cosmoT_remove(CState *state, CTable *tbl, CValue key);
 

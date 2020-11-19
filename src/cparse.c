@@ -130,9 +130,7 @@ static void errorAt(CParseState *pstate, CToken *token, const char * msg) {
 
     if (token->type == TOKEN_EOF) {
         fprintf(stderr, " at end");
-    } else if (token->type == TOKEN_ERROR) {
-
-    } else {
+    } else if (!(token->type == TOKEN_ERROR)) {
         fprintf(stderr, " at '%.*s'", token->length, token->start);
     }
 
@@ -446,22 +444,25 @@ static void _etterOP(CParseState *pstate, uint8_t op, int arg) {
         writeu8(pstate, arg);
 }
 
-static void namedVariable(CParseState *pstate, CToken name, bool canAssign) {
-    uint8_t opGet, opSet;
+static void namedVariable(CParseState *pstate, CToken name, bool canAssign, bool canIncrement) {
+    uint8_t opGet, opSet, inc;
     int arg = getLocal(pstate->compiler, &name);
 
     if (arg != -1) {
         // we found it in out local table!
         opGet = OP_GETLOCAL;
         opSet = OP_SETLOCAL;
+        inc = OP_INCLOCAL;
     } else if ((arg = getUpvalue(pstate->compiler, &name)) != -1) {
         opGet = OP_GETUPVAL;
         opSet = OP_SETUPVAL;
+        inc = OP_INCUPVAL;
     } else {
         // local & upvalue wasnt' found, assume it's a global!
         arg = identifierConstant(pstate, &name);
         opGet = OP_GETGLOBAL;
         opSet = OP_SETGLOBAL;
+        inc = OP_INCGLOBAL;
     }
 
     if (canAssign && match(pstate, TOKEN_EQUAL)) {
@@ -469,7 +470,25 @@ static void namedVariable(CParseState *pstate, CToken name, bool canAssign) {
         expression(pstate);
         _etterOP(pstate, opSet, arg);
         valuePopped(pstate, 1);
-    } else {
+    } else if (canIncrement && match(pstate, TOKEN_PLUS_PLUS)) { // i++
+        // now we increment the value
+        writeu8(pstate, inc);
+        writeu8(pstate, 128 + 1); // setting signed values in an unsigned int 
+        if (inc == OP_INCGLOBAL) // globals are stored with a u16
+            writeu16(pstate, arg);
+        else
+            writeu8(pstate, arg);
+        valuePushed(pstate, 1);
+    } else if (canIncrement && match(pstate, TOKEN_MINUS_MINUS)) { // i--
+        // now we increment the value
+        writeu8(pstate, inc);
+        writeu8(pstate, 128 - 1); // setting signed values in an unsigned int 
+        if (inc == OP_INCGLOBAL) // globals are stored with a u16
+            writeu16(pstate, arg);
+        else
+            writeu8(pstate, arg);
+        valuePushed(pstate, 1);
+    } else { 
         // getter
         _etterOP(pstate, opGet, arg);
         valuePushed(pstate, 1);
@@ -502,7 +521,7 @@ static void anonFunction(CParseState *pstate, bool canAssign) {
 }
 
 static void variable(CParseState *pstate, bool canAssign) {
-    namedVariable(pstate, pstate->previous, canAssign);
+    namedVariable(pstate, pstate->previous, canAssign, true);
 }
 
 static void concat(CParseState *pstate, bool canAssign) {
@@ -577,19 +596,31 @@ static void object(CParseState *pstate, bool canAssign) {
 static void dot(CParseState *pstate, bool canAssign) {
     consume(pstate, TOKEN_IDENTIFIER, "Expected property name after '.'.");
     uint16_t name = identifierConstant(pstate, &pstate->previous);
-    writeu8(pstate, OP_LOADCONST);
-    writeu16(pstate, name);
 
     if (canAssign && match(pstate, TOKEN_EQUAL)) {
+        writeu8(pstate, OP_LOADCONST);
+        writeu16(pstate, name);
         expression(pstate);
         writeu8(pstate, OP_SETOBJECT);
         valuePopped(pstate, 2); // pops key, value & object
+    } else if (match(pstate, TOKEN_PLUS_PLUS)) { // increment the field
+        writeu8(pstate, OP_INCOBJECT);
+        writeu8(pstate, 128 + 1);
+        writeu16(pstate, name);
+    } else if (match(pstate, TOKEN_MINUS_MINUS)) { // decrement the field
+        writeu8(pstate, OP_INCOBJECT);
+        writeu8(pstate, 128 - 1);
+        writeu16(pstate, name);
     } else if (match(pstate, TOKEN_LEFT_PAREN)) { // it's an invoked call
+        writeu8(pstate, OP_LOADCONST);
+        writeu16(pstate, name);
         uint8_t args = parseArguments(pstate);
         writeu8(pstate, OP_INVOKE);
         writeu8(pstate, args);
         valuePopped(pstate, args); // pops the function & the object but pushes a result
     } else {
+        writeu8(pstate, OP_LOADCONST);
+        writeu16(pstate, name);
         writeu8(pstate, OP_GETOBJECT);
         // pops key & object but also pushes the field so total popped is 1
     }
@@ -609,6 +640,63 @@ static void _index(CParseState *pstate, bool canAssign) {
     }
 }
 
+static void increment(CParseState *pstate, int val) {
+    CToken name = pstate->previous;
+    if (match(pstate, TOKEN_DOT)) { // object?
+        namedVariable(pstate, name, false, false); // just get the object
+
+        consume(pstate, TOKEN_IDENTIFIER, "Expected property name after '.'.");
+        uint16_t name = identifierConstant(pstate, &pstate->previous);
+
+        writeu8(pstate, OP_INCOBJECT);
+        writeu8(pstate, 128 + val); // setting signed values in an unsigned int 
+        writeu16(pstate, name);
+        valuePopped(pstate, 1); // popped the object off the stack
+    } else {
+        uint8_t op;
+        int arg = getLocal(pstate->compiler, &name);
+
+        if (arg != -1) {
+            // we found it in out local table!
+            op = OP_INCLOCAL;
+        } else if ((arg = getUpvalue(pstate->compiler, &name)) != -1) {
+            op = OP_INCUPVAL;
+        } else {
+            // local & upvalue wasnt' found, assume it's a global!
+            arg = identifierConstant(pstate, &name);
+            op = OP_INCGLOBAL;
+        }
+
+        writeu8(pstate, op);
+        writeu8(pstate, 128 + val); // setting signed values in an unsigned int 
+        if (op == OP_INCGLOBAL) // globals are stored with a u16
+            writeu16(pstate, arg);
+        else
+            writeu8(pstate, arg);
+    }
+
+    // increment the old value on the stack
+    writeConstant(pstate, cosmoV_newNumber(val));
+    writeu8(pstate, OP_ADD);
+}
+
+// ++i
+static void preincrement(CParseState *pstate, bool canAssign) {
+    // expect identifier
+    consume(pstate, TOKEN_IDENTIFIER, "Expected identifier after '++'");
+
+    increment(pstate, 1);
+}
+
+// --i
+static void predecrement(CParseState *pstate, bool canAssign) {
+    // expect identifier
+    consume(pstate, TOKEN_IDENTIFIER, "Expected identifier after '--'");
+
+    increment(pstate, -1);
+}
+
+
 ParseRule ruleTable[] = {
     [TOKEN_LEFT_PAREN]      = {group, call_, PREC_CALL},
     [TOKEN_RIGHT_PAREN]     = {NULL, NULL, PREC_NONE},
@@ -620,7 +708,9 @@ ParseRule ruleTable[] = {
     [TOKEN_DOT]             = {NULL, dot, PREC_CALL},
     [TOKEN_DOT_DOT]         = {NULL, concat, PREC_CONCAT},
     [TOKEN_MINUS]           = {unary, binary, PREC_TERM},
+    [TOKEN_MINUS_MINUS]     = {predecrement, NULL, PREC_TERM},
     [TOKEN_PLUS]            = {NULL, binary, PREC_TERM},
+    [TOKEN_PLUS_PLUS]       = {preincrement, NULL, PREC_TERM},
     [TOKEN_SLASH]           = {NULL, binary, PREC_FACTOR},
     [TOKEN_STAR]            = {NULL, binary, PREC_FACTOR},
     [TOKEN_EOS]             = {NULL, NULL, PREC_NONE},
@@ -996,7 +1086,9 @@ static void forLoop(CParseState *pstate) {
         int bodyJmp = writeJmp(pstate, OP_JMP);
 
         int iteratorStart = getChunk(pstate)->count;
+        int savedPushed = pstate->compiler->pushedValues;
         expression(pstate);
+        alignStack(pstate, savedPushed);
         consume(pstate, TOKEN_RIGHT_PAREN, "Expected ')' after iterator");
 
         writeJmpBack(pstate, loopStart);

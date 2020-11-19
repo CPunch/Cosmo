@@ -109,8 +109,8 @@ void skipWhitespace(CLexState *state) {
             case '\t':
                 next(state); // consume the whitespace
                 break;
-            case '-': // consume comments
-                if (peekNext(state) == '-') {
+            case '/': // consume comments
+                if (peekNext(state) == '/') {
                     
                     // skip to next line (also let \n be consumed on the next iteration to properly handle that)
                     while (!isEnd(state) && peek(state) != '\n' && peek(state) != '\0') // if it's not a newline or null terminator 
@@ -196,14 +196,15 @@ CToken cosmoL_scanToken(CLexState *state) {
         case '}': return makeToken(state, TOKEN_RIGHT_BRACE);
         case '[': return makeToken(state, TOKEN_LEFT_BRACKET);
         case ']': return makeToken(state, TOKEN_RIGHT_BRACKET);
-            // fall through
         case ';': return makeToken(state, TOKEN_EOS);
         case ',': return makeToken(state, TOKEN_COMMA);
-        case '+': return makeToken(state, TOKEN_PLUS);
-        case '-': return makeToken(state, TOKEN_MINUS);
         case '*': return makeToken(state, TOKEN_STAR);
         case '/': return makeToken(state, TOKEN_SLASH);
         // two character tokens
+        case '+': 
+            return match(state, '+') ? makeToken(state, TOKEN_PLUS_PLUS) : makeToken(state, TOKEN_PLUS);
+        case '-': 
+            return match(state, '-') ? makeToken(state, TOKEN_MINUS_MINUS) : makeToken(state, TOKEN_MINUS);
         case '.': 
             return match(state, '.') ? makeToken(state, TOKEN_DOT_DOT) : makeToken(state, TOKEN_DOT);
         case '!':

@@ -36,13 +36,16 @@
 
 #define  cosmoM_unfreezeGC(state) \
     state->freezeGC--; \
-    printf("unfreezing state at %s:%d [%d]\n", __FILE__, __LINE__, state->freezeGC)
+    printf("unfreezing state at %s:%d [%d]\n", __FILE__, __LINE__, state->freezeGC); \
+    cosmoM_checkGarbage(state, 0)
 #else
 #define cosmoM_freezeGC(state) \
     state->freezeGC++
 
 #define  cosmoM_unfreezeGC(state) \
-    state->freezeGC--
+    state->freezeGC--; \
+    cosmoM_checkGarbage(state, 0)
+
 #endif 
 
 COSMO_API void *cosmoM_reallocate(CState *state, void *buf, size_t oldSize, size_t newSize);

@@ -12,14 +12,24 @@ int simpleInstruction(const char *name, int offset) {
     return offset + 1; // consume opcode
 }
 
-int shortOperandInstruction(const char *name, CChunk *chunk, int offset) {
+int u8OperandInstruction(const char *name, CChunk *chunk, int offset) {
     printf("%-16s [%03d]", name, readu8Chunk(chunk, offset + 1));
     return offset + 2;
 }
 
-int longOperandInstruction(const char *name, CChunk *chunk, int offset) {
+int u16OperandInstruction(const char *name, CChunk *chunk, int offset) {
     printf("%-16s [%05d]", name, readu16Chunk(chunk, offset + 1));
     return offset + 1 + (sizeof(uint16_t) / sizeof(INSTRUCTION));
+}
+
+int u8u8OperandInstruction(const char *name, CChunk *chunk, int offset) {
+    printf("%-16s [%03d] [%03d]", name, readu8Chunk(chunk, offset + 1), readu8Chunk(chunk, offset + 2));
+    return offset + 3; // op + u8 + u8
+}
+
+int u8u16OperandInstruction(const char *name, CChunk *chunk, int offset) {
+    printf("%-16s [%03d] [%05d]", name, readu8Chunk(chunk, offset + 1), readu16Chunk(chunk, offset + 2));
+    return offset + 4; // op + u8 + u16
 }
 
 int constInstruction(const char *name, CChunk *chunk, int offset, int indent) {
@@ -65,25 +75,25 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
         case OP_GETGLOBAL:
             return constInstruction("OP_GETGLOBAL", chunk, offset, indent);
         case OP_SETLOCAL:
-            return shortOperandInstruction("OP_SETLOCAL", chunk, offset);
+            return u8OperandInstruction("OP_SETLOCAL", chunk, offset);
         case OP_GETLOCAL:
-            return shortOperandInstruction("OP_GETLOCAL", chunk, offset);
+            return u8OperandInstruction("OP_GETLOCAL", chunk, offset);
         case OP_SETUPVAL:
-            return shortOperandInstruction("OP_SETUPVAL", chunk, offset);
+            return u8OperandInstruction("OP_SETUPVAL", chunk, offset);
         case OP_GETUPVAL:
-            return shortOperandInstruction("OP_GETUPVAL", chunk, offset);
+            return u8OperandInstruction("OP_GETUPVAL", chunk, offset);
         case OP_PEJMP:
-            return longOperandInstruction("OP_PEJMP", chunk, offset);
+            return u16OperandInstruction("OP_PEJMP", chunk, offset);
         case OP_EJMP:
-            return longOperandInstruction("OP_EJMP", chunk, offset);
+            return u16OperandInstruction("OP_EJMP", chunk, offset);
         case OP_JMP:
-            return longOperandInstruction("OP_JMP", chunk, offset);
+            return u16OperandInstruction("OP_JMP", chunk, offset);
         case OP_JMPBACK:
-            return longOperandInstruction("OP_JMPBACK", chunk, offset);
+            return u16OperandInstruction("OP_JMPBACK", chunk, offset);
         case OP_POP:
-            return shortOperandInstruction("OP_POP", chunk, offset);
+            return u8OperandInstruction("OP_POP", chunk, offset);
         case OP_CALL:
-            return shortOperandInstruction("OP_CALL", chunk, offset);
+            return u8OperandInstruction("OP_CALL", chunk, offset);
         case OP_CLOSURE: {
             int index = readu16Chunk(chunk, offset + 1);
             printf("%-16s [%05d] - ", "OP_CLOSURE", index);
@@ -109,13 +119,13 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
         case OP_CLOSE:
             return simpleInstruction("OP_CLOSE", offset);
         case OP_NEWOBJECT:
-            return longOperandInstruction("OP_NEWOBJECT", chunk, offset);
+            return u16OperandInstruction("OP_NEWOBJECT", chunk, offset);
         case OP_GETOBJECT:
             return simpleInstruction("OP_GETOBJECT", offset);
         case OP_SETOBJECT:
             return simpleInstruction("OP_SETOBJECT", offset);
         case OP_INVOKE:
-            return shortOperandInstruction("OP_INVOKE", chunk, offset);
+            return u8OperandInstruction("OP_INVOKE", chunk, offset);
         case OP_ADD:
             return simpleInstruction("OP_ADD", offset);
         case OP_SUB:
@@ -145,7 +155,15 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
         case OP_NEGATE:
             return simpleInstruction("OP_NEGATE", offset);
         case OP_CONCAT:
-            return shortOperandInstruction("OP_CONCAT", chunk, offset);
+            return u8OperandInstruction("OP_CONCAT", chunk, offset);
+        case OP_INCLOCAL:
+            return u8u8OperandInstruction("OP_INCLOCAL", chunk, offset);
+        case OP_INCGLOBAL:
+            return u8u16OperandInstruction("OP_INCGLOBAL", chunk, offset);
+        case OP_INCUPVAL:
+            return u8u8OperandInstruction("OP_INCLOCAL", chunk, offset);
+        case OP_INCOBJECT:
+            return u8u16OperandInstruction("OP_INCOBJECT", chunk, offset);
         case OP_RETURN:
             return simpleInstruction("OP_RETURN", offset);
         default:

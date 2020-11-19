@@ -109,16 +109,11 @@ static CTableEntry *findEntry(CTableEntry *entries, int mask, CValue key) {
 
 static void resizeTbl(CState *state, CTable *tbl, size_t newCapacity) {
     size_t size = sizeof(CTableEntry) * newCapacity;
+    int cachedCount = tbl->count;
     cosmoM_checkGarbage(state, size); // if this allocation would cause a GC, run the GC
 
-    // if count > 8 and active entries < tombstones 
-    if (tbl->count > MIN_TABLE_CAPACITY && tbl->count - tbl->tombstones < tbl->tombstones) {
-        int tombs = tbl->tombstones;
-        tbl->tombstones = 0; // set this to 0 so in our recursive call to resizeTbl() this branch isn't run again
-        resizeTbl(state, tbl, nextPow2((tbl->count - tombs) * GROW_FACTOR)); // shrink based on active entries to the next pow of 2
-        cosmoM_updateThreshhold(state); // force a threshhold update since this *could* be such a huge memory difference
+    if (tbl->count < cachedCount) // the GC removed some objects from this table and resized it, ignore our resize event!
         return;
-    }
 
     CTableEntry *entries = cosmoM_xmalloc(state, size);
     int newCount = 0;
@@ -149,6 +144,16 @@ static void resizeTbl(CState *state, CTable *tbl, size_t newCapacity) {
     tbl->capacity = newCapacity;
     tbl->count = newCount;
     tbl->tombstones = 0;
+}
+
+bool cosmoT_checkShrink(CState *state, CTable *tbl) {
+    // if count > 8 and active entries < tombstones 
+    if (tbl->count > MIN_TABLE_CAPACITY && tbl->count - tbl->tombstones < tbl->tombstones) {
+        resizeTbl(state, tbl, nextPow2((tbl->count - tbl->tombstones) * GROW_FACTOR)); // shrink based on active entries to the next pow of 2
+        return true;
+    }
+
+    return false;
 }
 
 // returns a pointer to the allocated value

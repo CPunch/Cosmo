@@ -29,19 +29,23 @@ typedef enum {
     OP_CALL, // calls top[-uint8_t]
     OP_CLOSURE, 
     OP_CLOSE,
-    OP_NEWOBJECT, // 
+    OP_NEWOBJECT,
     OP_GETOBJECT,
     OP_SETOBJECT,
     OP_INVOKE,
 
     // ARITHMETIC
-    OP_ADD, 
+    OP_ADD,
     OP_SUB,
     OP_MULT,
     OP_DIV,
     OP_NOT,
     OP_NEGATE,
     OP_CONCAT, // concats uint8_t vars on the stack
+    OP_INCLOCAL, // pushes old value to stack, adds (uint8_t-128) to local[uint8_t]
+    OP_INCGLOBAL, // pushes old value to stack, adds (uint8_t-128) to globals[const[uint16_t]]
+    OP_INCUPVAL, // pushes old value to stack, adds (uint8_t-128) to closure->upval[uint8_t]
+    OP_INCOBJECT, // pushes old value to stack, adds (uint8_t-128) to obj[const[uint16_t]]
 
     // EQUALITY
     OP_EQUAL,
@@ -56,7 +60,6 @@ typedef enum {
     OP_NIL,
 
     OP_RETURN
-
-} COPCODE;
+} COPCODE; // there can be a max of 256 instructions
 
 #endif

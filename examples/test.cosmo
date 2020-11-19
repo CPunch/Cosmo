@@ -1,7 +1,7 @@
--- crafts a dummy class
+// crafts a dummy class
 class test end
 
--- instance of test
+// instance of test
 var obj = test()
 
 test.__index = function(self, key)
@@ -11,4 +11,4 @@ test.__index = function(self, key)
     end
 end
 
-print(obj["lol"]) -- should print 9001?
+print(obj["lol"]) // should print 9001?

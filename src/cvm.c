@@ -498,6 +498,80 @@ bool cosmoV_execute(CState *state) {
                 cosmoV_pushValue(state, cosmoV_newObj(result));
                 break;
             }
+            case OP_INCLOCAL: { // this leaves the value on the stack
+                int8_t inc = READBYTE() - 128; // ammount we're incrementing by
+                uint8_t indx = READBYTE();
+                StkPtr val = &frame->base[indx];
+
+                // check that it's a number value
+                if (val->type == COSMO_TNUMBER) { 
+                    cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
+                    *val = cosmoV_newNumber(val->val.num + inc);
+                } else {
+                    cosmoV_error(state, "Expected number!");
+                }
+
+                break;
+            }
+            case OP_INCGLOBAL: {
+                int8_t inc = READBYTE() - 128; // ammount we're incrementing by
+                uint16_t indx = READUINT();
+                CValue ident = constants[indx]; // grabs identifier
+                CValue *val = cosmoT_insert(state, &state->globals, ident);
+
+                // check that it's a number value
+                if (val->type == COSMO_TNUMBER) { 
+                    cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
+                    *val = cosmoV_newNumber(val->val.num + inc);
+                } else {
+                    cosmoV_error(state, "Expected number!");
+                }
+
+                break;
+            }
+            case OP_INCUPVAL: {
+                int8_t inc = READBYTE() - 128; // ammount we're incrementing by
+                uint8_t indx = READBYTE();
+                CValue *val = frame->closure->upvalues[indx]->val;
+
+                // check that it's a number value
+                if (val->type == COSMO_TNUMBER) { 
+                    cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
+                    *val = cosmoV_newNumber(val->val.num + inc);
+                } else {
+                    cosmoV_error(state, "Expected number!");
+                }
+
+                break;
+            }
+            case OP_INCOBJECT: {
+                int8_t inc = READBYTE() - 128; // ammount we're incrementing by
+                uint16_t indx = READUINT();
+                StkPtr temp = cosmoV_getTop(state, 0); // object should be at the top of the stack
+                CValue ident = constants[indx]; // grabs identifier
+
+                // sanity check
+                if (!(temp->type == COSMO_TOBJ) || !(temp->val.obj->type == COBJ_OBJECT)) {
+                    cosmoV_error(state, "Couldn't set a field on a non-object!");
+                    break;
+                }
+
+                CObjObject *object = (CObjObject*)temp->val.obj;
+                CValue *val = cosmoT_insert(state, &object->tbl, ident);
+
+                // pop the object off the stack
+                cosmoV_pop(state);
+
+                // check that it's a number value
+                if (val->type == COSMO_TNUMBER) { 
+                    cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
+                    *val = cosmoV_newNumber(val->val.num + inc);
+                } else {
+                    cosmoV_error(state, "Expected number!");
+                }
+
+                break;
+            }
             case OP_EQUAL: {
                 // pop vals
                 StkPtr valB = cosmoV_pop(state);

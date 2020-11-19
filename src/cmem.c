@@ -76,6 +76,8 @@ void tableRemoveWhite(CState *state, CTable *tbl) {
             cosmoT_remove(state, tbl, entry->key);
         }
     }
+
+    cosmoT_checkShrink(state, tbl); // recovers the memory we're no longer using
 }
 
 void markArray(CState *state, CValueArray *array) {
