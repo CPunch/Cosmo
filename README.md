@@ -1,7 +1,41 @@
 # Cosmo
-Cosmo is a portable scripting language loosely based off of Lua. Designed for embeddability, Cosmo will have a built-in C++ wrapper for ease of use for embedding in in C++ applications.
+Cosmo is a portable scripting language loosely based off of Lua. Cosmo easily allows the user to extend the language through the use of Proto objects, which describe the behavior of Objects. For example the following is a simple Vector class which describes behavior for a Vector-like object.
 
-# Why Cosmo?
-While C++ wrappers for Lua exist (see: SolLua), they're all maintained by outside entitties while Cosmo writes it's own first party wrapper. Additionally, Cosmo is very easily modifiable having been written in clean C99 with well documented code; this makes it a great candidate for early language hackers and researchers alike.
+```
+class Vector
+    function __init(self)
+        self.vector = {}
+        self.x = 0
+    end
 
-However Cosmo is not just a friendly developer tool, Cosmo's easy syntax and readability makes it a great scripting language for anyone to use.
+    function __index(self, key)
+        return self.vector[key]
+    end
+
+    function push(self, val)
+        self.vector[self.x++] = val
+    end 
+
+    function pop(self)
+        return self.vector[--self.x]
+    end
+end
+
+var vector = Vector()
+
+for (var i = 0; i < 4; i++) do
+    vector.push(i)
+end
+
+for (var i = 0; i < 4; i++) do
+    print(vector.pop() .. " : " .. vector[i])
+end
+```
+
+> 3 : 0
+> 2 : 1
+> 1 : 2
+> 0 : 3
+
+# C API
+The Cosmo C API is currently undocumented, however as soon as development has reached a stable state documentation on full language features and the C API will start.

@@ -1,28 +1,28 @@
-class Stack
+class Vector
     function __init(self)
-        self.stack = {}
+        self.vector = {}
         self.x = 0
     end
 
     function push(self, val)
-        self.stack[self.x++] = val
+        self.vector[self.x++] = val
     end 
 
     function pop(self)
-        return self.stack[--self.x]
+        return self.vector[--self.x]
     end
 
     function __index(self, key)
-        return self.stack[key]
+        return self.vector[key]
     end
 end
 
-var stack = Stack()
+var vector = Vector()
 
-for (var i = 0; i < 10000; i++) do
-    stack.push(i)
+for (var i = 0; i < 100000; i++) do
+    vector.push(i)
 end
 
-for (var i = 0; i < 10000; i++) do
-    print(stack.pop() .. " : " .. stack[i])
+for (var i = 0; i < 100000; i++) do
+    print(vector.pop() .. " : " .. vector[i])
 end
