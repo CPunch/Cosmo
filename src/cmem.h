@@ -42,7 +42,7 @@
 #define cosmoM_freezeGC(state) \
     state->freezeGC++
 
-#define  cosmoM_unfreezeGC(state) \
+#define cosmoM_unfreezeGC(state) \
     state->freezeGC--; \
     cosmoM_checkGarbage(state, 0)
 

@@ -644,13 +644,22 @@ static void increment(CParseState *pstate, int val) {
     CToken name = pstate->previous;
     if (match(pstate, TOKEN_DOT)) { // object?
         namedVariable(pstate, name, false, false); // just get the object
-
         consume(pstate, TOKEN_IDENTIFIER, "Expected property name after '.'.");
-        uint16_t name = identifierConstant(pstate, &pstate->previous);
+        uint16_t ident = identifierConstant(pstate, &pstate->previous);
+
+        while (match(pstate, TOKEN_DOT)) {
+            // grab the field from the object
+            writeu8(pstate, OP_LOADCONST); // pushes ident to stack
+            writeu16(pstate, ident);
+            writeu8(pstate, OP_GETOBJECT);
+            
+            consume(pstate, TOKEN_IDENTIFIER, "Expected property name after '.'.");
+            ident = identifierConstant(pstate, &pstate->previous);
+        }
 
         writeu8(pstate, OP_INCOBJECT);
         writeu8(pstate, 128 + val); // setting signed values in an unsigned int 
-        writeu16(pstate, name);
+        writeu16(pstate, ident);
         valuePopped(pstate, 1); // popped the object off the stack
     } else {
         uint8_t op;
