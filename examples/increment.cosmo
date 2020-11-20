@@ -1,0 +1,28 @@
+class Stack
+    function __init(self)
+        self.stack = {}
+        self.x = 0
+    end
+
+    function push(self, val)
+        self.stack[self.x++] = val
+    end 
+
+    function pop(self)
+        return self.stack[--self.x]
+    end
+
+    function __index(self, key)
+        return self.stack[key]
+    end
+end
+
+var stack = Stack()
+
+for (var i = 0; i < 10000; i++) do
+    stack.push(i)
+end
+
+for (var i = 0; i < 10000; i++) do
+    print(stack.pop() .. " : " .. stack[i])
+end

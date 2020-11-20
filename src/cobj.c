@@ -206,7 +206,11 @@ CObjString *cosmoO_allocateString(CState *state, const char *str, size_t sz, uin
 bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val) {
     if (!cosmoT_get(&object->tbl, key, val)) { // if the field doesn't exist in the object, check the proto
         if (object->proto != NULL) { // sanity check
-            // first though, check for __index, if that exists, call it
+            // first though, check for a member of the proto object, if it fails then lookup __index
+            if (cosmoO_getObject(state, object->proto, key, val))
+                return true;
+
+            // then check for __index, if that exists, call it
             if (cosmoO_getIString(state, object->proto, ISTRING_INDEX, val)) {
                 cosmoV_pushValue(state, *val); // push function
                 cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
@@ -215,8 +219,6 @@ bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val
                 *val = *cosmoV_pop(state); // set value to the return value of __index
                 return true;
             }
-
-            return cosmoO_getObject(state, object->proto, key, val);
         }
         
         return false; // no protoobject to check against
