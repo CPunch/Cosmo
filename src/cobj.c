@@ -228,9 +228,26 @@ bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val
 }
 
 void cosmoO_setObject(CState *state, CObjObject *object, CValue key, CValue val) {
+    CValue ret;
+    
+    // first check for __newindex in the prototype
+    if (object->proto != NULL && cosmoO_getIString(state, object->proto, ISTRING_NEWINDEX, &ret)) {
+        cosmoV_pushValue(state, ret); // push function
+        cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
+        cosmoV_pushValue(state, key); // push key & value pair
+        cosmoV_pushValue(state, val);
+        cosmoV_call(state, 3);
+        cosmoV_pop(state); // pop return value
+        return;
+    }
+
     object->istringFlags = 0; // reset cache
-    CValue *newVal = cosmoT_insert(state, &object->tbl, key);
-    *newVal = val;
+    if (IS_NIL(val)) { // if we're setting an index to nil, we can safely mark that as a tombstone
+        cosmoT_remove(state, &object->tbl, key);
+    } else {
+        CValue *newVal = cosmoT_insert(state, &object->tbl, key);
+        *newVal = val;
+    }
 }
 
 bool cosmoO_getIString(CState *state, CObjObject *object, int flag, CValue *val) {

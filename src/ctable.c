@@ -108,6 +108,9 @@ static CTableEntry *findEntry(CTableEntry *entries, int mask, CValue key) {
 }
 
 static void resizeTbl(CState *state, CTable *tbl, size_t newCapacity) {
+    if (cosmoT_checkShrink(state, tbl))
+        return;
+    
     size_t size = sizeof(CTableEntry) * newCapacity;
     int cachedCount = tbl->count;
     cosmoM_checkGarbage(state, size); // if this allocation would cause a GC, run the GC
@@ -148,7 +151,9 @@ static void resizeTbl(CState *state, CTable *tbl, size_t newCapacity) {
 
 bool cosmoT_checkShrink(CState *state, CTable *tbl) {
     // if count > 8 and active entries < tombstones 
-    if (tbl->count > MIN_TABLE_CAPACITY && tbl->count - tbl->tombstones < tbl->tombstones) {
+    if (tbl->count > MIN_TABLE_CAPACITY && (tbl->count - tbl->tombstones < tbl->tombstones || tbl->tombstones > 50)) {
+        printf("shrinking table!\n");
+        getchar();
         resizeTbl(state, tbl, nextPow2((tbl->count - tbl->tombstones) * GROW_FACTOR)); // shrink based on active entries to the next pow of 2
         return true;
     }
