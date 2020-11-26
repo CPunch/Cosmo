@@ -372,7 +372,7 @@ static void number(CParseState *pstate, bool canAssign) {
 }
 
 static void string(CParseState *pstate, bool canAssign) {
-    CObjString *strObj = cosmoO_copyString(pstate->state, pstate->previous.start + 1, pstate->previous.length - 2);
+    CObjString *strObj = cosmoO_takeString(pstate->state, pstate->previous.start, pstate->previous.length);
     writeConstant(pstate, cosmoV_newObj((CObj*)strObj));
 }
 

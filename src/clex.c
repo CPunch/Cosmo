@@ -25,12 +25,72 @@ CReservedWord reservedWords[] = {
     {TOKEN_WHILE, "while", 5}
 };
 
+// returns true if current token is a heap allocated buffer
+static bool isBuffer(CLexState *state) {
+    return state->buffer !=  NULL;
+}
+
+// marks the current token as heap allocated & allocates the buffer
+static void makeBuffer(CLexState *state) {
+    state->buffer = cosmoM_xmalloc(state->cstate, sizeof(char) * 32); // start with a 32 character long buffer
+    state->bufCount = 0;
+    state->bufCap = 32;
+}
+
+static void resetBuffer(CLexState *state) {
+    state->buffer = NULL;
+    state->bufCount = 0;
+    state->bufCap = 0;
+}
+
+// cancels the token heap buffer and free's it
+static void freeBuffer(CLexState *state) {
+    cosmoM_freearray(state->cstate, char, state->buffer, state->bufCap);
+
+    resetBuffer(state);
+}
+
+// adds character to buffer
+static void appendBuffer(CLexState *state, char c) {
+    cosmoM_growarray(state->cstate, char, state->buffer, state->bufCount, state->bufCap);
+
+    state->buffer[state->bufCount++] = c;
+}
+
+// saves the current character to the buffer, grows the buffer as needed
+static void saveBuffer(CLexState *state) {
+    appendBuffer(state, *state->currentChar);
+}
+
+// resets the lex state buffer & returns the allocated buffer as a null terminated string
+static char *cutBuffer(CLexState *state) {
+    // append the null terminator
+    appendBuffer(state, '\0');
+
+    // cache buffer info
+    char *buf = state->buffer;
+    size_t count = state->bufCount;
+    size_t cap = state->bufCap;
+
+    // reset lex state buffer!
+    resetBuffer(state);
+
+    // shrink the buffer to only use what we need
+    return cosmoM_reallocate(state->cstate, buf, cap, count);
+}
+
 static CToken makeToken(CLexState *state, CTokenType type) {
     CToken token;
     token.type = type;
-    token.start = state->startChar;
-    token.length = state->currentChar - state->startChar; // delta between start & current
     token.line = state->line;
+
+    if (isBuffer(state)) { // is the buffer heap-allocated?
+        token.length = state->bufCount;
+        token.start = cutBuffer(state);
+    } else {
+        token.start = state->startChar;
+        token.length = state->currentChar - state->startChar; // delta between start & current
+    }
     
     state->lastType = type;
 
@@ -44,6 +104,9 @@ static CToken makeError(CLexState *state, const char *msg) {
     token.length = strlen(msg);
     token.line = state->line;
 
+    if (isBuffer(state))
+        freeBuffer(state);
+        
     return token;
 }
 
@@ -126,9 +189,11 @@ void skipWhitespace(CLexState *state) {
 }
 
 CToken parseString(CLexState *state) {
+    makeBuffer(state); // buffer mode
     while (peek(state) != '"' && !isEnd(state)) {
         if (peek(state) == '\n') // strings can't stretch across lines
             return makeError(state, "Unterminated string!");
+        saveBuffer(state); // save the character!
         next(state); // consume
     }
 
@@ -170,6 +235,9 @@ CLexState *cosmoL_newLexState(CState *cstate, const char *source) {
     state->line = 1;
     state->lastLine = 0;
     state->lastType = TOKEN_ERROR;
+    state->cstate = cstate;
+
+    resetBuffer(state);
 
     return state;
 }

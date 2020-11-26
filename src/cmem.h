@@ -18,7 +18,7 @@
 #define cosmoM_growarray(state, type, buf, count, capacity) \
     if (count >= capacity || buf == NULL) { \
         int old = capacity; \
-        capacity = old  *GROW_FACTOR; \
+        capacity = old * GROW_FACTOR; \
         buf = (type*)cosmoM_reallocate(state, buf, sizeof(type)  *old, sizeof(type)  *capacity); \
     }
 

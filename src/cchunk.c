@@ -44,7 +44,7 @@ int addConstant(CState* state, CChunk *chunk, CValue value) {
 
     cosmoM_freezeGC(state); // so our GC doesn't free it
     appendValArray(state, &chunk->constants, value);
-     cosmoM_unfreezeGC(state);
+    cosmoM_unfreezeGC(state);
     return chunk->constants.count - 1; // return the index of the new constants
 }
 

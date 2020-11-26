@@ -78,10 +78,14 @@ typedef struct {
 typedef struct {
     char *currentChar;
     char *startChar;
+    char *buffer; // if non-NULL & bufCount > 0, token->start & token->length will be set to buffer & bufCount respectively
+    size_t bufCount;
+    size_t bufCap; 
     int line; // current line
     int lastLine; // line of the previous consumed token
     bool isEnd;
     CTokenType lastType;
+    CState *cstate;
 } CLexState;
 
 CLexState *cosmoL_newLexState(CState *state, const char *source);
