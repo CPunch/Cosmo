@@ -152,11 +152,7 @@ static void advance(CParseState *pstate) {
     pstate->current = cosmoL_scanToken(pstate->lex);
 
     if (pstate->current.type == TOKEN_ERROR) {
-        // go ahead and consume the rest of the errors so it doesn't cascade
-        CToken temp;
-        do {
-            temp = cosmoL_scanToken(pstate->lex);
-        } while(temp.type == TOKEN_ERROR);
+        errorAtCurrent(pstate, pstate->current.start);
     }
 }
 
