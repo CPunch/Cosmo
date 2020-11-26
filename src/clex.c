@@ -191,10 +191,28 @@ void skipWhitespace(CLexState *state) {
 CToken parseString(CLexState *state) {
     makeBuffer(state); // buffer mode
     while (peek(state) != '"' && !isEnd(state)) {
-        if (peek(state) == '\n') // strings can't stretch across lines
-            return makeError(state, "Unterminated string!");
-        saveBuffer(state); // save the character!
-        next(state); // consume
+        switch (peek(state)) {
+            case '\n': // strings can't stretch across lines
+                return makeError(state, "Unterminated string!");
+            case '\\': { // special character
+                next(state); // consume the '\' character
+
+                switch (peek(state)) {
+                    case 'r': case 'n': appendBuffer(state, '\n'); break;
+                    case 't': appendBuffer(state, '\t'); break;
+                    case '\\': appendBuffer(state, '\\'); break;
+                    default:
+                        return makeError(state, "Unknown special character!"); // TODO: maybe a more descriptive error?
+                }
+
+                next(state); // consume special character
+                break;
+            }
+            default: {
+                saveBuffer(state); // save the character!
+                next(state); // consume
+            }
+        }
     }
 
     if (isEnd(state))
