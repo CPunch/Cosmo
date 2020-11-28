@@ -63,7 +63,7 @@ static void saveBuffer(CLexState *state) {
 }
 
 // resets the lex state buffer & returns the allocated buffer as a null terminated string
-static char *cutBuffer(CLexState *state) {
+static char *cutBuffer(CLexState *state, int *length) {
     // append the null terminator
     appendBuffer(state, '\0');
 
@@ -71,6 +71,8 @@ static char *cutBuffer(CLexState *state) {
     char *buf = state->buffer;
     size_t count = state->bufCount;
     size_t cap = state->bufCap;
+
+    *length = count - 1;
 
     // reset lex state buffer!
     resetBuffer(state);
@@ -85,8 +87,7 @@ static CToken makeToken(CLexState *state, CTokenType type) {
     token.line = state->line;
 
     if (isBuffer(state)) { // is the buffer heap-allocated?
-        token.length = state->bufCount;
-        token.start = cutBuffer(state);
+        token.start = cutBuffer(state, &token.length);
     } else {
         token.start = state->startChar;
         token.length = state->currentChar - state->startChar; // delta between start & current
@@ -201,8 +202,26 @@ CToken parseString(CLexState *state) {
                     case 'r': case 'n': appendBuffer(state, '\n'); break;
                     case 't': appendBuffer(state, '\t'); break;
                     case '\\': appendBuffer(state, '\\'); break;
-                    default:
+                    default: {
+                        if (isNumerical(peek(state))) {
+                            char *numStart = state->currentChar;
+
+                            // consume the number
+                            while (isNumerical(peek(state)))
+                                next(state);
+                            state->currentChar--; // since next() is called after
+                            
+                            int num = (int)strtol(numStart, NULL, 10);
+
+                            if (num > 255) // sanity check
+                                return makeError(state, "Character out of range! > 255!");
+
+                            appendBuffer(state, num);
+                            break;
+                        }
+
                         return makeError(state, "Unknown special character!"); // TODO: maybe a more descriptive error?
+                    }
                 }
 
                 next(state); // consume special character

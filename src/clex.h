@@ -34,7 +34,7 @@ typedef enum {
 
     // literals
     TOKEN_IDENTIFIER,
-    TOKEN_STRING,
+    TOKEN_STRING, // token.start is heap allocated and separate from the source string!
     TOKEN_NUMBER,
     TOKEN_NIL,
     TOKEN_TRUE,

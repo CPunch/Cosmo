@@ -107,8 +107,8 @@ static CTableEntry *findEntry(CTableEntry *entries, int mask, CValue key) {
     }
 }
 
-static void resizeTbl(CState *state, CTable *tbl, size_t newCapacity) {
-    if (cosmoT_checkShrink(state, tbl))
+static void resizeTbl(CState *state, CTable *tbl, int newCapacity, bool canShrink) {
+    if (canShrink && cosmoT_checkShrink(state, tbl))
         return;
     
     size_t size = sizeof(CTableEntry) * newCapacity;
@@ -152,8 +152,7 @@ static void resizeTbl(CState *state, CTable *tbl, size_t newCapacity) {
 bool cosmoT_checkShrink(CState *state, CTable *tbl) {
     // if count > 8 and active entries < tombstones 
     if (tbl->count > MIN_TABLE_CAPACITY && (tbl->count - tbl->tombstones < tbl->tombstones || tbl->tombstones > 50)) {
-        tbl->tombstones = 0;
-        resizeTbl(state, tbl, nextPow2((tbl->count - tbl->tombstones) * GROW_FACTOR)); // shrink based on active entries to the next pow of 2
+        resizeTbl(state, tbl, nextPow2(tbl->count - tbl->tombstones) * GROW_FACTOR, false); // shrink based on active entries to the next pow of 2
         return true;
     }
 
@@ -166,7 +165,7 @@ COSMO_API CValue* cosmoT_insert(CState *state, CTable *tbl, CValue key) {
     if (tbl->count + 1 > (int)(tbl->capacity * MAX_TABLE_FILL)) {
         // grow table
         int newCap = tbl->capacity * GROW_FACTOR;
-        resizeTbl(state, tbl, newCap);
+        resizeTbl(state, tbl, newCap, true);
     }
 
     // insert into the table
