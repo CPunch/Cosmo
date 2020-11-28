@@ -151,7 +151,7 @@ static void resizeTbl(CState *state, CTable *tbl, int newCapacity, bool canShrin
 
 bool cosmoT_checkShrink(CState *state, CTable *tbl) {
     // if count > 8 and active entries < tombstones 
-    if (tbl->count > MIN_TABLE_CAPACITY && (tbl->count - tbl->tombstones < tbl->tombstones || tbl->tombstones > 50)) {
+    if (tbl->count > MIN_TABLE_CAPACITY && (tbl->count - tbl->tombstones < tbl->tombstones || tbl->tombstones > 50)) { // TODO: 50 should be a threshhold
         resizeTbl(state, tbl, nextPow2(tbl->count - tbl->tombstones) * GROW_FACTOR, false); // shrink based on active entries to the next pow of 2
         return true;
     }

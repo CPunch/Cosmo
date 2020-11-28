@@ -1206,7 +1206,7 @@ CObjFunction* cosmoP_compileString(CState *state, const char *source) {
 
     consume(&parser, TOKEN_EOF, "End of file expected!");
 
-    popLocals(&parser, -1); // needed to close over the values
+    popLocals(&parser, 0);
 
     if (parser.hadError) { // we don't free the function, the state already has a reference to it in it's linked list of objects!
         endCompiler(&parser);
