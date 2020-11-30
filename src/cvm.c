@@ -223,7 +223,7 @@ static inline bool isFalsey(StkPtr val) {
 
 COSMO_API void cosmoV_pushObject(CState *state, int pairs) {
     StkPtr key, val;
-    CObjObject *newObj = cosmoO_newObject(state); // start the table with enough space to hopefully prevent reallocation since that's costly
+    CObjObject *newObj = cosmoO_newObject(state);
     cosmoV_pushValue(state, cosmoV_newObj(newObj)); // so our GC doesn't free our new object
 
     for (int i = 0; i < pairs; i++) {
@@ -236,7 +236,7 @@ COSMO_API void cosmoV_pushObject(CState *state, int pairs) {
     }
 
     // once done, pop everything off the stack + push new object
-    cosmoV_setTop(state, (pairs * 2) + 1);
+    cosmoV_setTop(state, (pairs * 2) + 1); // + 1 for our object
     cosmoV_pushValue(state, cosmoV_newObj(newObj));
 }
 
@@ -258,7 +258,7 @@ COSMO_API bool cosmoV_getObject(CState *state, CObjObject *object, CValue key, C
     return false;
 }
 
-#define BINARYOP(typeConst, op)  \
+#define NUMBEROP(typeConst, op)  \
     StkPtr valA = cosmoV_getTop(state, 1); \
     StkPtr valB = cosmoV_getTop(state, 0); \
     if (valA->type == COSMO_TNUMBER && valB->type == COSMO_TNUMBER) { \
@@ -320,7 +320,7 @@ bool cosmoV_execute(CState *state) {
                 *frame->closure->upvalues[indx]->val = *cosmoV_pop(state);
                 break;
             }
-            case OP_PEJMP: {
+            case OP_PEJMP: { // pop equality jump
                 uint16_t offset = READUINT();
 
                 if (isFalsey(cosmoV_pop(state))) { // pop, if the condition is false, jump!
@@ -328,7 +328,7 @@ bool cosmoV_execute(CState *state) {
                 }
                 break;
             }
-            case OP_EJMP: {
+            case OP_EJMP: { // equality jump
                 uint16_t offset = READUINT();
 
                 if (isFalsey(cosmoV_getTop(state, 0))) { // if the condition is false, jump!
@@ -336,7 +336,7 @@ bool cosmoV_execute(CState *state) {
                 }
                 break;
             }
-            case OP_JMP: {
+            case OP_JMP: { // jump
                 uint16_t offset = READUINT();
                 frame->pc += offset;
                 break;
@@ -449,19 +449,19 @@ bool cosmoV_execute(CState *state) {
                 break;
             }
             case OP_ADD: { // pop 2 values off the stack & try to add them together
-                BINARYOP(cosmoV_newNumber, +);
+                NUMBEROP(cosmoV_newNumber, +);
                 break;
             }
             case OP_SUB: { // pop 2 values off the stack & try to subtracts them
-                BINARYOP(cosmoV_newNumber, -)
+                NUMBEROP(cosmoV_newNumber, -)
                 break;
             }
             case OP_MULT: { // pop 2 values off the stack & try to multiplies them together
-                BINARYOP(cosmoV_newNumber, *)
+                NUMBEROP(cosmoV_newNumber, *)
                 break;
             }
             case OP_DIV: { // pop 2 values off the stack & try to divides them
-                BINARYOP(cosmoV_newNumber, /)
+                NUMBEROP(cosmoV_newNumber, /)
                 break;
             }
             case OP_NOT: {
@@ -595,19 +595,19 @@ bool cosmoV_execute(CState *state) {
                 break;
             }
             case OP_GREATER: {
-                BINARYOP(cosmoV_newBoolean, >)
+                NUMBEROP(cosmoV_newBoolean, >)
                 break;
             }
             case OP_LESS: {
-                BINARYOP(cosmoV_newBoolean, <)
+                NUMBEROP(cosmoV_newBoolean, <)
                 break;
             }
             case OP_GREATER_EQUAL: {
-                BINARYOP(cosmoV_newBoolean, >=)
+                NUMBEROP(cosmoV_newBoolean, >=)
                 break;
             }
             case OP_LESS_EQUAL: {
-                BINARYOP(cosmoV_newBoolean, <=)
+                NUMBEROP(cosmoV_newBoolean, <=)
                 break;
             }
             case OP_TRUE:   cosmoV_pushBoolean(state, true); break;
@@ -630,4 +630,4 @@ bool cosmoV_execute(CState *state) {
     return false;
 }
 
-#undef BINARYOP
+#undef NUMBEROP

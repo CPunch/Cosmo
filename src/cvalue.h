@@ -38,7 +38,7 @@ void appendValArray(CState *state, CValueArray *array, CValue val);
 void printValue(CValue val);
 COSMO_API bool cosmoV_equal(CValue valA, CValue valB);
 COSMO_API CObjString *cosmoV_toString(CState *state, CValue val);
-COSMO_API const char *cosmoV_typeStr(CValue val);
+COSMO_API const char *cosmoV_typeStr(CValue val); // return constant char array for corresponding type
 
 #define IS_NUMBER(x)    (x.type == COSMO_TNUMBER)
 #define IS_BOOLEAN(x)   (x.type == COSMO_TBOOLEAN)
