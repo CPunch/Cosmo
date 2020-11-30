@@ -465,7 +465,7 @@ bool cosmoV_execute(CState *state) {
                 break;
             }
             case OP_NOT: {
-                cosmoV_pushValue(state, cosmoV_newBoolean(isFalsey(cosmoV_pop(state))));
+                cosmoV_pushBoolean(state, isFalsey(cosmoV_pop(state)));
                 break;
             }
             case OP_NEGATE: { // pop 1 value off the stack & try to negate
@@ -473,7 +473,7 @@ bool cosmoV_execute(CState *state) {
 
                 if (val->type == COSMO_TNUMBER) {
                     cosmoV_pop(state);
-                    cosmoV_pushValue(state, cosmoV_newNumber(-(val->val.num)));
+                    cosmoV_pushNumber(state, -(val->val.num));
                 } else {
                     cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
                 }
@@ -591,7 +591,7 @@ bool cosmoV_execute(CState *state) {
                 StkPtr valA = cosmoV_pop(state);
 
                 // compare & push
-                cosmoV_pushValue(state, cosmoV_newBoolean(cosmoV_equal(*valA, *valB)));
+                cosmoV_pushBoolean(state, cosmoV_equal(*valA, *valB));
                 break;
             }
             case OP_GREATER: {
@@ -610,8 +610,8 @@ bool cosmoV_execute(CState *state) {
                 BINARYOP(cosmoV_newBoolean, <=)
                 break;
             }
-            case OP_TRUE:   cosmoV_pushValue(state, cosmoV_newBoolean(true)); break;
-            case OP_FALSE:  cosmoV_pushValue(state, cosmoV_newBoolean(false)); break;
+            case OP_TRUE:   cosmoV_pushBoolean(state, true); break;
+            case OP_FALSE:  cosmoV_pushBoolean(state, false); break;
             case OP_NIL:    cosmoV_pushValue(state, cosmoV_newNil()); break;
             case OP_RETURN: {
                 return true;
