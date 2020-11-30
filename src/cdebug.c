@@ -154,6 +154,8 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
             return simpleInstruction("OP_LESS_EQUAL", offset);
         case OP_NEGATE:
             return simpleInstruction("OP_NEGATE", offset);
+        case OP_COUNT:
+            return simpleInstruction("OP_COUNT", offset);
         case OP_CONCAT:
             return u8OperandInstruction("OP_CONCAT", chunk, offset);
         case OP_INCLOCAL:

@@ -5,6 +5,7 @@
 
 CReservedWord reservedWords[] = {
     {TOKEN_AND, "and", 3},
+    {TOKEN_CLASS, "class", 5},
     {TOKEN_DO, "do", 2},
     {TOKEN_ELSE, "else", 4},
     {TOKEN_ELSEIF, "elseif", 6},
@@ -12,7 +13,6 @@ CReservedWord reservedWords[] = {
     {TOKEN_FALSE, "false", 5},
     {TOKEN_FOR, "for", 3},
     {TOKEN_FUNCTION, "function", 8},
-    {TOKEN_CLASS, "class", 5},
     {TOKEN_IF, "if", 2},
     {TOKEN_LOCAL, "local", 5},
     {TOKEN_NIL, "nil", 3},
@@ -304,6 +304,7 @@ CToken cosmoL_scanToken(CLexState *state) {
         case ';': return makeToken(state, TOKEN_EOS);
         case ',': return makeToken(state, TOKEN_COMMA);
         case '*': return makeToken(state, TOKEN_STAR);
+        case '#': return makeToken(state, TOKEN_POUND);
         case '/': return makeToken(state, TOKEN_SLASH);
         // two character tokens
         case '+': 

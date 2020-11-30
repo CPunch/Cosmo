@@ -129,6 +129,7 @@ CObjString *cosmoO_takeString(CState *state, char *str, size_t sz);
 CObjString *cosmoO_allocateString(CState *state, const char *str, size_t sz, uint32_t hash);
 
 COSMO_API void printObject(CObj *o);
+const char *cosmoO_typeStr(CObj* obj);
 
 #define cosmoO_readCString(x)    ((CObjString*)x)->str
 

@@ -209,6 +209,11 @@ bool cosmoT_remove(CState* state, CTable *tbl, CValue key) {
     return true;
 }
 
+// returns the active entry count
+COSMO_API int cosmoT_count(CTable *tbl) {
+    return tbl->count - tbl->tombstones;
+}
+
 CObjString *cosmoT_lookupString(CTable *tbl, const char *str, size_t length, uint32_t hash) {
     if (tbl->count == 0) return 0; // sanity check
     uint32_t indx = hash & (tbl->capacity - 1); // since we know the capacity will *always* be a power of 2, we can use bitwise & to perform a MUCH faster mod operation

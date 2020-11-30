@@ -50,7 +50,6 @@ COSMO_API bool cosmoM_checkGarbage(CState *state, size_t needed) {
     return false;
 }
 
-
 void markObject(CState *state, CObj *obj);
 void markValue(CState *state, CValue val);
 

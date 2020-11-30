@@ -327,3 +327,18 @@ void printObject(CObj *o) {
             printf("<unkn obj>");
     }
 }
+
+const char *cosmoO_typeStr(CObj* obj) {
+    switch (obj->type) {
+        case COBJ_STRING:       return "<string>";
+        case COBJ_OBJECT:       return "<object>";
+        case COBJ_FUNCTION:     return "<function>";
+        case COBJ_CFUNCTION:    return "<c function>";
+        case COBJ_METHOD:       return "<method>";
+        case COBJ_CLOSURE:      return "<closure>";
+        case COBJ_UPVALUE:      return "<upvalue>";
+
+        default:
+            return "<unkn obj>"; // TODO: maybe panic? could be a malformed object :eyes:
+    }
+}

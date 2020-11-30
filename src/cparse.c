@@ -395,6 +395,7 @@ static void unary(CParseState *pstate, bool canAssign) {
     switch(type) {
         case TOKEN_MINUS:   writeu8Chunk(pstate->state, getChunk(pstate), OP_NEGATE, cachedLine); break;
         case TOKEN_BANG:    writeu8Chunk(pstate->state, getChunk(pstate), OP_NOT, cachedLine); break;
+        case TOKEN_POUND:   writeu8Chunk(pstate->state, getChunk(pstate), OP_COUNT, cachedLine); break;
         default:
             error(pstate, "Unexpected unary operator!");
     }
@@ -718,6 +719,7 @@ ParseRule ruleTable[] = {
     [TOKEN_PLUS_PLUS]       = {preincrement, NULL, PREC_TERM},
     [TOKEN_SLASH]           = {NULL, binary, PREC_FACTOR},
     [TOKEN_STAR]            = {NULL, binary, PREC_FACTOR},
+    [TOKEN_POUND]           = {unary, NULL, PREC_NONE},
     [TOKEN_EOS]             = {NULL, NULL, PREC_NONE},
     [TOKEN_BANG]            = {unary, NULL, PREC_NONE},
     [TOKEN_BANG_EQUAL]      = {NULL, binary, PREC_EQUALITY},
@@ -1219,9 +1221,11 @@ CObjFunction* cosmoP_compileString(CState *state, const char *source) {
     }
 
     CObjFunction* resFunc = compiler.function;
+
     // VM expects the closure on the stack :P (we do this before ending the compiler so our GC doesn't free it)
     cosmoV_pushValue(state, cosmoV_newObj((CObj*)cosmoO_newClosure(state, resFunc)));
 
+    // finally free out parser states
     endCompiler(&parser);
     freeParseState(&parser);
     cosmoM_unfreezeGC(state);

@@ -20,6 +20,7 @@ typedef enum {
     TOKEN_PLUS_PLUS,
     TOKEN_SLASH,
     TOKEN_STAR,
+    TOKEN_POUND,
     TOKEN_EOS, // end of statement
 
     // equality operators

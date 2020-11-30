@@ -33,7 +33,7 @@ bool cosmoV_equal(CValue valA, CValue valB) {
     }
 }
 
-COSMO_API CObjString *cosmoV_toString(CState *state, CValue val) {
+CObjString *cosmoV_toString(CState *state, CValue val) {
     switch (val.type) {
         case COSMO_TNUMBER: { 
             char buf[32];
@@ -51,6 +51,18 @@ COSMO_API CObjString *cosmoV_toString(CState *state, CValue val) {
         }
         default:
             return cosmoO_copyString(state, "<unkn val>", 10);
+    }
+}
+
+const char *cosmoV_typeStr(CValue val) {
+    switch (val.type) {
+        case COSMO_TNIL:        return "<nil>";
+        case COSMO_TBOOLEAN:    return "<bool>";
+        case COSMO_TNUMBER:     return "<number>";
+        case COSMO_TOBJ:        return cosmoO_typeStr(val.val.obj);
+        
+        default:
+            return "<unkn val>";
     }
 }
 

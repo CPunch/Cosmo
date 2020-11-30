@@ -41,6 +41,7 @@ typedef enum {
     OP_DIV,
     OP_NOT,
     OP_NEGATE,
+    OP_COUNT,
     OP_CONCAT, // concats uint8_t vars on the stack
     OP_INCLOCAL, // pushes old value to stack, adds (uint8_t-128) to local[uint8_t]
     OP_INCGLOBAL, // pushes old value to stack, adds (uint8_t-128) to globals[const[uint16_t]]
