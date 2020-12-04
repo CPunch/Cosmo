@@ -1,3 +1,4 @@
+#include "cosmo.h"
 #include "cmem.h"
 #include "cvalue.h"
 #include "cobj.h"
@@ -19,14 +20,14 @@ void appendValArray(CState *state, CValueArray *array, CValue val) {
 }
 
 bool cosmoV_equal(CValue valA, CValue valB) {
-    if (valA.type != valB.type) // are they the same type?
+    if (GET_TYPE(valA) != GET_TYPE(valB)) // are they the same type?
         return false;
 
     // compare
-    switch (valA.type) {
-        case COSMO_TBOOLEAN: return valA.val.b == valB.val.b;
-        case COSMO_TNUMBER: return valA.val.num == valB.val.num;
-        case COSMO_TOBJ: return cosmoO_equal(valA.val.obj, valB.val.obj);
+    switch (GET_TYPE(valA)) {
+        case COSMO_TBOOLEAN: return cosmoV_readBoolean(valA) == cosmoV_readBoolean(valB);
+        case COSMO_TNUMBER: return cosmoV_readNumber(valA) == cosmoV_readNumber(valB);
+        case COSMO_TOBJ: return cosmoO_equal(cosmoV_readObj(valA), cosmoV_readObj(valB));
         case COSMO_TNIL: return true;
         default:
             return false;
@@ -34,17 +35,17 @@ bool cosmoV_equal(CValue valA, CValue valB) {
 }
 
 CObjString *cosmoV_toString(CState *state, CValue val) {
-    switch (val.type) {
+    switch (GET_TYPE(val)) {
         case COSMO_TNUMBER: { 
             char buf[32];
-            int size = snprintf((char*)&buf, 32, "%.14g", val.val.num);
+            int size = snprintf((char*)&buf, 32, "%.14g", cosmoV_readNumber(val));
             return cosmoO_copyString(state, (char*)&buf, size);
         }
         case COSMO_TBOOLEAN: {
-            return val.val.b ? cosmoO_copyString(state, "true", 4) : cosmoO_copyString(state, "false", 5);            
+            return cosmoV_readBoolean(val) ? cosmoO_copyString(state, "true", 4) : cosmoO_copyString(state, "false", 5);            
         }
         case COSMO_TOBJ: {
-            return cosmoO_toString(state, val.val.obj);
+            return cosmoO_toString(state, cosmoV_readObj(val));
         }
         case COSMO_TNIL: {
             return cosmoO_copyString(state, "nil", 3); 
@@ -55,11 +56,11 @@ CObjString *cosmoV_toString(CState *state, CValue val) {
 }
 
 const char *cosmoV_typeStr(CValue val) {
-    switch (val.type) {
+    switch (GET_TYPE(val)) {
         case COSMO_TNIL:        return "<nil>";
         case COSMO_TBOOLEAN:    return "<bool>";
         case COSMO_TNUMBER:     return "<number>";
-        case COSMO_TOBJ:        return cosmoO_typeStr(val.val.obj);
+        case COSMO_TOBJ:        return cosmoO_typeStr(cosmoV_readObj(val));
         
         default:
             return "<unkn val>";
@@ -67,15 +68,15 @@ const char *cosmoV_typeStr(CValue val) {
 }
 
 void printValue(CValue val) {
-    switch (val.type) {
+    switch (GET_TYPE(val)) {
         case COSMO_TNUMBER:
-            printf("%g", val.val.num);
+            printf("%g", cosmoV_readNumber(val));
             break;
         case COSMO_TBOOLEAN:
             printf(cosmoV_readBoolean(val) ? "true" : "false");
             break;
         case COSMO_TOBJ: {
-            printObject(val.val.obj);
+            printObject(cosmoV_readObj(val));
             break;
         }
         case COSMO_TNIL:

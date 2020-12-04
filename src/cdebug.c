@@ -98,7 +98,7 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
             int index = readu16Chunk(chunk, offset + 1);
             printf("%-16s [%05d] - ", "OP_CLOSURE", index);
             CValue val = chunk->constants.values[index];
-            CObjFunction *cobjFunc = (CObjFunction*)val.val.obj;
+            CObjFunction *cobjFunc = (CObjFunction*)cosmoV_readObj(val);
             offset += 3; // we consumed the opcode + u16
 
             printValue(val);

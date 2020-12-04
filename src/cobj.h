@@ -90,12 +90,12 @@ typedef struct CObjUpval {
 #define IS_METHOD(x)    isObjType(x, COBJ_METHOD)
 #define IS_CLOSURE(x)   isObjType(x, COBJ_CLOSURE)
 
-#define cosmoV_readString(x)    ((CObjString*)cosmoV_readObj((x)))
-#define cosmoV_readObject(x)    ((CObjObject*)cosmoV_readObj((x)))
-#define cosmoV_readFunction(x)  ((CObjFunction*)cosmoV_readObj((x)))
-#define cosmoV_readCFunction(x) (((CObjCFunction*)cosmoV_readObj((x)))->cfunc)
-#define cosmoV_readMethod(x)    ((CObjMethod*)cosmoV_readObj((x)))
-#define cosmoV_readClosure(x)   ((CObjClosure*)cosmoV_readObj((x)))
+#define cosmoV_readString(x)    ((CObjString*)cosmoV_readObj(x))
+#define cosmoV_readObject(x)    ((CObjObject*)cosmoV_readObj(x))
+#define cosmoV_readFunction(x)  ((CObjFunction*)cosmoV_readObj(x))
+#define cosmoV_readCFunction(x) (((CObjCFunction*)cosmoV_readObj(x))->cfunc)
+#define cosmoV_readMethod(x)    ((CObjMethod*)cosmoV_readObj(x))
+#define cosmoV_readClosure(x)   ((CObjClosure*)cosmoV_readObj(x))
 
 static inline bool isObjType(CValue val, CObjType type) {
     return IS_OBJ(val) && cosmoV_readObj(val)->type == type;

@@ -164,26 +164,26 @@ bool invokeMethod(CState* state, CObjObject *obj, CValue func, int args) {
 COSMOVMRESULT cosmoV_call(CState *state, int args) {
     StkPtr val = cosmoV_getTop(state, args); // function will always be right above the args
 
-    if (val->type != COSMO_TOBJ) {
+    if (GET_TYPE(*val) != COSMO_TOBJ) {
         cosmoV_error(state, "Cannot call non-function type %s!", cosmoV_typeStr(*val));
         return COSMOVM_RUNTIME_ERR;
     }
 
-    switch (val->val.obj->type) {
+    switch (cosmoV_readObj(*val)->type) {
         case COBJ_CLOSURE: {
-            CObjClosure *closure = (CObjClosure*)(val->val.obj);
+            CObjClosure *closure = (CObjClosure*)cosmoV_readObj(*val);
             if (!call(state, closure, args, 0)) {
                 return COSMOVM_RUNTIME_ERR;
             }
             break;
         }
         case COBJ_METHOD: {
-            CObjMethod *method = (CObjMethod*)val->val.obj;
+            CObjMethod *method = (CObjMethod*)cosmoV_readObj(*val);
             invokeMethod(state, method->obj, method->func, args);
             break;
         }
         case COBJ_OBJECT: {
-            CObjObject *protoObj = (CObjObject*)val->val.obj;
+            CObjObject *protoObj = (CObjObject*)cosmoV_readObj(*val);
             CObjObject *newObj = cosmoO_newObject(state);
             newObj->proto = protoObj;
             CValue ret;
@@ -205,7 +205,7 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
         }
         case COBJ_CFUNCTION: {
             // it's a C function, so call it
-            CosmoCFunction cfunc = ((CObjCFunction*)(val->val.obj))->cfunc;
+            CosmoCFunction cfunc = ((CObjCFunction*)cosmoV_readObj(*val))->cfunc;
             callCFunction(state, cfunc, args, 0);
             break;
         }
@@ -218,7 +218,7 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
 }
 
 static inline bool isFalsey(StkPtr val) {
-    return val->type == COSMO_TNIL || (val->type == COSMO_TBOOLEAN && !val->val.b);
+    return IS_NIL(*val) || (IS_BOOLEAN(*val) && !cosmoV_readBoolean(*val));
 }
 
 COSMO_API void cosmoV_pushObject(CState *state, int pairs) {
@@ -242,12 +242,12 @@ COSMO_API void cosmoV_pushObject(CState *state, int pairs) {
 
 COSMO_API bool cosmoV_getObject(CState *state, CObjObject *object, CValue key, CValue *val) {
     if (cosmoO_getObject(state, object, key, val)) {
-        if (val->type == COSMO_TOBJ ) {
-            if (val->val.obj->type == COBJ_CLOSURE) { // is it a function? if so, make it a method to the current object
-                CObjMethod *method = cosmoO_newMethod(state, (CObjClosure*)val->val.obj, object);
+        if (IS_OBJ(*val)) {
+            if (cosmoV_readObj(*val)->type == COBJ_CLOSURE) { // is it a function? if so, make it a method to the current object
+                CObjMethod *method = cosmoO_newMethod(state, (CObjClosure*)cosmoV_readObj(*val), object);
                 *val = cosmoV_newObj(method);
-            } else if (val->val.obj->type == COBJ_CFUNCTION) {
-                CObjMethod *method = cosmoO_newCMethod(state, (CObjCFunction*)val->val.obj, object);
+            } else if (cosmoV_readObj(*val)->type == COBJ_CFUNCTION) {
+                CObjMethod *method = cosmoO_newCMethod(state, (CObjCFunction*)cosmoV_readObj(*val), object);
                 *val = cosmoV_newObj(method);
             }
         }
@@ -261,9 +261,9 @@ COSMO_API bool cosmoV_getObject(CState *state, CObjObject *object, CValue key, C
 #define NUMBEROP(typeConst, op)  \
     StkPtr valA = cosmoV_getTop(state, 1); \
     StkPtr valB = cosmoV_getTop(state, 0); \
-    if (valA->type == COSMO_TNUMBER && valB->type == COSMO_TNUMBER) { \
+    if (IS_NUMBER(*valA) && IS_NUMBER(*valB)) { \
         cosmoV_setTop(state, 2); /* pop the 2 values */ \
-        cosmoV_pushValue(state, typeConst((valA->val.num) op (valB->val.num))); \
+        cosmoV_pushValue(state, typeConst(cosmoV_readNumber(*valA) op cosmoV_readNumber(*valB))); \
     } else { \
         cosmoV_error(state, "Expected numbers, got %s and %s!", cosmoV_typeStr(*valA), cosmoV_typeStr(*valB)); \
     } \
@@ -393,12 +393,12 @@ bool cosmoV_execute(CState *state) {
                 StkPtr temp = cosmoV_getTop(state, 1); // after that should be the object
 
                 // sanity check
-                if (temp->type != COSMO_TOBJ || temp->val.obj->type != COBJ_OBJECT) {
+                if (!IS_OBJ(*temp) || cosmoV_readObj(*temp)->type != COBJ_OBJECT) {
                     cosmoV_error(state, "Couldn't get from type %s!", cosmoV_typeStr(*temp));
                     break;
                 }
 
-                CObjObject *object = (CObjObject*)temp->val.obj;
+                CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
                 CValue val; // to hold our value
 
                 cosmoV_getObject(state, object, *key, &val);
@@ -412,12 +412,12 @@ bool cosmoV_execute(CState *state) {
                 StkPtr temp = cosmoV_getTop(state, 2); // object is after the key
 
                 // sanity check
-                if (temp->type != COSMO_TOBJ || temp->val.obj->type != COBJ_OBJECT) {
+                if (!IS_OBJ(*temp) || cosmoV_readObj(*temp)->type != COBJ_OBJECT) {
                     cosmoV_error(state, "Couldn't set a field on type %s!", cosmoV_typeStr(*temp));
                     break;
                 }
 
-                CObjObject *object = (CObjObject*)temp->val.obj;
+                CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
                 cosmoO_setObject(state, object, *key, *value);
 
                 // pop everything off the stack
@@ -430,12 +430,12 @@ bool cosmoV_execute(CState *state) {
                 StkPtr temp = cosmoV_getTop(state, args+1); // grabs object from stack
 
                 // sanity check
-                if (temp->type != COSMO_TOBJ || temp->val.obj->type != COBJ_OBJECT) {
+                if (!IS_OBJ(*temp) || cosmoV_readObj(*temp)->type != COBJ_OBJECT) {
                     cosmoV_error(state, "Couldn't get from non-object type %s!", cosmoV_typeStr(*temp));
                     break;
                 }
 
-                CObjObject *object = (CObjObject*)temp->val.obj;
+                CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
                 CValue val; // to hold our value
 
                 cosmoO_getObject(state, object, *key, &val); // we use cosmoO_getObject instead of the cosmoV_getObject wrapper so we get the raw value from the object instead of the CObjMethod wrapper
@@ -471,9 +471,9 @@ bool cosmoV_execute(CState *state) {
             case OP_NEGATE: { // pop 1 value off the stack & try to negate
                 StkPtr val = cosmoV_getTop(state, 0);
 
-                if (val->type == COSMO_TNUMBER) {
+                if (IS_NUMBER(*val)) {
                     cosmoV_pop(state);
-                    cosmoV_pushNumber(state, -(val->val.num));
+                    cosmoV_pushNumber(state, -(cosmoV_readNumber(*val)));
                 } else {
                     cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
                 }
@@ -482,12 +482,12 @@ bool cosmoV_execute(CState *state) {
             case OP_COUNT: { // pop 1 value off the stack & if it's an object return the ammount of active entries it has
                 StkPtr temp = cosmoV_getTop(state, 0);
 
-                if (temp->type != COSMO_TOBJ || ((CObj*)temp->val.obj)->type != COBJ_OBJECT) {
+                if (!IS_OBJ(*temp) || cosmoV_readObj(*temp)->type != COBJ_OBJECT) {
                     cosmoV_error(state, "Expected object, got %s!", cosmoV_typeStr(*temp));
                     break;
                 }
 
-                CObjObject *obj = (CObjObject*)temp->val.obj;
+                CObjObject *obj = (CObjObject*)cosmoV_readObj(*temp);
                 cosmoV_pop(state);
                 cosmoV_pushNumber(state, cosmoT_count(&obj->tbl)); // pushes the count onto the stack
                 break;
@@ -517,9 +517,9 @@ bool cosmoV_execute(CState *state) {
                 StkPtr val = &frame->base[indx];
 
                 // check that it's a number value
-                if (val->type == COSMO_TNUMBER) { 
+                if (IS_NUMBER(*val)) { 
                     cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
-                    *val = cosmoV_newNumber(val->val.num + inc);
+                    *val = cosmoV_newNumber(cosmoV_readNumber(*val) + inc);
                 } else {
                     cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
                 }
@@ -533,9 +533,9 @@ bool cosmoV_execute(CState *state) {
                 CValue *val = cosmoT_insert(state, &state->globals, ident);
 
                 // check that it's a number value
-                if (val->type == COSMO_TNUMBER) { 
+               if (IS_NUMBER(*val)) { 
                     cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
-                    *val = cosmoV_newNumber(val->val.num + inc);
+                    *val = cosmoV_newNumber(cosmoV_readNumber(*val) + inc);
                 } else {
                     cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
                 }
@@ -548,9 +548,9 @@ bool cosmoV_execute(CState *state) {
                 CValue *val = frame->closure->upvalues[indx]->val;
 
                 // check that it's a number value
-                if (val->type == COSMO_TNUMBER) { 
+                if (IS_NUMBER(*val)) { 
                     cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
-                    *val = cosmoV_newNumber(val->val.num + inc);
+                    *val = cosmoV_newNumber(cosmoV_readNumber(*val) + inc);
                 } else {
                     cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
                 }
@@ -564,21 +564,21 @@ bool cosmoV_execute(CState *state) {
                 CValue ident = constants[indx]; // grabs identifier
 
                 // sanity check
-                if (temp->type != COSMO_TOBJ || temp->val.obj->type != COBJ_OBJECT) {
+                if (!IS_OBJ(*temp) || cosmoV_readObj(*temp)->type != COBJ_OBJECT) {
                     cosmoV_error(state, "Couldn't set a field on non-object type %s!", cosmoV_typeStr(*temp));
                     break;
                 }
 
-                CObjObject *object = (CObjObject*)temp->val.obj;
+                CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
                 CValue *val = cosmoT_insert(state, &object->tbl, ident);
 
                 // pop the object off the stack
                 cosmoV_pop(state);
 
                 // check that it's a number value
-                if (val->type == COSMO_TNUMBER) { 
+                if (IS_NUMBER(*val)) { 
                     cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
-                    *val = cosmoV_newNumber(val->val.num + inc);
+                    *val = cosmoV_newNumber(cosmoV_readNumber(*val) + inc);
                 } else {
                     cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
                 }

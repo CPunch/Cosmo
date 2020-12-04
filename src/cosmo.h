@@ -7,10 +7,16 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+//#define NAN_BOXXED
+
 // forward declare *most* stuff so our headers are cleaner
 typedef struct CState CState;
 typedef struct CChunk CChunk;
+#ifdef NAN_BOXXED
+typedef union CValue CValue;
+#else
 typedef struct CValue CValue;
+#endif
 
 // objs
 typedef struct CObj CObj;
