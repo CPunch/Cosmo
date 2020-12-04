@@ -45,15 +45,6 @@ typedef union CValue {
 #define GET_TYPE(x) \
     ((((x).data & MASK_QUIETNAN) == MASK_QUIETNAN) ? ((x).data & MASK_TYPE) : COSMO_TNUMBER)
 
-// sadly this requires a bit more than a simple macro :(
-/*static inline CosmoType GET_TYPE(CValue val) {
-    // it's not not a number (its a number)
-    if ((((val.data) & MASK_QUIETNAN) != MASK_QUIETNAN))
-        return COSMO_TNUMBER;
-
-    return (val.data & MASK_TYPE);
-}*/
-
 #define SIG_MASK        (MASK_QUIETNAN | MASK_TYPE)
 #define BOOL_SIG        (MASK_QUIETNAN | COSMO_TBOOLEAN)
 #define OBJ_SIG         (MASK_QUIETNAN | COSMO_TOBJ)
