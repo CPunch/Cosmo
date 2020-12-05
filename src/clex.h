@@ -49,7 +49,7 @@ typedef enum {
     TOKEN_END,
     TOKEN_FOR,
     TOKEN_FUNCTION,
-    TOKEN_CLASS,
+    TOKEN_PROTO,
     TOKEN_IF,
     TOKEN_LOCAL,
     TOKEN_NOT,

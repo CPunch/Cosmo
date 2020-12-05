@@ -5,7 +5,6 @@
 
 CReservedWord reservedWords[] = {
     {TOKEN_AND, "and", 3},
-    {TOKEN_CLASS, "class", 5},
     {TOKEN_DO, "do", 2},
     {TOKEN_ELSE, "else", 4},
     {TOKEN_ELSEIF, "elseif", 6},
@@ -18,6 +17,7 @@ CReservedWord reservedWords[] = {
     {TOKEN_NIL, "nil", 3},
     {TOKEN_NOT, "not", 3},
     {TOKEN_OR, "or", 2},
+    {TOKEN_PROTO, "proto", 5},
     {TOKEN_RETURN, "return", 6},
     {TOKEN_THEN, "then", 4},
     {TOKEN_TRUE, "true", 4},

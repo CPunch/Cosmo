@@ -1,4 +1,4 @@
-class Test
+proto Test
     function __init(self, x)
         self.x = x
     end

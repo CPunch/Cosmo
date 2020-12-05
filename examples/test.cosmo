@@ -1,5 +1,5 @@
-// crafts a dummy class
-class test end
+// crafts a dummy proto
+proto test end
 
 // instance of test
 var obj = test()

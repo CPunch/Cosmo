@@ -742,7 +742,7 @@ ParseRule ruleTable[] = {
     [TOKEN_END]             = {NULL, NULL, PREC_NONE},
     [TOKEN_FOR]             = {NULL, NULL, PREC_NONE},
     [TOKEN_FUNCTION]        = {anonFunction, NULL, PREC_NONE},
-    [TOKEN_CLASS]           = {NULL, NULL, PREC_NONE},
+    [TOKEN_PROTO]           = {NULL, NULL, PREC_NONE},
     [TOKEN_IF]              = {NULL, NULL, PREC_NONE},
     [TOKEN_LOCAL]           = {NULL, NULL, PREC_NONE},
     [TOKEN_NOT]             = {NULL, NULL, PREC_NONE},
@@ -828,7 +828,7 @@ static void defineVariable(CParseState *pstate, uint16_t global, bool forceLocal
     valuePopped(pstate, 1);
 }
 
-static void _class(CParseState *pstate) {
+static void _proto(CParseState *pstate) {
     uint16_t var = parseVariable(pstate, "Expected identifer!", false);
     int entries = 0;
     
@@ -1156,8 +1156,8 @@ static void expressionStatement(CParseState *pstate) {
         forLoop(pstate);
     } else if (match(pstate, TOKEN_FUNCTION)) {
         functionDeclaration(pstate);
-    } else if (match(pstate, TOKEN_CLASS)) {
-        _class(pstate);
+    } else if (match(pstate, TOKEN_PROTO)) {
+        _proto(pstate);
     } else if (match(pstate, TOKEN_RETURN)) {
         returnStatement(pstate);
     } else {
