@@ -182,7 +182,7 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
             invokeMethod(state, method->obj, method->func, args);
             break;
         }
-        case COBJ_OBJECT: {
+        case COBJ_OBJECT: { // object is being instantiated, making another object
             CObjObject *protoObj = (CObjObject*)cosmoV_readObj(*val);
             CObjObject *newObj = cosmoO_newObject(state);
             newObj->proto = protoObj;
@@ -221,7 +221,7 @@ static inline bool isFalsey(StkPtr val) {
     return IS_NIL(*val) || (IS_BOOLEAN(*val) && !cosmoV_readBoolean(*val));
 }
 
-COSMO_API void cosmoV_pushObject(CState *state, int pairs) {
+COSMO_API void cosmoV_makeObject(CState *state, int pairs) {
     StkPtr key, val;
     CObjObject *newObj = cosmoO_newObject(state);
     cosmoV_pushValue(state, cosmoV_newObj(newObj)); // so our GC doesn't free our new object
@@ -385,7 +385,7 @@ bool cosmoV_execute(CState *state) {
             }
             case OP_NEWOBJECT: {
                 uint16_t pairs = READUINT();
-                cosmoV_pushObject(state, pairs);
+                cosmoV_makeObject(state, pairs);
                 break;
             }
             case OP_GETOBJECT: {

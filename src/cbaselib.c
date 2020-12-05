@@ -42,11 +42,16 @@ CValue cosmoB_dgetProto(CState *state, int nargs, CValue *args) {
 }
 
 void cosmoB_loadDebug(CState *state) {
-    cosmoV_pushString(state, "getProto");
-    cosmoV_pushCFunction(state, cosmoB_dgetProto);
+    cosmoV_pushString(state, "getProto"); // key
+    cosmoV_pushCFunction(state, cosmoB_dgetProto); // value
+
+    // another key & value
     cosmoV_pushString(state, "setProto");
     cosmoV_pushCFunction(state, cosmoB_dsetProto);
-    cosmoV_pushObject(state, 2);
 
+    // we call makeObject leting it know there are 2 sets of key & value pairs on the stack (4 values total)
+    cosmoV_makeObject(state, 2);
+
+    // set debug proto to the debug object
     state->protoObj = cosmoV_readObject(*cosmoV_pop(state));
 }
