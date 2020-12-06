@@ -118,6 +118,9 @@ CObjUpval *cosmoO_newUpvalue(CState *state, CValue *val);
 bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val);
 void cosmoO_setObject(CState *state, CObjObject *object, CValue key, CValue val);
 
+void cosmoO_setUserData(CState *state, CObjObject *object, void *p);
+void *cosmoO_getUserData(CState *state, CObjObject *object);
+
 // internal string
 bool cosmoO_getIString(CState *state, CObjObject *object, int flag, CValue *val);
 

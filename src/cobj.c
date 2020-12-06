@@ -250,6 +250,14 @@ void cosmoO_setObject(CState *state, CObjObject *object, CValue key, CValue val)
     }
 }
 
+void cosmoO_setUserData(CState *state, CObjObject *object, void *p) {
+    object->user = p;
+}
+
+void *cosmoO_getUserData(CState *state, CObjObject *object) {
+    return object->user;
+}
+
 bool cosmoO_getIString(CState *state, CObjObject *object, int flag, CValue *val) {
     if (readFlag(object->istringFlags, flag))
         return false; // it's been cached as bad
