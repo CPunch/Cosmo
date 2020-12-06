@@ -206,9 +206,18 @@ CObjString *cosmoO_allocateString(CState *state, const char *str, size_t sz, uin
 bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val) {
     if (!cosmoT_get(&object->tbl, key, val)) { // if the field doesn't exist in the object, check the proto
         if (object->proto != NULL) { // sanity check
-            // first though, check for a member of the proto object, if it fails then lookup __index
+            // first though, check for a member of the proto object, if it fails then lookup __getters
             if (cosmoO_getObject(state, object->proto, key, val))
                 return true;
+
+            // if this fails or the key isn't in that table then we default to __index
+            if (cosmoO_getIString(state, object->proto, ISTRING_GETTER, val) && IS_OBJECT(*val) && cosmoO_getObject(state, cosmoV_readObject(*val), key, val)) {
+                cosmoV_pushValue(state, *val); // push function
+                cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
+                cosmoV_call(state, 1); // call the function with the 1 argument
+                *val = *cosmoV_pop(state); // set value to the return value of __index
+                return true;
+            }
 
             // then check for __index, if that exists, call it
             if (cosmoO_getIString(state, object->proto, ISTRING_INDEX, val)) {
@@ -229,16 +238,28 @@ bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val
 
 void cosmoO_setObject(CState *state, CObjObject *object, CValue key, CValue val) {
     CValue ret;
-    
-    // first check for __newindex in the prototype
-    if (object->proto != NULL && cosmoO_getIString(state, object->proto, ISTRING_NEWINDEX, &ret)) {
-        cosmoV_pushValue(state, ret); // push function
-        cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
-        cosmoV_pushValue(state, key); // push key & value pair
-        cosmoV_pushValue(state, val);
-        cosmoV_call(state, 3);
-        cosmoV_pop(state); // pop return value
-        return;
+
+    // if there's a prototype, check for the tag methods!
+    if (object->proto != NULL) {
+        // first check for __setters
+        if (cosmoO_getIString(state, object->proto, ISTRING_SETTER, &ret) && IS_OBJECT(ret) && cosmoO_getObject(state, cosmoV_readObject(ret), key, &ret)) {
+            cosmoV_pushValue(state, ret); // push function
+            cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
+            cosmoV_pushValue(state, val); // push new value
+            cosmoV_call(state, 2);
+            cosmoV_pop(state); // pop return value
+        }
+        
+        // then check for __newindex in the prototype
+        if (cosmoO_getIString(state, object->proto, ISTRING_NEWINDEX, &ret)) {
+            cosmoV_pushValue(state, ret); // push function
+            cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
+            cosmoV_pushValue(state, key); // push key & value pair
+            cosmoV_pushValue(state, val);
+            cosmoV_call(state, 3);
+            cosmoV_pop(state); // pop return value
+            return;
+        }
     }
 
     object->istringFlags = 0; // reset cache
