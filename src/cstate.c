@@ -20,9 +20,9 @@ CState *cosmoV_newState() {
 
     // GC
     state->objects = NULL;
-    state->grayCount = 0;
-    state->grayCapacity = 2;
-    state->grayStack = NULL;
+    state->grayStack.count = 0;
+    state->grayStack.capacity = 2;
+    state->grayStack.array = NULL;
     state->allocatedBytes = 0;
     state->nextGC = 1024 * 8; // threshhold starts at 8kb
 
@@ -72,7 +72,7 @@ void cosmoV_freeState(CState *state) {
     cosmoT_clearTable(state, &state->globals);
     
     // free our gray stack & finally free the state structure
-    free(state->grayStack);
+    free(state->grayStack.array);
     free(state);
 }
 

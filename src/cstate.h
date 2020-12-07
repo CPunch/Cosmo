@@ -22,13 +22,17 @@ typedef enum IStringEnum {
     ISTRING_MAX
 } IStringEnum;
 
+typedef struct ArrayCObj {
+    CObj **array;
+    int count;
+    int capacity;
+} ArrayCObj;
+
 typedef struct CState {
     bool panic;
     int freezeGC; // when > 0, GC events will be ignored (for internal use)
     CObj *objects; // tracks all of our allocated objects
-    CObj **grayStack; // keeps track of which objects *haven't yet* been traversed in our GC, but *have been* found
-    int grayCount;
-    int grayCapacity;
+    ArrayCObj grayStack; // keeps track of which objects *haven't yet* been traversed in our GC, but *have been* found
     size_t allocatedBytes;
     size_t nextGC; // when allocatedBytes reaches this threshhold, trigger a GC event
 

@@ -149,19 +149,10 @@ void markObject(CState *state, CObj *obj) {
     if (obj->type == COBJ_CFUNCTION || obj->type == COBJ_STRING) 
         return;
 
-    // we don't use cosmoM_growarray because we don't want to trigger another GC event while in the GC!
-    if (state->grayCount >= state->grayCapacity || state->grayStack == NULL) { 
-        int old = state->grayCapacity; 
-        state->grayCapacity = old * GROW_FACTOR; 
-        state->grayStack = (CObj**)realloc(state->grayStack, sizeof(CObj*) * state->grayCapacity); 
+    // we can use cosmoM_growaraay because we lock the GC when we entered in cosmoM_collectGarbage
+    cosmoM_growarray(state, CObj*, state->grayStack.array, state->grayStack.count, state->grayStack.capacity);
 
-        if (state->grayStack == NULL) {
-            CERROR("failed to allocate memory for grayStack!");
-            exit(1);
-        }
-    }
-
-    state->grayStack[state->grayCount++] = obj;
+    state->grayStack.array[state->grayStack.count++] = obj;
 }
 
 void markValue(CState *state, CValue val) {
@@ -171,8 +162,8 @@ void markValue(CState *state, CValue val) {
 
 // trace our gray references
 void traceGrays(CState *state) {
-    while (state->grayCount > 0) {
-        CObj* obj = state->grayStack[--state->grayCount];
+    while (state->grayStack.count > 0) {
+        CObj* obj = state->grayStack.array[--state->grayStack.count];
         blackenObject(state, obj);
     }
 }
