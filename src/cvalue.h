@@ -18,12 +18,14 @@ typedef double cosmo_Number;
 
 #ifdef NAN_BOXXED
 /*
-        NaN box, this is great for performance on x86_64 or ARM64 architectures. If you don't know how this works please reference these
+        NaN box, this is great for fitting more in the cpu cache on x86_64 or ARM64 architectures. If you don't know how this works please reference these
     two articles:
 
     https://leonardschuetz.ch/blog/nan-boxing/ and https://piotrduperas.com/posts/nan-boxing/
 
     both are great resources :)
+
+    Performance notes: this can actually degrade performance, so only enable if you know what you're doing.
 
     TL;DR: we can store payloads in the NaN value in the IEEE 754 standard.
 */

@@ -39,9 +39,12 @@
     printf("unfreezing state at %s:%d [%d]\n", __FILE__, __LINE__, state->freezeGC); \
     cosmoM_checkGarbage(state, 0)
 #else
+
+// freeze's the garbage collector until cosmoM_unfreezeGC is called
 #define cosmoM_freezeGC(state) \
     state->freezeGC++
 
+// unfreeze's the garbage collector and tries to run a garbage collection cycle
 #define cosmoM_unfreezeGC(state) \
     state->freezeGC--; \
     cosmoM_checkGarbage(state, 0)
@@ -53,9 +56,13 @@ COSMO_API bool cosmoM_checkGarbage(CState *state, size_t needed); // returns tru
 COSMO_API void cosmoM_collectGarbage(CState *state);
 COSMO_API void cosmoM_updateThreshhold(CState *state);
 
-/*
-    wrapper for cosmoM_reallocate so we can track our memory usage (it's also safer :P)
-*/
+// lets the VM know you are holding a reference to a CObj and to not free it
+COSMO_API void cosmoM_addRoot(CState *state, CObj *newRoot);
+
+// lets the VM know this root is no longer held in a reference and is able to be free'd
+COSMO_API void cosmoM_removeRoot(CState *state, CObj *oldRoot);
+
+// wrapper for cosmoM_reallocate so we can track our memory usage (it's also safer :P)
 static inline void *cosmoM_xmalloc(CState *state, size_t sz) {
     return cosmoM_reallocate(state, NULL, 0, sz);
 }

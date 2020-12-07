@@ -30,7 +30,6 @@ CValue cosmoB_input(CState *state, int nargs, CValue *args) {
 }
 
 static void interpret(CState *state, const char* script) {
-    
     // cosmoP_compileString pushes the result onto the stack (NIL or COBJ_FUNCTION)
     CObjFunction* func = cosmoP_compileString(state, script);
     if (func != NULL) {

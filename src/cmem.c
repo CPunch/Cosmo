@@ -191,6 +191,16 @@ void sweep(CState *state) {
     }
 }
 
+void markUserRoots(CState *state) {
+    CObj *root = state->userRoots;
+
+    // traverse userRoots and mark all the object
+    while (root != NULL) {
+        markObject(state, root);
+        root = root->nextRoot;
+    }
+}
+
 void markRoots(CState *state) {
     // mark all values on the stack
     for (StkPtr value = state->stack; value < state->top; value++) {
@@ -213,6 +223,9 @@ void markRoots(CState *state) {
     for (int i = 0; i < ISTRING_MAX; i++)
         markObject(state, (CObj*)state->iStrings[i]);
 
+    // mark the user defined roots
+    markUserRoots(state);
+
     // mark our proto object
     markObject(state, (CObj*)state->protoObj);
     traceGrays(state);
@@ -234,7 +247,7 @@ COSMO_API void cosmoM_collectGarbage(CState *state) {
     // set our next GC event
     cosmoM_updateThreshhold(state);
 
-    cosmoM_unfreezeGC(state);
+    state->freezeGC--; // we don't want to use cosmoM_unfreezeGC because that might trigger a GC event
 #ifdef GC_DEBUG
     printf("-- GC end, reclaimed %ld bytes (started at %ld, ended at %ld), next garbage collection scheduled at %ld bytes\n",
             start - state->allocatedBytes, start, state->allocatedBytes, state->nextGC);
@@ -244,4 +257,43 @@ COSMO_API void cosmoM_collectGarbage(CState *state) {
 
 COSMO_API void cosmoM_updateThreshhold(CState *state) {
     state->nextGC = state->allocatedBytes * HEAP_GROW_FACTOR;
+}
+
+COSMO_API void cosmoM_addRoot(CState *state, CObj *newRoot) {
+    // first, check and make sure this root doesn't already exist in the list
+    CObj *root = state->userRoots;
+    while (root != NULL) {
+        if (root == newRoot) // found in the list, abort
+            return;
+        
+        root = root->nextRoot;
+    }
+    
+    // adds root to userRoot linked list
+    newRoot->nextRoot = state->userRoots;
+    state->userRoots = newRoot;
+}
+
+COSMO_API void cosmoM_removeRoot(CState *state, CObj *oldRoot) {
+    CObj *prev = NULL;
+    CObj *root = state->userRoots;
+
+    // traverse the userRoot linked list
+    while (root != NULL) {
+        if (root == oldRoot) { // found root in list
+
+            // remove from the linked list
+            if (prev == NULL) {
+                state->userRoots = root->nextRoot;
+            } else {
+                prev->nextRoot = root->nextRoot;
+            }
+
+            root->nextRoot = NULL;
+            break;
+        }
+
+        prev = root;
+        root = root->nextRoot;
+    }
 }

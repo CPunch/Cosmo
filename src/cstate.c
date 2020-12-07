@@ -20,6 +20,7 @@ CState *cosmoV_newState() {
 
     // GC
     state->objects = NULL;
+    state->userRoots = NULL;
     state->grayStack.count = 0;
     state->grayStack.capacity = 2;
     state->grayStack.array = NULL;

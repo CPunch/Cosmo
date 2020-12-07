@@ -24,6 +24,8 @@ CObj *cosmoO_allocateBase(CState *state, size_t sz, CObjType type) {
 
     obj->next = state->objects;
     state->objects = obj;
+
+    obj->nextRoot = NULL;
 #ifdef GC_DEBUG
     printf("allocated %p with OBJ_TYPE %d\n", obj, type);
 #endif

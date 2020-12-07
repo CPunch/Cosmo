@@ -31,6 +31,7 @@ typedef struct CObj {
     CObjType type;
     bool isMarked; // for the GC
     struct CObj *next;
+    struct CObj *nextRoot; // for the root linked list
 } CObj;
 
 typedef struct CObjString {
