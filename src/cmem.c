@@ -6,9 +6,7 @@
 #include "cobj.h"
 #include "cbaselib.h"
 
-/*
-    copy buffer to new larger buffer, and free the old buffer
-*/
+// realloc wrapper
 void *cosmoM_reallocate(CState* state, void *buf, size_t oldSize, size_t newSize) {
     state->allocatedBytes += newSize - oldSize;
 
@@ -30,7 +28,7 @@ void *cosmoM_reallocate(CState* state, void *buf, size_t oldSize, size_t newSize
     cosmoM_checkGarbage(state, 0);
 #endif
 
-    // otherwise just use realloc to do all the heavy lifting
+    // if NULL is passed, realloc() acts like malloc()
     void *newBuf = realloc(buf, newSize);
 
     if (newBuf == NULL) {
@@ -247,7 +245,7 @@ COSMO_API void cosmoM_collectGarbage(CState *state) {
     // set our next GC event
     cosmoM_updateThreshhold(state);
 
-    state->freezeGC--; // we don't want to use cosmoM_unfreezeGC because that might trigger a GC event
+    state->freezeGC--; // we don't want to use cosmoM_unfreezeGC because that might trigger a GC event (if GC_STRESS is defined)
 #ifdef GC_DEBUG
     printf("-- GC end, reclaimed %ld bytes (started at %ld, ended at %ld), next garbage collection scheduled at %ld bytes\n",
             start - state->allocatedBytes, start, state->allocatedBytes, state->nextGC);

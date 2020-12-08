@@ -25,8 +25,6 @@ typedef double cosmo_Number;
 
     both are great resources :)
 
-    Performance notes: this can actually degrade performance, so only enable if you know what you're doing.
-
     TL;DR: we can store payloads in the NaN value in the IEEE 754 standard.
 */
 typedef union CValue {
@@ -34,28 +32,28 @@ typedef union CValue {
     cosmo_Number num;
 } CValue;
 
-#define MASK_TYPE       ((uint64_t)0x7)
-#define MASK_PAYLOAD    ((uint64_t)0x0007fffffffffff8)
+#define MASK_TYPE       ((uint64_t)0x0007000000000000)
+#define MASK_PAYLOAD    ((uint64_t)0x0000ffffffffffff)
 
 // 3 bits (low bits) are reserved for the type
-#define MAKE_PAYLOAD(x) (((uint64_t)(x) << 3) & MASK_PAYLOAD)
-#define READ_PAYLOAD(x) (((x).data & MASK_PAYLOAD) >> 3)
+#define MAKE_PAYLOAD(x) ((uint64_t)(x) & MASK_PAYLOAD)
+#define READ_PAYLOAD(x) ((x).data & MASK_PAYLOAD)
 
 // The bits that must be set to indicate a quiet NaN.
 #define MASK_QUIETNAN   ((uint64_t)0x7ff8000000000000)
 
 #define GET_TYPE(x) \
-    ((((x).data & MASK_QUIETNAN) == MASK_QUIETNAN) ? ((x).data & MASK_TYPE) : COSMO_TNUMBER)
+    ((((x).data & MASK_QUIETNAN) == MASK_QUIETNAN) ? (((x).data & MASK_TYPE) >> 48) : COSMO_TNUMBER)
 
-#define SIG_MASK        (MASK_QUIETNAN | MASK_TYPE)
-#define BOOL_SIG        (MASK_QUIETNAN | COSMO_TBOOLEAN)
-#define OBJ_SIG         (MASK_QUIETNAN | COSMO_TOBJ)
-#define NIL_SIG         (MASK_QUIETNAN | COSMO_TNIL)
+static const uint64_t SIG_MASK =    (MASK_QUIETNAN | MASK_TYPE);
+static const uint64_t BOOL_SIG =    (MASK_QUIETNAN | ((uint64_t)(COSMO_TBOOLEAN) << 48));
+static const uint64_t OBJ_SIG =     (MASK_QUIETNAN | ((uint64_t)(COSMO_TOBJ) << 48));
+static const uint64_t NIL_SIG =     (MASK_QUIETNAN | ((uint64_t)(COSMO_TNIL) << 48));
 
 #define cosmoV_newNumber(x)     ((CValue){.num = x})
-#define cosmoV_newObj(x)        ((CValue){.data = MASK_QUIETNAN | MAKE_PAYLOAD((uintptr_t)x) | COSMO_TOBJ})
-#define cosmoV_newBoolean(x)    ((CValue){.data = MASK_QUIETNAN | MAKE_PAYLOAD(x) | COSMO_TBOOLEAN})
-#define cosmoV_newNil()         ((CValue){.data = MASK_QUIETNAN | COSMO_TNIL})
+#define cosmoV_newBoolean(x)    ((CValue){.data = MAKE_PAYLOAD(x) | BOOL_SIG})
+#define cosmoV_newObj(x)        ((CValue){.data = MAKE_PAYLOAD((uintptr_t)x) | OBJ_SIG})
+#define cosmoV_newNil()         ((CValue){.data = NIL_SIG})
 
 #define cosmoV_readNumber(x)    ((x).num)
 #define cosmoV_readBoolean(x)   ((bool)READ_PAYLOAD(x))

@@ -1,0 +1,11 @@
+local function fib(num)
+    if num <= 1 then
+        return num
+    else
+        return fib(num-2) + fib(num-1)
+    end
+end
+
+for (var i = 1; i < 40; i++) do
+    print("The fib number of " .. i .. " is " .. fib(i))
+end

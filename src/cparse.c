@@ -360,7 +360,7 @@ static void alignStack(CParseState *pstate, int alignment) {
     pstate->compiler->pushedValues = alignment;
 }
 
-// ================================================================ [PRATT'S PARSER] ================================================================
+// ================================================================ [PARSER] ================================================================
 
 static void number(CParseState *pstate, bool canAssign) {
     cosmo_Number num = strtod(pstate->previous.start, NULL);
