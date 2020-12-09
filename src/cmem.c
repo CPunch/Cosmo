@@ -104,6 +104,7 @@ void blackenObject(CState *state, CObj *obj) {
         case COBJ_FUNCTION: {
             CObjFunction *func = (CObjFunction*)obj;
             markObject(state, (CObj*)func->name);
+            markObject(state, (CObj*)func->module);
             markArray(state, &func->chunk.constants);
 
             break;

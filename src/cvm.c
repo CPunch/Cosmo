@@ -19,7 +19,7 @@ void cosmoV_error(CState *state, const char *format, ...) {
         int line = chunk->lineInfo[frame->pc - chunk->buf - 1];
 
         if (i == state->frameCount - 1) { // it's the last call frame, prepare for the objection to be printed
-            fprintf(stderr, "Objection on [line %d] in ", line);
+            fprintf(stderr, "Objection in %.*s on [line %d] in ", function->module->length, function->module->str, line);
             if (function->name == NULL) { // unnamed chunk
                 fprintf(stderr, "%s\n\t", UNNAMEDCHUNK);
             } else {

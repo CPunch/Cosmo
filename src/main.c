@@ -29,11 +29,11 @@ CValue cosmoB_input(CState *state, int nargs, CValue *args) {
     return cosmoV_newObj(cosmoO_copyString(state, line, strlen(line)-1)); // -1 for the \n
 }
 
-static void interpret(CState *state, const char* script) {
-    // cosmoP_compileString pushes the result onto the stack (NIL or COBJ_FUNCTION)
-    CObjFunction* func = cosmoP_compileString(state, script);
+static void interpret(CState *state, const char *script, const char *mod) {
+    // cosmoP_compileString pushes the result onto the stack (NIL or COBJ_CLOSURE)
+    CObjFunction* func = cosmoP_compileString(state, script, mod);
     if (func != NULL) {
-        disasmChunk(&func->chunk, "_main", 0);
+        disasmChunk(&func->chunk, func->name != NULL ? func->name->str : "_main", 0);
         
         COSMOVMRESULT res = cosmoV_call(state, 0); // 0 args being passed
 
@@ -62,7 +62,7 @@ static void repl() {
             break;
         }
 
-        interpret(state, line);
+        interpret(state, line, "REPL");
     }
 
     cosmoV_freeState(state);
@@ -107,7 +107,7 @@ static void runFile(const char* fileName) {
 
     cosmoV_register(state, "input", cosmoV_newObj(cosmoO_newCFunction(state, cosmoB_input)));
 
-    interpret(state, script);
+    interpret(state, script, fileName);
 
     cosmoV_freeState(state);
     free(script);

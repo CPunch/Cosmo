@@ -55,6 +55,7 @@ typedef struct CObjFunction {
     int args;
     int upvals;
     CObjString *name;
+    CObjString *module; // name of the "module"
 } CObjFunction;
 
 typedef struct CObjCFunction {

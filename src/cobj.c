@@ -112,6 +112,7 @@ CObjFunction *cosmoO_newFunction(CState *state) {
     func->args = 0;
     func->upvals = 0;
     func->name = NULL;
+    func->module = NULL;
 
     initChunk(state, &func->chunk, ARRAY_START);
     return func;

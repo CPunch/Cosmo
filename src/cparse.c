@@ -41,7 +41,8 @@ typedef struct CCompilerState {
 
 typedef struct {
     CLexState *lex;
-    CCompilerState* compiler;
+    CCompilerState *compiler;
+    CObjString *module; // name of the module (can be NULL)
     CState *state;
     CToken current;
     CToken previous; // token right after the current token
@@ -95,9 +96,12 @@ static void initCompilerState(CParseState* pstate, CCompilerState *ccstate, Func
     ccstate->savedPushed = 0;
     ccstate->type = type;
     ccstate->function = cosmoO_newFunction(pstate->state);
+    ccstate->function->module = pstate->module;
 
     if (type != FTYPE_SCRIPT) 
         ccstate->function->name = cosmoO_copyString(pstate->state, pstate->previous.start, pstate->previous.length);
+    else
+        ccstate->function->name = cosmoO_copyString(pstate->state, UNNAMEDCHUNK, strlen(UNNAMEDCHUNK));
 
     // mark first local slot as used (this'll hold the CObjFunction of the current function, or if it's a method it'll hold the currently bounded object)
     Local *local = &ccstate->locals[ccstate->localCount++];
@@ -107,13 +111,14 @@ static void initCompilerState(CParseState* pstate, CCompilerState *ccstate, Func
     local->name.length = 0;
 }
 
-static void initParseState(CParseState *pstate, CCompilerState *ccstate, CState *s, const char *source) {
+static void initParseState(CParseState *pstate, CCompilerState *ccstate, CState *s, const char *source, const char *module) {
     pstate->lex = cosmoL_newLexState(s, source);
 
     pstate->state = s;
     pstate->hadError = false;
     pstate->panic = false;
     pstate->compiler = ccstate;
+    pstate->module = cosmoO_copyString(s, module, strlen(module));
     
     initCompilerState(pstate, ccstate, FTYPE_SCRIPT, NULL); // enclosing starts as NULL
 }
@@ -1194,11 +1199,11 @@ static CObjFunction *endCompiler(CParseState *pstate) {
 
 // ================================================================ [API] ================================================================
 
-CObjFunction* cosmoP_compileString(CState *state, const char *source) {
+CObjFunction* cosmoP_compileString(CState *state, const char *source, const char *module) {
     CParseState parser;
     CCompilerState compiler;
     cosmoM_freezeGC(state); // ignore all GC events while compiling
-    initParseState(&parser, &compiler, state, source);
+    initParseState(&parser, &compiler, state, source, module);
 
     advance(&parser);
 
