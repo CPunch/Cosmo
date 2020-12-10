@@ -240,6 +240,25 @@ COSMO_API void cosmoV_makeObject(CState *state, int pairs) {
     cosmoV_pushValue(state, cosmoV_newObj(newObj));
 }
 
+COSMO_API void cosmoV_makeDictionary(CState *state, int pairs) {
+    StkPtr key, val;
+    CObjDict *newObj = cosmoO_newDictionary(state);
+    cosmoV_pushValue(state, cosmoV_newObj(newObj)); // so our GC doesn't free our new dictionary
+
+    for (int i = 0; i < pairs; i++) {
+        val = cosmoV_getTop(state, (i*2) + 1);
+        key = cosmoV_getTop(state, (i*2) + 2);
+
+        // set key/value pair
+        CValue *newVal = cosmoT_insert(state, &newObj->tbl, *key);
+        *newVal = *val;
+    }
+
+    // once done, pop everything off the stack + push new dictionary
+    cosmoV_setTop(state, (pairs * 2) + 1); // + 1 for our dictionary
+    cosmoV_pushValue(state, cosmoV_newObj(newObj));
+}
+
 COSMO_API bool cosmoV_getObject(CState *state, CObjObject *object, CValue key, CValue *val) {
     if (cosmoO_getObject(state, object, key, val)) {
         if (IS_OBJ(*val)) {
@@ -381,6 +400,70 @@ bool cosmoV_execute(CState *state) {
             case OP_CLOSE: {
                 closeUpvalues(state, state->top - 1); 
                 cosmoV_pop(state);
+                break;
+            }
+            case OP_NEWDICT: {
+                uint16_t pairs = READUINT();
+                cosmoV_makeDictionary(state, pairs);
+                break;
+            }
+            case OP_INDEX: {
+                StkPtr key = cosmoV_getTop(state, 0); // key should be the top of the stack
+                StkPtr temp = cosmoV_getTop(state, 1); // after that should be the dictionary
+
+                // sanity check
+                if (IS_OBJ(*temp)) {
+                    CValue val; // to hold our value
+
+                    if (cosmoV_readObj(*temp)->type == COBJ_DICT) {
+                        CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
+                        cosmoT_get(&dict->tbl, *key, &val);
+                    } else if (cosmoV_readObj(*temp)->type == COBJ_OBJECT) { // check for __index!
+                        CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
+
+                        if (!cosmoO_indexObject(state, object, *key, &val))
+                            break;
+                    } else {
+                        cosmoV_error(state, "Couldn't index type %s!", cosmoV_typeStr(*temp));
+                        break;
+                    }
+
+                    cosmoV_setTop(state, 2); // pops the object & the key
+                    cosmoV_pushValue(state, val); // pushes the field result
+                } else {
+                    cosmoV_error(state, "Couldn't index type %s!", cosmoV_typeStr(*temp));
+                }
+
+                break;
+            }
+            case OP_NEWINDEX: {
+                StkPtr value = cosmoV_getTop(state, 0); // value is at the top of the stack
+                StkPtr key = cosmoV_getTop(state, 1);
+                StkPtr temp = cosmoV_getTop(state, 2); // object is after the key
+
+                // sanity check
+                if (IS_OBJ(*temp)) {
+                    if (cosmoV_readObj(*temp)->type == COBJ_DICT) {
+                        CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
+                        CValue *newVal = cosmoT_insert(state, &dict->tbl, *key);
+
+                        *newVal = *value; // set the index
+                    } else if (cosmoV_readObj(*temp)->type == COBJ_OBJECT) { // check for __newindex!
+                        CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
+
+                        if (!cosmoO_newIndexObject(state, object, *key, *value))
+                            break;
+                    } else {
+                        cosmoV_error(state, "Couldn't set index with type %s!", cosmoV_typeStr(*temp));
+                        break;
+                    }
+
+                    // pop everything off the stack
+                    cosmoV_setTop(state, 3);
+                } else {
+                    cosmoV_error(state, "Couldn't set index with type %s!", cosmoV_typeStr(*temp));
+                }
+
                 break;
             }
             case OP_NEWOBJECT: {
@@ -557,6 +640,52 @@ bool cosmoV_execute(CState *state) {
 
                 break;
             }
+            case OP_INCINDEX: {
+                int8_t inc = READBYTE() - 128; // ammount we're incrementing by
+                StkPtr temp = cosmoV_getTop(state, 1); // object should be above the key
+                StkPtr key = cosmoV_getTop(state, 0); // grabs key
+
+                 if (IS_OBJ(*temp)) {
+                    if (cosmoV_readObj(*temp)->type == COBJ_DICT) {
+                        CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
+                        CValue *val = cosmoT_insert(state, &dict->tbl, *key);
+
+                        // pops dict & key from stack
+                        cosmoV_setTop(state, 2);
+
+                        if (IS_NUMBER(*val)) { 
+                            cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
+                            *val = cosmoV_newNumber(cosmoV_readNumber(*val) + inc);
+                        } else {
+                            cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
+                            break;
+                        }
+                    } else if (cosmoV_readObj(*temp)->type == COBJ_OBJECT) { // check for __newindex!
+                        CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
+                        CValue val;
+                        
+                        // call __index
+                        if (cosmoO_indexObject(state, object, *key, &val)) {
+                            if (IS_NUMBER(val)) { 
+                                cosmoV_pushValue(state, val); // pushes old value onto the stack :)
+
+                                // call __newindex
+                                cosmoO_newIndexObject(state, object, *key, cosmoV_newNumber(cosmoV_readNumber(val) + inc));
+                            } else {
+                                cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(val));
+                                break;
+                            }
+                        }
+                    } else {
+                        cosmoV_error(state, "Couldn't set index with type %s!", cosmoV_typeStr(*temp));
+                        break;
+                    }
+                } else {
+                    cosmoV_error(state, "Couldn't set index with type %s!", cosmoV_typeStr(*temp));
+                }
+
+                break;
+            }
             case OP_INCOBJECT: {
                 int8_t inc = READBYTE() - 128; // ammount we're incrementing by
                 uint16_t indx = READUINT();
@@ -570,17 +699,19 @@ bool cosmoV_execute(CState *state) {
                 }
 
                 CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
-                CValue *val = cosmoT_insert(state, &object->tbl, ident);
+                CValue val;
+                
+                cosmoO_getObject(state, object, ident, &val);
 
                 // pop the object off the stack
                 cosmoV_pop(state);
 
                 // check that it's a number value
-                if (IS_NUMBER(*val)) { 
-                    cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
-                    *val = cosmoV_newNumber(cosmoV_readNumber(*val) + inc);
+                if (IS_NUMBER(val)) { 
+                    cosmoV_pushValue(state, val); // pushes old value onto the stack :)
+                    cosmoO_setObject(state, object, ident, cosmoV_newNumber(cosmoV_readNumber(val) + inc));
                 } else {
-                    cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
+                    cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(val));
                 }
 
                 break;

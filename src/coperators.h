@@ -29,9 +29,12 @@ typedef enum {
     OP_CALL, // calls top[-uint8_t]
     OP_CLOSURE, 
     OP_CLOSE,
+    OP_NEWDICT,
+    OP_INDEX,
+    OP_NEWINDEX,
     OP_NEWOBJECT,
-    OP_GETOBJECT,
     OP_SETOBJECT,
+    OP_GETOBJECT,
     OP_INVOKE,
 
     // ARITHMETIC
@@ -46,6 +49,7 @@ typedef enum {
     OP_INCLOCAL, // pushes old value to stack, adds (uint8_t-128) to local[uint8_t]
     OP_INCGLOBAL, // pushes old value to stack, adds (uint8_t-128) to globals[const[uint16_t]]
     OP_INCUPVAL, // pushes old value to stack, adds (uint8_t-128) to closure->upval[uint8_t]
+    OP_INCINDEX, // pushes old value to stack, adds (uint8_t-128) to dict[pop()]
     OP_INCOBJECT, // pushes old value to stack, adds (uint8_t-128) to obj[const[uint16_t]]
 
     // EQUALITY

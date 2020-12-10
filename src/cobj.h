@@ -13,6 +13,7 @@ typedef uint32_t cosmo_Flag;
 typedef enum {
     COBJ_STRING,
     COBJ_OBJECT,
+    COBJ_DICT, // dictionary
     COBJ_FUNCTION,
     COBJ_CFUNCTION,
     // internal use
@@ -48,6 +49,11 @@ typedef struct CObjObject {
     void *user; // userdata (NULL by default)
     struct CObjObject *proto; // protoobject, describes the behavior of the object
 } CObjObject;
+
+typedef struct CObjDict { // dictionary, a wrapper for CTable
+    CommonHeader; // "is a" CObj
+    CTable tbl;
+} CObjDict;
 
 typedef struct CObjFunction {
     CommonHeader; // "is a" CObj
@@ -109,6 +115,7 @@ void cosmoO_free(CState *state, CObj* obj);
 bool cosmoO_equal(CObj* obj1, CObj* obj2);
 
 CObjObject *cosmoO_newObject(CState *state);
+CObjDict *cosmoO_newDictionary(CState *state);
 CObjFunction *cosmoO_newFunction(CState *state);
 CObjCFunction *cosmoO_newCFunction(CState *state, CosmoCFunction func);
 CObjMethod *cosmoO_newMethod(CState *state, CObjClosure *func, CObjObject *obj);
@@ -119,6 +126,8 @@ CObjUpval *cosmoO_newUpvalue(CState *state, CValue *val);
 
 bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val);
 void cosmoO_setObject(CState *state, CObjObject *object, CValue key, CValue val);
+bool cosmoO_indexObject(CState *state, CObjObject *object, CValue key, CValue *val);
+bool cosmoO_newIndexObject(CState *state, CObjObject *object, CValue key, CValue val);
 
 void cosmoO_setUserData(CState *state, CObjObject *object, void *p);
 void *cosmoO_getUserData(CState *state, CObjObject *object);

@@ -51,6 +51,12 @@ void cosmoO_free(CState *state, CObj* obj) {
             cosmoM_free(state, CObjObject, objTbl);
             break;
         }
+        case COBJ_DICT: {
+            CObjDict *dict = (CObjDict*)obj;
+            cosmoT_clearTable(state, &dict->tbl);
+            cosmoM_free(state, CObjDict, dict);
+            break;
+        }
         case COBJ_UPVALUE: {
             cosmoM_free(state, CObjUpval, obj);
             break;
@@ -101,6 +107,17 @@ CObjObject *cosmoO_newObject(CState *state) {
     obj->istringFlags = 0;
     obj->user = NULL; // reserved for C API
     cosmoV_pushValue(state, cosmoV_newObj(obj)); // so our GC can keep track of it
+    cosmoT_initTable(state, &obj->tbl, ARRAY_START);
+    cosmoV_pop(state);
+
+    return obj;
+}
+
+CObjDict *cosmoO_newDictionary(CState *state) {
+    CObjDict *obj = (CObjDict*)cosmoO_allocateBase(state, sizeof(CObjDict), COBJ_DICT);
+
+    // init the table (might cause a GC event)
+    cosmoV_pushValue(state, cosmoV_newObj(obj)); // so our GC can keep track of obj
     cosmoT_initTable(state, &obj->tbl, ARRAY_START);
     cosmoV_pop(state);
 
@@ -208,32 +225,17 @@ CObjString *cosmoO_allocateString(CState *state, const char *str, size_t sz, uin
 
 bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val) {
     if (!cosmoT_get(&object->tbl, key, val)) { // if the field doesn't exist in the object, check the proto
-        if (object->proto != NULL) { // sanity check
-            // first though, check for a member of the proto object, if it fails then lookup __getters
-            if (cosmoO_getObject(state, object->proto, key, val))
-                return true;
-
-            // if this fails or the key isn't in that table then we default to __index
-            if (cosmoO_getIString(state, object->proto, ISTRING_GETTER, val) && IS_OBJECT(*val) && cosmoO_getObject(state, cosmoV_readObject(*val), key, val)) {
-                cosmoV_pushValue(state, *val); // push function
-                cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
-                cosmoV_call(state, 1); // call the function with the 1 argument
-                *val = *cosmoV_pop(state); // set value to the return value of __index
-                return true;
-            }
-
-            // then check for __index, if that exists, call it
-            if (cosmoO_getIString(state, object->proto, ISTRING_INDEX, val)) {
-                cosmoV_pushValue(state, *val); // push function
-                cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
-                cosmoV_pushValue(state, key); // push key
-                cosmoV_call(state, 2); // call the function with the 2 arguments
-                *val = *cosmoV_pop(state); // set value to the return value of __index
-                return true;
-            }
+        if (cosmoO_getIString(state, object, ISTRING_GETTER, val) && IS_OBJECT(*val) && cosmoO_getObject(state, cosmoV_readObject(*val), key, val)) {
+            cosmoV_pushValue(state, *val); // push function
+            cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
+            cosmoV_call(state, 1); // call the function with the 1 argument
+            *val = *cosmoV_pop(state); // set value to the return value of __index
+            return true;
         }
         
-        return false; // no protoobject to check against
+        if (object->proto != NULL && cosmoO_getObject(state, object->proto, key, val))
+            return true;
+        return false; // no protoobject to check against / key not founc
     }
 
     return true;
@@ -242,27 +244,14 @@ bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val
 void cosmoO_setObject(CState *state, CObjObject *object, CValue key, CValue val) {
     CValue ret;
 
-    // if there's a prototype, check for the tag methods!
-    if (object->proto != NULL) {
-        // first check for __setters
-        if (cosmoO_getIString(state, object->proto, ISTRING_SETTER, &ret) && IS_OBJECT(ret) && cosmoO_getObject(state, cosmoV_readObject(ret), key, &ret)) {
-            cosmoV_pushValue(state, ret); // push function
-            cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
-            cosmoV_pushValue(state, val); // push new value
-            cosmoV_call(state, 2);
-            cosmoV_pop(state); // pop return value
-        }
-        
-        // then check for __newindex in the prototype
-        if (cosmoO_getIString(state, object->proto, ISTRING_NEWINDEX, &ret)) {
-            cosmoV_pushValue(state, ret); // push function
-            cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
-            cosmoV_pushValue(state, key); // push key & value pair
-            cosmoV_pushValue(state, val);
-            cosmoV_call(state, 3);
-            cosmoV_pop(state); // pop return value
-            return;
-        }
+    // first check for __setters
+    if (cosmoO_getIString(state, object, ISTRING_SETTER, &ret) && IS_OBJECT(ret) && cosmoO_getObject(state, cosmoV_readObject(ret), key, &ret)) {
+        cosmoV_pushValue(state, ret); // push function
+        cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
+        cosmoV_pushValue(state, val); // push new value
+        cosmoV_call(state, 2);
+        cosmoV_pop(state); // pop return value
+        return;
     }
 
     object->istringFlags = 0; // reset cache
@@ -282,11 +271,11 @@ void *cosmoO_getUserData(CState *state, CObjObject *object) {
     return object->user;
 }
 
-bool cosmoO_getIString(CState *state, CObjObject *object, int flag, CValue *val) {
+bool rawgetIString(CState *state, CObjObject *object, int flag, CValue *val) {
     if (readFlag(object->istringFlags, flag))
         return false; // it's been cached as bad
-        
-    if (!cosmoO_getObject(state, object, cosmoV_newObj(state->iStrings[flag]), val)) {
+
+    if (!cosmoT_get(&object->tbl, cosmoV_newObj(state->iStrings[flag]), val)) {
         // mark it bad!
         setFlagOn(object->istringFlags, flag);
         return false;
@@ -295,10 +284,58 @@ bool cosmoO_getIString(CState *state, CObjObject *object, int flag, CValue *val)
     return true; // :)
 }
 
+bool cosmoO_getIString(CState *state, CObjObject *object, int flag, CValue *val) {
+    CObjObject *obj = object;
+
+    do {
+        if (rawgetIString(state, obj, flag, val))
+            return true;
+    } while ((obj = obj->proto) != NULL); // sets obj to it's proto and compares it to NULL
+
+    return false; // obj->proto was false, the istring doesn't exist in this object chain
+}
+
+bool cosmoO_indexObject(CState *state, CObjObject *object, CValue key, CValue *val) {
+    if (cosmoO_getIString(state, object, ISTRING_INDEX, val)) {
+        cosmoV_pushValue(state, *val); // push function
+        cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
+        cosmoV_pushValue(state, key); // push key
+        cosmoV_call(state, 2); // call the function with the 2 arguments
+        *val = *cosmoV_pop(state); // set value to the return value of __index
+        return true;
+    } else { // there's no __index function defined!
+        cosmoV_error(state, "Couldn't index object without __index function!");
+    }
+
+    return false;
+}
+
+bool cosmoO_newIndexObject(CState *state, CObjObject *object, CValue key, CValue val) {
+    CValue ret; // return value for cosmoO_getIString
+
+    if (cosmoO_getIString(state, object, ISTRING_NEWINDEX, &ret)) {
+        cosmoV_pushValue(state, ret); // push function
+        cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
+        cosmoV_pushValue(state, key); // push key & value pair
+        cosmoV_pushValue(state, val);
+        cosmoV_call(state, 3);
+        cosmoV_pop(state); // pop return value
+        return true;
+    } else { // there's no __newindex function defined
+        cosmoV_error(state, "Couldn't set index on object without __newindex function!");
+    }
+
+    return false;
+}
+
 CObjString *cosmoO_toString(CState *state, CObj *obj) {
     switch (obj->type) {
         case COBJ_STRING: {
             return (CObjString*)obj;
+        }
+        case COBJ_CLOSURE: { // should be transparent to the user imo
+            CObjClosure *closure = (CObjClosure*)obj;
+            return cosmoO_toString(state, (CObj*)closure->function);
         }
         case COBJ_FUNCTION: {
             CObjFunction *func = (CObjFunction*)obj;
@@ -307,6 +344,11 @@ CObjString *cosmoO_toString(CState *state, CObj *obj) {
         case COBJ_OBJECT: { // TODO: maybe not safe??
             char buf[64];
             int sz = sprintf(buf, "<obj> %p", obj) + 1; // +1 for the null character
+            return cosmoO_copyString(state, buf, sz);
+        }
+        case COBJ_DICT: {
+            char buf[64];
+            int sz = sprintf(buf, "<dict> %p", obj) + 1; // +1 for the null character
             return cosmoO_copyString(state, buf, sz);
         }
         default:
@@ -323,12 +365,22 @@ void printObject(CObj *o) {
         }
         case COBJ_OBJECT: {
             printf("<obj> %p", o);
-            return;
+            break;
+        }
+        case COBJ_DICT: {
+            CObjDict *dict = (CObjDict*)o;
+            printf("<dict> %p", dict);
+            break;
         }
         case COBJ_UPVALUE: {
             CObjUpval *upval = (CObjUpval*)o;
             printf("<upvalue %p> -> ", upval->val);
             printValue(*upval->val);
+            break;
+        }
+        case COBJ_CLOSURE: {
+            CObjClosure *closure = (CObjClosure*)o;
+            printObject((CObj*)closure->function); // just print the function
             break;
         }
         case COBJ_FUNCTION: {
@@ -350,13 +402,8 @@ void printObject(CObj *o) {
             printValue(method->func);
             break;
         }
-        case COBJ_CLOSURE: {
-            CObjClosure *closure = (CObjClosure*)o;
-            printObject((CObj*)closure->function); // just print the function
-            break;
-        }
         default:
-            printf("<unkn obj>");
+            printf("<unkn obj %p>", o);
     }
 }
 
@@ -364,6 +411,7 @@ const char *cosmoO_typeStr(CObj* obj) {
     switch (obj->type) {
         case COBJ_STRING:       return "<string>";
         case COBJ_OBJECT:       return "<object>";
+        case COBJ_DICT:         return "<dictionary>";
         case COBJ_FUNCTION:     return "<function>";
         case COBJ_CFUNCTION:    return "<c function>";
         case COBJ_METHOD:       return "<method>";

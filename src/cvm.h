@@ -15,6 +15,7 @@ typedef enum {
 // args = # of pass parameters, nresults = # of expected results
 COSMO_API COSMOVMRESULT cosmoV_call(CState *state, int args);
 COSMO_API void cosmoV_makeObject(CState *state, int pairs);
+COSMO_API void cosmoV_makeDictionary(CState *state, int pairs);
 COSMO_API bool cosmoV_getObject(CState *state, CObjObject *object, CValue key, CValue *val);
 COSMO_API void cosmoV_error(CState *state, const char *format, ...);
 

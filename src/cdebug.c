@@ -118,6 +118,12 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
         }
         case OP_CLOSE:
             return simpleInstruction("OP_CLOSE", offset);
+        case OP_NEWDICT:
+            return u16OperandInstruction("OP_NEWDICT", chunk, offset);
+        case OP_INDEX:
+            return simpleInstruction("OP_INDEX", offset);
+        case OP_NEWINDEX:
+            return simpleInstruction("OP_NEWINDEX", offset);
         case OP_NEWOBJECT:
             return u16OperandInstruction("OP_NEWOBJECT", chunk, offset);
         case OP_GETOBJECT:
@@ -164,6 +170,8 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
             return u8u16OperandInstruction("OP_INCGLOBAL", chunk, offset);
         case OP_INCUPVAL:
             return u8u8OperandInstruction("OP_INCLOCAL", chunk, offset);
+        case OP_INCINDEX:
+            return u8OperandInstruction("OP_INCINDEX", chunk, offset);
         case OP_INCOBJECT:
             return u8u16OperandInstruction("OP_INCOBJECT", chunk, offset);
         case OP_RETURN:

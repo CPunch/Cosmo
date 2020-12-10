@@ -303,6 +303,7 @@ CToken cosmoL_scanToken(CLexState *state) {
         case ']': return makeToken(state, TOKEN_RIGHT_BRACKET);
         case ';': return makeToken(state, TOKEN_EOS);
         case ',': return makeToken(state, TOKEN_COMMA);
+        case ':': return makeToken(state, TOKEN_COLON);
         case '*': return makeToken(state, TOKEN_STAR);
         case '#': return makeToken(state, TOKEN_POUND);
         case '/': return makeToken(state, TOKEN_SLASH);

@@ -558,39 +558,23 @@ static void object(CParseState *pstate, bool canAssign) {
 
     if (!match(pstate, TOKEN_RIGHT_BRACE)) {
         do {
-            if (match(pstate, TOKEN_IDENTIFIER)) {
-                uint16_t fieldIdent = identifierConstant(pstate, &pstate->previous);
+            // parse the key first
+            expression(pstate); // should parse until ':'
 
-                // OP_NEWOBJECT expects the key on the stack before the value
-                writeu8(pstate, OP_LOADCONST);
-                writeu16(pstate, fieldIdent);
+            consume(pstate, TOKEN_COLON, "Expected ':' to mark end of key and start of value!");
 
-                consume(pstate, TOKEN_EQUAL, "Invalid syntax!");
-
-                // parse field
-                expression(pstate);
-                valuePopped(pstate, 1);
-            } else if (match(pstate, TOKEN_LEFT_BRACKET)) {
-                // parse the key first
-                expression(pstate); // should parse until end bracket
-
-                consume(pstate, TOKEN_RIGHT_BRACKET, "Expected ']' to end index definition.");
-                consume(pstate, TOKEN_EQUAL, "Expected '='.");
-
-                // now, parse the value (until comma)
-                expression(pstate);
-                valuePopped(pstate, 2);
-            } else {
-                error(pstate, "Invalid syntax!");
-            }
+            // now, parse the value (until comma)
+            expression(pstate);
             
+            // "pop" the 2 values
+            valuePopped(pstate, 2);
             entries++;
         } while (match(pstate, TOKEN_COMMA) && !pstate->hadError);
 
         consume(pstate, TOKEN_RIGHT_BRACE, "Expected '}' to end object definition.");
     }
 
-    writeu8(pstate, OP_NEWOBJECT);
+    writeu8(pstate, OP_NEWDICT); // creates a dictionary with u16 entries
     writeu16(pstate, entries);
     valuePushed(pstate, 1);
 }
@@ -634,12 +618,19 @@ static void _index(CParseState *pstate, bool canAssign) {
 
     if (canAssign && match(pstate, TOKEN_EQUAL)) {
         expression(pstate);
-        writeu8(pstate, OP_SETOBJECT);
-        valuePopped(pstate, 3); // pops key, value & object
+        writeu8(pstate, OP_NEWINDEX);
+        valuePopped(pstate, 2); // pops key, value & object
+    } else if (match(pstate, TOKEN_PLUS_PLUS)) { // increment the field
+        writeu8(pstate, OP_INCINDEX);
+        writeu8(pstate, 128 + 1);
+    } else if (match(pstate, TOKEN_MINUS_MINUS)) { // decrement the field
+        writeu8(pstate, OP_INCINDEX);
+        writeu8(pstate, 128 - 1);
     } else {
-        writeu8(pstate, OP_GETOBJECT);
-        valuePopped(pstate, 1); // pops key & object but also pushes the field so total popped is 1
+        writeu8(pstate, OP_INDEX);
     }
+    
+    valuePopped(pstate, 1); // pops key & object but also pushes the field so total popped is 1
 }
 
 static void increment(CParseState *pstate, int val) {
@@ -716,6 +707,7 @@ ParseRule ruleTable[] = {
     [TOKEN_LEFT_BRACKET]    = {NULL, _index, PREC_CALL},
     [TOKEN_RIGHT_BRACKET]   = {NULL, NULL, PREC_NONE},
     [TOKEN_COMMA]           = {NULL, NULL, PREC_NONE},
+    [TOKEN_COLON]           = {NULL, NULL, PREC_NONE},
     [TOKEN_DOT]             = {NULL, dot, PREC_CALL},
     [TOKEN_DOT_DOT]         = {NULL, concat, PREC_CONCAT},
     [TOKEN_MINUS]           = {unary, binary, PREC_TERM},

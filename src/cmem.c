@@ -97,6 +97,11 @@ void blackenObject(CState *state, CObj *obj) {
             markObject(state, (CObj*)cobj->proto);
             break;
         }
+        case COBJ_DICT: { // dictionaries are just wrappers for CTable
+            CObjDict *dict = (CObjDict*)obj;
+            markTable(state, &dict->tbl);
+            break;
+        }
         case COBJ_UPVALUE: {
             markValue(state, ((CObjUpval*)obj)->closed);
             break;
