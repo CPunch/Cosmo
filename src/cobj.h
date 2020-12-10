@@ -37,6 +37,7 @@ typedef struct CObj {
 
 typedef struct CObjString {
     CommonHeader; // "is a" CObj
+    bool isIString;
     int length;
     char *str;
     uint32_t hash; // for hashtable lookup

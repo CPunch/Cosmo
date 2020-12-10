@@ -49,6 +49,10 @@ CState *cosmoV_newState() {
     state->iStrings[ISTRING_GETTER] = cosmoO_copyString(state, "__getter", 8);
     state->iStrings[ISTRING_SETTER] = cosmoO_copyString(state, "__setter", 8);
 
+    // set the IString flags
+    for (int i = 0; i < ISTRING_MAX; i++)
+        state->iStrings[i]->isIString = true;
+
     return state;
 }
 

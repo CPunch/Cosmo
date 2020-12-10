@@ -211,6 +211,7 @@ CObjString *cosmoO_takeString(CState *state, char *str, size_t sz) {
 
 CObjString *cosmoO_allocateString(CState *state, const char *str, size_t sz, uint32_t hash) {
     CObjString *strObj = (CObjString*)cosmoO_allocateBase(state, sizeof(CObjString), COBJ_STRING);
+    strObj->isIString = false;
     strObj->str = (char*)str;
     strObj->length = sz;
     strObj->hash = hash;
@@ -254,7 +255,10 @@ void cosmoO_setObject(CState *state, CObjObject *object, CValue key, CValue val)
         return;
     }
 
-    object->istringFlags = 0; // reset cache
+    // if the key is an IString, we need to reset the cache
+    if (IS_STRING(key) && ((CObjString*)cosmoV_readObj(key))->isIString)
+        object->istringFlags = 0; // reset cache
+
     if (IS_NIL(val)) { // if we're setting an index to nil, we can safely mark that as a tombstone
         cosmoT_remove(state, &object->tbl, key);
     } else {
