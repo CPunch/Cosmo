@@ -562,17 +562,17 @@ bool cosmoV_execute(CState *state) {
                 }
                 break;
             }
-            case OP_COUNT: { // pop 1 value off the stack & if it's an object return the ammount of active entries it has
+            case OP_COUNT: { // pop 1 value off the stack & if it's a dictionary return the ammount of active entries it has
                 StkPtr temp = cosmoV_getTop(state, 0);
 
-                if (!IS_OBJ(*temp) || cosmoV_readObj(*temp)->type != COBJ_OBJECT) {
+                if (!IS_OBJ(*temp) || cosmoV_readObj(*temp)->type != COBJ_DICT) {
                     cosmoV_error(state, "Expected object, got %s!", cosmoV_typeStr(*temp));
                     break;
                 }
 
-                CObjObject *obj = (CObjObject*)cosmoV_readObj(*temp);
+                CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
                 cosmoV_pop(state);
-                cosmoV_pushNumber(state, cosmoT_count(&obj->tbl)); // pushes the count onto the stack
+                cosmoV_pushNumber(state, cosmoT_count(&dict->tbl)); // pushes the count onto the stack
                 break;
             }
             case OP_CONCAT: {
