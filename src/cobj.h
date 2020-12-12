@@ -94,6 +94,7 @@ typedef struct CObjUpval {
 
 #define IS_STRING(x)    isObjType(x, COBJ_STRING)
 #define IS_OBJECT(x)    isObjType(x, COBJ_OBJECT)
+#define IS_DICT(x)      isObjType(x, COBJ_DICT)
 #define IS_FUNCTION(x)  isObjType(x, COBJ_FUNCTION)
 #define IS_CFUNCTION(x) isObjType(x, COBJ_CFUNCTION)
 #define IS_METHOD(x)    isObjType(x, COBJ_METHOD)
