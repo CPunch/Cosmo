@@ -113,7 +113,7 @@ static inline bool isObjType(CValue val, CObjType type) {
 
 // just protects against macro expansion
 static inline bool IS_CALLABLE(CValue val) {
-    return IS_CLOSURE(val) || IS_CFUNCTION(val);
+    return IS_CLOSURE(val) || IS_CFUNCTION(val) || IS_METHOD(val);
 }  
 
 CObj *cosmoO_allocateBase(CState *state, size_t sz, CObjType type);
