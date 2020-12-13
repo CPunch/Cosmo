@@ -93,7 +93,7 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
         case OP_POP:
             return u8OperandInstruction("OP_POP", chunk, offset);
         case OP_CALL:
-            return u8OperandInstruction("OP_CALL", chunk, offset);
+            return u8u8OperandInstruction("OP_CALL", chunk, offset);
         case OP_CLOSURE: {
             int index = readu16Chunk(chunk, offset + 1);
             printf("%-16s [%05d] - ", "OP_CLOSURE", index);
@@ -131,7 +131,7 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
         case OP_SETOBJECT:
             return simpleInstruction("OP_SETOBJECT", offset);
         case OP_INVOKE:
-            return u8OperandInstruction("OP_INVOKE", chunk, offset);
+            return u8u8OperandInstruction("OP_INVOKE", chunk, offset);
         case OP_ADD:
             return simpleInstruction("OP_ADD", offset);
         case OP_SUB:

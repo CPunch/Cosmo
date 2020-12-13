@@ -11,30 +11,30 @@ void cosmoB_loadLibrary(CState *state) {
     cosmoM_unfreezeGC(state);
 }
 
-CValue cosmoB_print(CState *state, int nargs, CValue *args) {
+int cosmoB_print(CState *state, int nargs, CValue *args) {
     for (int i = 0; i < nargs; i++) {
         CObjString *str = cosmoV_toString(state, args[i]);
         printf("%s", cosmoO_readCString(str));
     }
     printf("\n");
 
-    return cosmoV_newNil(); // print doesn't return any args
+    return 0; // print doesn't return any args
 }
 
-CValue cosmoB_foreach(CState *state, int nargs, CValue *args) {
+int cosmoB_foreach(CState *state, int nargs, CValue *args) {
     if (nargs != 2) {
         cosmoV_error(state, "foreach() expected 2 parameters, got %d!", nargs);
-        return cosmoV_newNil();
+        return 0;
     }
 
     if (!IS_DICT(args[0])) {
         cosmoV_error(state, "foreach() expected first parameter to be <dictionary>, got %s!", cosmoV_typeStr(args[0]));
-        return cosmoV_newNil();
+        return 0;
     }
 
     if (!IS_CALLABLE(args[1])) {
         cosmoV_error(state, "foreach() expected second parameter to be callable, got %s!", cosmoV_typeStr(args[1]));
-        return cosmoV_newNil();
+        return 0;
     }
 
     // loop through dictonary table, calling args[1] on active entries
@@ -48,15 +48,14 @@ CValue cosmoB_foreach(CState *state, int nargs, CValue *args) {
             cosmoV_pushValue(state, args[1]);
             cosmoV_pushValue(state, entry->key);
             cosmoV_pushValue(state, entry->val);
-            cosmoV_call(state, 2);
-            cosmoV_pop(state); // throw away the return value
+            cosmoV_call(state, 2, 0);
         }
     }
 
-    return cosmoV_newNil();
+    return 0;
 }
 
-CValue cosmoB_dsetProto(CState *state, int nargs, CValue *args) {
+int cosmoB_dsetProto(CState *state, int nargs, CValue *args) {
     if (nargs == 2) {
         CObjObject *obj = cosmoV_readObject(args[0]); // object to set proto too
         CObjObject *proto = cosmoV_readObject(args[1]);
@@ -66,15 +65,17 @@ CValue cosmoB_dsetProto(CState *state, int nargs, CValue *args) {
         cosmoV_error(state, "Expected 2 parameters, got %d!", nargs);
     }
 
-    return cosmoV_newNil(); // nothing
+    return 0; // nothing
 }
 
-CValue cosmoB_dgetProto(CState *state, int nargs, CValue *args) {
+int cosmoB_dgetProto(CState *state, int nargs, CValue *args) {
     if (nargs != 1) {
         cosmoV_error(state, "Expected 1 parameter, got %d!", nargs);
     }
 
-    return cosmoV_newObj(cosmoV_readObject(args[0])->proto); // just return the proto
+    cosmoV_pushValue(state, cosmoV_newObj(cosmoV_readObject(args[0])->proto)); // just return the proto
+
+    return 1; // 1 result
 }
 
 void cosmoB_loadDebug(CState *state) {

@@ -9,13 +9,13 @@
 
 static bool _ACTIVE = false;
 
-CValue cosmoB_quitRepl(CState *state, int nargs, CValue *args) {
+int cosmoB_quitRepl(CState *state, int nargs, CValue *args) {
     _ACTIVE = false;
 
-    return cosmoV_newNil(); // we don't return anything
+    return 0; // we don't return anything
 }
 
-CValue cosmoB_input(CState *state, int nargs, CValue *args) {
+int cosmoB_input(CState *state, int nargs, CValue *args) {
     // input() accepts the same params as print()!
     for (int i = 0; i < nargs; i++) {
         CObjString *str = cosmoV_toString(state, args[i]);
@@ -26,7 +26,9 @@ CValue cosmoB_input(CState *state, int nargs, CValue *args) {
     char line[1024];
     fgets(line, sizeof(line), stdin);
 
-    return cosmoV_newObj(cosmoO_copyString(state, line, strlen(line)-1)); // -1 for the \n
+    cosmoV_pushValue(state, cosmoV_newObj(cosmoO_copyString(state, line, strlen(line)-1))); // -1 for the \n
+
+    return 1; // 1 return value
 }
 
 static void interpret(CState *state, const char *script, const char *mod) {
@@ -35,7 +37,7 @@ static void interpret(CState *state, const char *script, const char *mod) {
     if (func != NULL) {
         disasmChunk(&func->chunk, func->name != NULL ? func->name->str : "_main", 0);
         
-        COSMOVMRESULT res = cosmoV_call(state, 0); // 0 args being passed
+        COSMOVMRESULT res = cosmoV_call(state, 0, 0); // 0 args being passed, 0 results expected
 
         if (res == COSMOVM_RUNTIME_ERR)
             state->panic = false; // so our repl isn't broken

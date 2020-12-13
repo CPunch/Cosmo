@@ -26,7 +26,7 @@ typedef enum {
     OP_JMP, // always jumps uint16_t
     OP_JMPBACK, // jumps -uint16_t
     OP_POP, // - pops[uint8_t] from stack
-    OP_CALL, // calls top[-uint8_t]
+    OP_CALL, // calls top[-uint8_t] expecting uint8_t results
     OP_CLOSURE, 
     OP_CLOSE,
     OP_NEWDICT,

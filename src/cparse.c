@@ -549,6 +549,7 @@ static void call_(CParseState *pstate, bool canAssign) {
     valuePopped(pstate, argCount + 1); // all of these values will be popped off the stack when returned (+1 for the function)
     writeu8(pstate, OP_CALL);
     writeu8(pstate, argCount);
+    writeu8(pstate, 1); // TODO
     valuePushed(pstate, 1);
 }
 
@@ -603,6 +604,7 @@ static void dot(CParseState *pstate, bool canAssign) {
         uint8_t args = parseArguments(pstate);
         writeu8(pstate, OP_INVOKE);
         writeu8(pstate, args);
+        writeu8(pstate, 1); // TODO
         valuePopped(pstate, args); // pops the function & the object but pushes a result
     } else {
         writeu8(pstate, OP_LOADCONST);

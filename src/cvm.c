@@ -106,20 +106,33 @@ CObjString *cosmoV_concat(CState *state, CObjString *strA, CObjString *strB) {
     return cosmoO_takeString(state, buf, sz);
 }
 
-bool cosmoV_execute(CState *state);
+int cosmoV_execute(CState *state);
 
-static inline void callCFunction(CState *state, CosmoCFunction cfunc, int args, int offset) {
+static inline void callCFunction(CState *state, CosmoCFunction cfunc, int args, int nresults, int offset) {
     StkPtr savedBase = cosmoV_getTop(state, args);
 
     cosmoM_freezeGC(state); // we don't want a GC event during c api because we don't actually trust the user to know how to evade the GC
-    CValue res = cfunc(state, args, savedBase + 1);
+    int nres = cfunc(state, args, savedBase + 1);
     cosmoM_unfreezeGC(state);
-    
-    state->top = savedBase + offset;
-    cosmoV_pushValue(state, res);
+
+     // remember where the return values are
+    CValue* results = cosmoV_getTop(state, 0);
+
+    state->top = savedBase + offset; // set stack
+
+    if (nres > nresults) // caller function wasn't expecting this many return values, cap it
+        nres = nresults;
+
+    // push the return value back onto the stack
+    memcpy(state->top, results, sizeof(CValue) * nres); // copies the return values to the top of the stack
+    state->top += nres; // and make sure to move state->top to match
+
+    // now, if the caller function expected more return values, push nils onto the stack
+    for (int i = nres; i < nresults; i++)
+        cosmoV_pushValue(state, cosmoV_newNil());
 }
 
-bool call(CState *state, CObjClosure *closure, int args, int offset) {
+bool call(CState *state, CObjClosure *closure, int args, int nresults, int offset) {
     // missmatched args, thats an obvious user error, so error.
     if (args != closure->function->args) {
         cosmoV_error(state, "Expected %d parameters for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args);
@@ -130,29 +143,39 @@ bool call(CState *state, CObjClosure *closure, int args, int offset) {
     pushCallFrame(state, closure, closure->function->args);
 
     // execute
-    if (!cosmoV_execute(state))
+    int nres = cosmoV_execute(state);
+    if (nres == -1) // panic state
         return false;
 
-    // remember where the return value is
-    CValue* result = cosmoV_getTop(state, 0);
+    // remember where the return values are
+    CValue* results = cosmoV_getTop(state, 0);
 
-    // pop the callframe and return result :)
+    // pop the callframe and return results :)
     popCallFrame(state, offset);
 
+    if (nres > nresults) // caller function wasn't expecting this many return values, cap it
+        nres = nresults;
+
     // push the return value back onto the stack
-    cosmoV_pushValue(state, *result);
+    memcpy(state->top, results, sizeof(CValue) * nres); // copies the return values to the top of the stack
+    state->top += nres; // and make sure to move state->top to match
+
+    // now, if the caller function expected more return values, push nils onto the stack
+    for (int i = nres; i < nresults; i++)
+        cosmoV_pushValue(state, cosmoV_newNil());
+
     return true;
 }
 
-bool invokeMethod(CState* state, CObjObject *obj, CValue func, int args) {
+bool invokeMethod(CState* state, CObjObject *obj, CValue func, int args, int nresults) {
     // first, set the first argument to the object
     StkPtr temp = cosmoV_getTop(state, args);
     *temp = cosmoV_newObj(obj);
 
     if (IS_CFUNCTION(func)) {
-        callCFunction(state, cosmoV_readCFunction(func), args+1, 1);
+        callCFunction(state, cosmoV_readCFunction(func), args+1, nresults, 1);
     } else if (IS_CLOSURE(func)) {
-        call(state, cosmoV_readClosure(func), args+1, 1); // offset = 1 so our stack is properly reset
+        call(state, cosmoV_readClosure(func), args+1, nresults, 1); // offset = 1 so our stack is properly reset
     } else {
         cosmoV_error(state, "Cannot invoke non-function type %s!", cosmoV_typeStr(func));
     }
@@ -161,7 +184,7 @@ bool invokeMethod(CState* state, CObjObject *obj, CValue func, int args) {
 }
 
 // args = # of pass parameters
-COSMOVMRESULT cosmoV_call(CState *state, int args) {
+COSMOVMRESULT cosmoV_call(CState *state, int args, int nresults) {
     StkPtr val = cosmoV_getTop(state, args); // function will always be right above the args
 
     if (GET_TYPE(*val) != COSMO_TOBJ) {
@@ -172,14 +195,14 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
     switch (cosmoV_readObj(*val)->type) {
         case COBJ_CLOSURE: {
             CObjClosure *closure = (CObjClosure*)cosmoV_readObj(*val);
-            if (!call(state, closure, args, 0)) {
+            if (!call(state, closure, args, nresults, 0)) {
                 return COSMOVM_RUNTIME_ERR;
             }
             break;
         }
         case COBJ_METHOD: {
             CObjMethod *method = (CObjMethod*)cosmoV_readObj(*val);
-            invokeMethod(state, method->obj, method->func, args);
+            invokeMethod(state, method->obj, method->func, args, nresults);
             break;
         }
         case COBJ_OBJECT: { // object is being instantiated, making another object
@@ -190,7 +213,7 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
 
             // check if they defined an initalizer
             if (cosmoO_getIString(state, protoObj, ISTRING_INIT, &ret)) {
-                invokeMethod(state, newObj, ret, args);
+                invokeMethod(state, newObj, ret, args, nresults);
             } else {
                 // no default initalizer
                 if (args != 0) {
@@ -206,7 +229,7 @@ COSMOVMRESULT cosmoV_call(CState *state, int args) {
         case COBJ_CFUNCTION: {
             // it's a C function, so call it
             CosmoCFunction cfunc = ((CObjCFunction*)cosmoV_readObj(*val))->cfunc;
-            callCFunction(state, cfunc, args, 0);
+            callCFunction(state, cfunc, args, nresults, 0);
             break;
         }
         default: 
@@ -288,7 +311,7 @@ COSMO_API bool cosmoV_getObject(CState *state, CObjObject *object, CValue key, C
     } \
 
 // returns false if panic
-bool cosmoV_execute(CState *state) {
+int cosmoV_execute(CState *state) {
     CCallFrame* frame = &state->callFrame[state->frameCount - 1]; // grabs the current frame
     CValue *constants = frame->closure->function->chunk.constants.values; // cache the pointer :)
 
@@ -371,7 +394,8 @@ bool cosmoV_execute(CState *state) {
             }
             case OP_CALL: {
                 uint8_t args = READBYTE();
-                COSMOVMRESULT result = cosmoV_call(state, args);
+                uint8_t nres = READBYTE();
+                COSMOVMRESULT result = cosmoV_call(state, args, nres);
                 if (result != COSMOVM_OK) {
                     return result;
                 }
@@ -509,6 +533,7 @@ bool cosmoV_execute(CState *state) {
             }
             case OP_INVOKE: { // this is an optimization made by the parser, instead of allocating a CObjMethod every time we want to invoke a method, we shrink it down into one minimal instruction!
                 uint8_t args = READBYTE();
+                uint8_t nres = READBYTE();
                 StkPtr key = cosmoV_getTop(state, args); // grabs key from stack
                 StkPtr temp = cosmoV_getTop(state, args+1); // grabs object from stack
 
@@ -524,7 +549,7 @@ bool cosmoV_execute(CState *state) {
                 cosmoO_getObject(state, object, *key, &val); // we use cosmoO_getObject instead of the cosmoV_getObject wrapper so we get the raw value from the object instead of the CObjMethod wrapper
 
                 // now invoke the method!
-                invokeMethod(state, object, val, args);
+                invokeMethod(state, object, val, args, nres);
 
                 // moves return value & resets stack (key now points to the stack location of our return value)
                 *temp = *key;
@@ -745,7 +770,7 @@ bool cosmoV_execute(CState *state) {
             case OP_FALSE:  cosmoV_pushBoolean(state, false); break;
             case OP_NIL:    cosmoV_pushValue(state, cosmoV_newNil()); break;
             case OP_RETURN: {
-                return true;
+                return 1;
             }
             default:
                 CERROR("unknown opcode!");
@@ -758,7 +783,7 @@ bool cosmoV_execute(CState *state) {
 #undef READUINT
 
     // we'll only reach this is state->panic is true
-    return false;
+    return -1;
 }
 
 #undef NUMBEROP

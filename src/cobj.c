@@ -229,7 +229,7 @@ bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val
         if (cosmoO_getIString(state, object, ISTRING_GETTER, val) && IS_OBJECT(*val) && cosmoO_getObject(state, cosmoV_readObject(*val), key, val)) {
             cosmoV_pushValue(state, *val); // push function
             cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
-            cosmoV_call(state, 1); // call the function with the 1 argument
+            cosmoV_call(state, 1, 1); // call the function with the 1 argument
             *val = *cosmoV_pop(state); // set value to the return value of __index
             return true;
         }
@@ -250,8 +250,7 @@ void cosmoO_setObject(CState *state, CObjObject *object, CValue key, CValue val)
         cosmoV_pushValue(state, ret); // push function
         cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
         cosmoV_pushValue(state, val); // push new value
-        cosmoV_call(state, 2);
-        cosmoV_pop(state); // pop return value
+        cosmoV_call(state, 2, 0);
         return;
     }
 
@@ -304,7 +303,7 @@ bool cosmoO_indexObject(CState *state, CObjObject *object, CValue key, CValue *v
         cosmoV_pushValue(state, *val); // push function
         cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
         cosmoV_pushValue(state, key); // push key
-        cosmoV_call(state, 2); // call the function with the 2 arguments
+        cosmoV_call(state, 2, 1); // call the function with the 2 arguments
         *val = *cosmoV_pop(state); // set value to the return value of __index
         return true;
     } else { // there's no __index function defined!
@@ -322,8 +321,7 @@ bool cosmoO_newIndexObject(CState *state, CObjObject *object, CValue key, CValue
         cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
         cosmoV_pushValue(state, key); // push key & value pair
         cosmoV_pushValue(state, val);
-        cosmoV_call(state, 3);
-        cosmoV_pop(state); // pop return value
+        cosmoV_call(state, 3, 0);
         return true;
     } else { // there's no __newindex function defined
         cosmoV_error(state, "Couldn't set index on object without __newindex function!");

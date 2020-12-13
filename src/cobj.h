@@ -26,7 +26,7 @@ typedef enum {
 #define readFlag(x, flag)   (x & (1u << flag))
 #define setFlagOn(x, flag)  (x |= (1u << flag))
 
-typedef CValue (*CosmoCFunction)(CState *state, int argCount, CValue *args);
+typedef int (*CosmoCFunction)(CState *state, int argCount, CValue *args);
 
 typedef struct CObj {
     CObjType type;
