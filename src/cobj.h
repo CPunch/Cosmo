@@ -111,6 +111,11 @@ static inline bool isObjType(CValue val, CObjType type) {
     return IS_OBJ(val) && cosmoV_readObj(val)->type == type;
 }
 
+// just protects against macro expansion
+static inline bool IS_CALLABLE(CValue val) {
+    return IS_CLOSURE(val) || IS_CFUNCTION(val);
+}  
+
 CObj *cosmoO_allocateBase(CState *state, size_t sz, CObjType type);
 void cosmoO_free(CState *state, CObj* obj);
 

@@ -7,6 +7,7 @@
 void cosmoB_loadLibrary(CState *state) {
     cosmoM_freezeGC(state);
     cosmoV_register(state, "print", cosmoV_newObj(cosmoO_newCFunction(state, cosmoB_print)));
+    cosmoV_register(state, "foreach", cosmoV_newObj(cosmoO_newCFunction(state, cosmoB_foreach)));
     cosmoM_unfreezeGC(state);
 }
 
@@ -18,6 +19,41 @@ CValue cosmoB_print(CState *state, int nargs, CValue *args) {
     printf("\n");
 
     return cosmoV_newNil(); // print doesn't return any args
+}
+
+CValue cosmoB_foreach(CState *state, int nargs, CValue *args) {
+    if (nargs != 2) {
+        cosmoV_error(state, "foreach() expected 2 parameters, got %d!", nargs);
+        return cosmoV_newNil();
+    }
+
+    if (!IS_DICT(args[0])) {
+        cosmoV_error(state, "foreach() expected first parameter to be <dictionary>, got %s!", cosmoV_typeStr(args[0]));
+        return cosmoV_newNil();
+    }
+
+    if (!IS_CALLABLE(args[1])) {
+        cosmoV_error(state, "foreach() expected second parameter to be callable, got %s!", cosmoV_typeStr(args[1]));
+        return cosmoV_newNil();
+    }
+
+    // loop through dictonary table, calling args[1] on active entries
+    CObjDict *dict = (CObjDict*)cosmoV_readObj(args[0]);
+    
+    for (int i = 0; i < dict->tbl.capacity; i++) {
+        CTableEntry *entry = &dict->tbl.table[i];
+
+        if (!IS_NIL(entry->key)) {
+            // push key & value, then call args[1]
+            cosmoV_pushValue(state, args[1]);
+            cosmoV_pushValue(state, entry->key);
+            cosmoV_pushValue(state, entry->val);
+            cosmoV_call(state, 2);
+            cosmoV_pop(state); // throw away the return value
+        }
+    }
+
+    return cosmoV_newNil();
 }
 
 CValue cosmoB_dsetProto(CState *state, int nargs, CValue *args) {
