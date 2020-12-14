@@ -116,7 +116,7 @@ static inline void callCFunction(CState *state, CosmoCFunction cfunc, int args, 
     cosmoM_unfreezeGC(state);
 
      // remember where the return values are
-    CValue* results = cosmoV_getTop(state, 0);
+    CValue* results = cosmoV_getTop(state, nres-1);
 
     state->top = savedBase + offset; // set stack
 
@@ -148,7 +148,7 @@ bool call(CState *state, CObjClosure *closure, int args, int nresults, int offse
         return false;
 
     // remember where the return values are
-    CValue* results = cosmoV_getTop(state, 0);
+    CValue* results = cosmoV_getTop(state, nres-1);
 
     // pop the callframe and return results :)
     popCallFrame(state, offset);
@@ -167,15 +167,15 @@ bool call(CState *state, CObjClosure *closure, int args, int nresults, int offse
     return true;
 }
 
-bool invokeMethod(CState* state, CObjObject *obj, CValue func, int args, int nresults) {
+bool invokeMethod(CState* state, CObjObject *obj, CValue func, int args, int nresults, int offset) {
     // first, set the first argument to the object
     StkPtr temp = cosmoV_getTop(state, args);
     *temp = cosmoV_newObj(obj);
 
     if (IS_CFUNCTION(func)) {
-        callCFunction(state, cosmoV_readCFunction(func), args+1, nresults, 1);
+        callCFunction(state, cosmoV_readCFunction(func), args+1, nresults, offset);
     } else if (IS_CLOSURE(func)) {
-        call(state, cosmoV_readClosure(func), args+1, nresults, 1); // offset = 1 so our stack is properly reset
+        call(state, cosmoV_readClosure(func), args+1, nresults, offset); // offset = 1 so our stack is properly reset
     } else {
         cosmoV_error(state, "Cannot invoke non-function type %s!", cosmoV_typeStr(func));
     }
@@ -202,7 +202,7 @@ COSMOVMRESULT cosmoV_call(CState *state, int args, int nresults) {
         }
         case COBJ_METHOD: {
             CObjMethod *method = (CObjMethod*)cosmoV_readObj(*val);
-            invokeMethod(state, method->obj, method->func, args, nresults);
+            invokeMethod(state, method->obj, method->func, args, nresults, 1);
             break;
         }
         case COBJ_OBJECT: { // object is being instantiated, making another object
@@ -213,7 +213,7 @@ COSMOVMRESULT cosmoV_call(CState *state, int args, int nresults) {
 
             // check if they defined an initalizer
             if (cosmoO_getIString(state, protoObj, ISTRING_INIT, &ret)) {
-                invokeMethod(state, newObj, ret, args, nresults);
+                invokeMethod(state, newObj, ret, args, nresults, 1);
             } else {
                 // no default initalizer
                 if (args != 0) {
@@ -549,11 +549,7 @@ int cosmoV_execute(CState *state) {
                 cosmoO_getObject(state, object, *key, &val); // we use cosmoO_getObject instead of the cosmoV_getObject wrapper so we get the raw value from the object instead of the CObjMethod wrapper
 
                 // now invoke the method!
-                invokeMethod(state, object, val, args, nres);
-
-                // moves return value & resets stack (key now points to the stack location of our return value)
-                *temp = *key;
-                state->top = key;
+                invokeMethod(state, object, val, args, nres, 0);
                 break;
             }
             case OP_ADD: { // pop 2 values off the stack & try to add them together
@@ -770,7 +766,8 @@ int cosmoV_execute(CState *state) {
             case OP_FALSE:  cosmoV_pushBoolean(state, false); break;
             case OP_NIL:    cosmoV_pushValue(state, cosmoV_newNil()); break;
             case OP_RETURN: {
-                return 1;
+                uint8_t res = READBYTE();
+                return res;
             }
             default:
                 CERROR("unknown opcode!");

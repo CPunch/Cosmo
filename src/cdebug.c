@@ -175,7 +175,7 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
         case OP_INCOBJECT:
             return u8u16OperandInstruction("OP_INCOBJECT", chunk, offset);
         case OP_RETURN:
-            return simpleInstruction("OP_RETURN", offset);
+            return u8OperandInstruction("OP_RETURN", chunk, offset);
         default:
             printf("Unknown opcode! [%d]\n", i);
             exit(0);
