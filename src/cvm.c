@@ -149,14 +149,14 @@ bool call(CState *state, CObjClosure *closure, int args, int nresults, int offse
     if (nres == -1) // panic state
         return false;
 
+    if (nres > nresults) // caller function wasn't expecting this many return values, cap it
+        nres = nresults;
+
     // remember where the return values are
     CValue* results = cosmoV_getTop(state, nres-1);
 
     // pop the callframe and return results :)
     popCallFrame(state, offset);
-
-    if (nres > nresults) // caller function wasn't expecting this many return values, cap it
-        nres = nresults;
 
     // push the return value back onto the stack
     memcpy(state->top, results, sizeof(CValue) * nres); // copies the return values to the top of the stack
@@ -580,6 +580,17 @@ int cosmoV_execute(CState *state) {
                             cosmoV_pushValue(state, val);
                             cosmoV_pushValue(state, cosmoV_newObj(obj));
                             cosmoV_call(state, 1, 1); // we expect 1 return value on the stack, the iterable object
+
+                            StkPtr iobj = cosmoV_getTop(state, 0);
+
+                            if (!IS_OBJECT(*iobj)) {
+                                cosmoV_error(state, "Expected iterable object! '__iter' returned %s, expected object!", cosmoV_typeStr(*iobj));
+                                break;
+                            }
+
+                            CObjObject *obj = (CObjObject*)cosmoV_readObj(*iobj);
+
+                            cosmoV_getObject(state, obj, cosmoV_newObj(state->iStrings[ISTRING_NEXT]), iobj);
                         } else {
                             cosmoV_error(state, "Expected iterable object! '__iter' not defined!");
                         }
@@ -598,25 +609,17 @@ int cosmoV_execute(CState *state) {
                 uint16_t jump = READUINT();
                 StkPtr temp = cosmoV_getTop(state, 0); // we don't actually pop this off the stack
 
-                if (!IS_OBJECT(*temp)) {
-                    cosmoV_error(state, "Couldn't iterate over non-iterator type %s!", cosmoV_typeStr(*temp));
+                if (!IS_METHOD(*temp)) {
+                    cosmoV_error(state, "Expected '__next' to be a method, got type %s!", cosmoV_typeStr(*temp));
                     break;
                 }
 
-                CObjObject *obj = (CObjObject*)cosmoV_readObj(*temp);
-                CValue val;
+                cosmoV_pushValue(state, *temp);
+                cosmoV_call(state, 0, nresults);
 
-                if (cosmoO_getIString(state, obj, ISTRING_NEXT, &val)) {
-                    cosmoV_pushValue(state, val);
-                    cosmoV_pushValue(state, *temp);
-                    cosmoV_call(state, 1, nresults);
-
-                    if (IS_NIL(*(cosmoV_getTop(state, 0)))) { // __next returned a nil, which means to exit the loop
-                        cosmoV_setTop(state, nresults); // pop the return values
-                        frame->pc += jump;
-                    }
-                } else {
-                    cosmoV_error(state, "Expected iterable object! '__next' not defined!");
+                if (IS_NIL(*(cosmoV_getTop(state, 0)))) { // __next returned a nil, which means to exit the loop
+                    cosmoV_setTop(state, nresults); // pop the return values
+                    frame->pc += jump;
                 }
                 break;
             }

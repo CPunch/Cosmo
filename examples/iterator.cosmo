@@ -17,6 +17,9 @@ proto Range
     end
 end
 
-for i, x in Range(10) do
-    print("was " .. i .. ", now " .. x)
+local total = 0
+for i, x in Range(1000000) do
+    total = total + i
 end
+
+print("total: " .. total)

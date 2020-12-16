@@ -36,8 +36,8 @@ typedef enum {
     OP_SETOBJECT,
     OP_GETOBJECT,
     OP_INVOKE,
-    OP_ITER, // if stack[top] is an object, __iter is expected and called, else if stack[top] is a dictionary a dummy iterator object is made (SEE: cosmoV_makeIter())
-    OP_NEXT, // if stack[top] is an object, __next is expected and called, expecting uint8_t return values. if stack[top] after calling is nil, jump uint16_t
+    OP_ITER,
+    OP_NEXT,
 
     // ARITHMETIC
     OP_ADD,

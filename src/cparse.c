@@ -1121,7 +1121,7 @@ static void forEachLoop(CParseState *pstate) {
 
     consume(pstate, TOKEN_DO, "Expected 'do' before loop block!");
 
-    writeu8(pstate, OP_ITER); // checks if stack[top] is iterable and makes an iterable object wrapper for CObjs like CObjDict
+    writeu8(pstate, OP_ITER); // checks if stack[top] is iterable and pushes the __next method onto the stack for OP_NEXT to call
 
     int loopStart = getChunk(pstate)->count;
 
