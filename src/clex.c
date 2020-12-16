@@ -13,6 +13,7 @@ CReservedWord reservedWords[] = {
     {TOKEN_FOR, "for", 3},
     {TOKEN_FUNCTION, "function", 8},
     {TOKEN_IF, "if", 2},
+    {TOKEN_IN, "in", 2},
     {TOKEN_LOCAL, "local", 5},
     {TOKEN_NIL, "nil", 3},
     {TOKEN_NOT, "not", 3},

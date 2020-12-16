@@ -13,11 +13,13 @@ typedef struct CCallFrame {
 } CCallFrame;
 
 typedef enum IStringEnum {
-    ISTRING_INIT, // __init
-    ISTRING_INDEX, // __index
-    ISTRING_NEWINDEX, // __newindex
-    ISTRING_GETTER, // __getter
-    ISTRING_SETTER, // __setter
+    ISTRING_INIT,       // __init
+    ISTRING_INDEX,      // __index
+    ISTRING_NEWINDEX,   // __newindex
+    ISTRING_GETTER,     // __getter
+    ISTRING_SETTER,     // __setter
+    ISTRING_ITER,       // __iter
+    ISTRING_NEXT,       // __next
     ISTRING_MAX
 } IStringEnum;
 

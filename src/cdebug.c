@@ -132,6 +132,10 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
             return simpleInstruction("OP_SETOBJECT", offset);
         case OP_INVOKE:
             return u8u8OperandInstruction("OP_INVOKE", chunk, offset);
+        case OP_ITER:
+            return simpleInstruction("OP_ITER", offset);
+        case OP_NEXT:
+            return u8u16OperandInstruction("OP_NEXT", chunk, offset);
         case OP_ADD:
             return simpleInstruction("OP_ADD", offset);
         case OP_SUB:

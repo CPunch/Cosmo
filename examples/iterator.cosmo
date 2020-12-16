@@ -1,0 +1,22 @@
+proto Range
+    function __init(self, x)
+        self.max = x
+    end
+
+    function __iter(self)
+        self.i = 0
+        return self
+    end
+
+    function __next(self)
+        if self.i >= self.max then
+            return nil // exit iterator loop
+        end
+
+        return self.i++, self.i
+    end
+end
+
+for i, x in Range(10) do
+    print("was " .. i .. ", now " .. x)
+end

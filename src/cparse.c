@@ -35,7 +35,6 @@ typedef struct CCompilerState {
     int localCount;
     int scopeDepth;
     int pushedValues;
-    int savedPushed;
     int expectedValues; 
     struct CCompilerState* enclosing;
 } CCompilerState;
@@ -94,7 +93,6 @@ static void initCompilerState(CParseState* pstate, CCompilerState *ccstate, Func
     ccstate->localCount = 0;
     ccstate->scopeDepth = 0;
     ccstate->pushedValues = 0;
-    ccstate->savedPushed = 0;
     ccstate->expectedValues = 0;
     ccstate->type = type;
     ccstate->function = cosmoO_newFunction(pstate->state);
@@ -362,6 +360,7 @@ static void alignStack(CParseState *pstate, int alignment) {
         writePop(pstate, pstate->compiler->pushedValues - alignment);
     } else if (pstate->compiler->pushedValues < alignment) {
         error(pstate, "Missing expression!");
+        printf("%d < %d\n", pstate->compiler->pushedValues, alignment);
     }
 
     pstate->compiler->pushedValues = alignment;
@@ -746,6 +745,7 @@ ParseRule ruleTable[] = {
     [TOKEN_FUNCTION]        = {anonFunction, NULL, PREC_NONE},
     [TOKEN_PROTO]           = {NULL, NULL, PREC_NONE},
     [TOKEN_IF]              = {NULL, NULL, PREC_NONE},
+    [TOKEN_IN]              = {NULL, NULL, PREC_NONE},
     [TOKEN_LOCAL]           = {NULL, NULL, PREC_NONE},
     [TOKEN_NOT]             = {NULL, NULL, PREC_NONE},
     [TOKEN_OR]              = {NULL, or_,  PREC_OR},
@@ -1091,7 +1091,75 @@ static void localFunction(CParseState *pstate) {
     defineVariable(pstate, var, true);
 }
 
+static void forEachLoop(CParseState *pstate) {
+    beginScope(pstate);
+
+    // mark a slot on the stack as reserved, we do this by declaring a local with no identifer
+    Local *local = &pstate->compiler->locals[pstate->compiler->localCount++];
+    local->depth = pstate->compiler->scopeDepth;
+    local->isCaptured = false;
+    local->name.start = "";
+    local->name.length = 0;
+
+    // how many values does it expect the iterator to return?
+    beginScope(pstate);
+    int values = 0;
+    do {
+        uint16_t funcIdent = parseVariable(pstate, "Expected identifier!", true);
+        defineVariable(pstate, funcIdent, true);
+        values++;
+    } while (match(pstate, TOKEN_COMMA));
+
+    if (values > UINT8_MAX) {
+        error(pstate, "Too many values expected!");
+        return;
+    }
+
+    // after we consume the values, get the dictionary/object/whatever on the stack
+    consume(pstate, TOKEN_IN, "Expected 'in' before iterator!");
+    expression(pstate, 1, true);
+
+    consume(pstate, TOKEN_DO, "Expected 'do' before loop block!");
+
+    writeu8(pstate, OP_ITER); // checks if stack[top] is iterable and makes an iterable object wrapper for CObjs like CObjDict
+
+    int loopStart = getChunk(pstate)->count;
+
+    // OP_NEXT expected a uint8_t after the opcode for how many values __next is expected to return
+    writeu8(pstate, OP_NEXT); 
+    writeu8(pstate, values);
+
+    // after the u8, is a u16 with how far to jump if __next returns nil
+    int jmpPatch = getChunk(pstate)->count;
+    writeu16(pstate, 0xFFFF); // placeholder, we'll patch this later
+
+    // OP_NEXT pushes the values needed
+    valuePushed(pstate, values);
+
+    // compile loop block
+    beginScope(pstate);
+    block(pstate);
+    endScope(pstate);
+
+    // pop all of the values, OP_NEXT will repopulate them
+    endScope(pstate);
+
+    // write jmp back to the start of the loop
+    writeJmpBack(pstate, loopStart);
+    patchJmp(pstate, jmpPatch); // and finally, patch our OP_NEXT
+
+    // remove reserved local
+    endScope(pstate);
+    valuePopped(pstate, 1);
+}
+
 static void forLoop(CParseState *pstate) {
+    // first, check if the next token is an identifier. if it is, this is a for loop for an iterator
+    if (check(pstate, TOKEN_IDENTIFIER)) {
+        forEachLoop(pstate);
+        return;
+    }
+
     beginScope(pstate);
 
     consume(pstate, TOKEN_LEFT_PAREN, "Expected '(' after 'for'");
@@ -1173,7 +1241,7 @@ static int expression(CParseState *pstate, int needed, bool forceNeeded) {
 }
 
 static void expressionStatement(CParseState *pstate) {
-    pstate->compiler->savedPushed = pstate->compiler->pushedValues;
+    int savedPushed = pstate->compiler->pushedValues;
 
     if (match(pstate, TOKEN_VAR)) {
         varDeclaration(pstate, false, 0);
@@ -1205,7 +1273,7 @@ static void expressionStatement(CParseState *pstate) {
     }
 
     // realign the stack
-    alignStack(pstate, pstate->compiler->savedPushed);
+    alignStack(pstate, savedPushed);
 }
 
 static void statement(CParseState *pstate) {

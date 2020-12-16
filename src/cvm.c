@@ -43,6 +43,8 @@ void cosmoV_error(CState *state, const char *format, ...) {
     
     // TODO: push error onto the stack :P
     state->panic = true;
+
+    cosmoV_printStack(state);
 }
 
 CObjUpval *captureUpvalue(CState *state, CValue *local) {
@@ -550,6 +552,72 @@ int cosmoV_execute(CState *state) {
 
                 // now invoke the method!
                 invokeMethod(state, object, val, args, nres, 0);
+                break;
+            }
+            case OP_ITER: {
+                StkPtr temp = cosmoV_getTop(state, 0); // should be the object/dictionary
+
+                if (!IS_OBJ(*temp)) {
+                    cosmoV_error(state, "Couldn't iterate over non-iterator type %s!", cosmoV_typeStr(*temp));
+                    break;
+                }
+
+                switch (cosmoV_readObj(*temp)->type) {
+                    case COBJ_DICT: {
+                        //CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
+
+                        // TODO: add cosmoV_makeIter, which will make a dummy iterable object for dictionaries
+                        cosmoV_error(state, "unimpl. mass ping cpunch!!!!");
+                        break;
+                    }
+                    case COBJ_OBJECT: {
+                        CObjObject *obj = (CObjObject*)cosmoV_readObj(*temp);
+                        CValue val;
+
+                        // grab __iter & call it
+                        if (cosmoO_getIString(state, obj, ISTRING_ITER, &val)) {
+                            cosmoV_pop(state); // pop the object from the stack
+                            cosmoV_pushValue(state, val);
+                            cosmoV_pushValue(state, cosmoV_newObj(obj));
+                            cosmoV_call(state, 1, 1); // we expect 1 return value on the stack, the iterable object
+                        } else {
+                            cosmoV_error(state, "Expected iterable object! '__iter' not defined!");
+                        }
+
+                        break;
+                    }
+                    default: {
+                        cosmoV_error(state, "Couldn't iterate over non-iterator type %s!", cosmoV_typeStr(*temp));
+                        break;
+                    }
+                }
+                break;
+            }
+            case OP_NEXT: {
+                uint8_t nresults = READBYTE();
+                uint16_t jump = READUINT();
+                StkPtr temp = cosmoV_getTop(state, 0); // we don't actually pop this off the stack
+
+                if (!IS_OBJECT(*temp)) {
+                    cosmoV_error(state, "Couldn't iterate over non-iterator type %s!", cosmoV_typeStr(*temp));
+                    break;
+                }
+
+                CObjObject *obj = (CObjObject*)cosmoV_readObj(*temp);
+                CValue val;
+
+                if (cosmoO_getIString(state, obj, ISTRING_NEXT, &val)) {
+                    cosmoV_pushValue(state, val);
+                    cosmoV_pushValue(state, *temp);
+                    cosmoV_call(state, 1, nresults);
+
+                    if (IS_NIL(*(cosmoV_getTop(state, 0)))) { // __next returned a nil, which means to exit the loop
+                        cosmoV_setTop(state, nresults); // pop the return values
+                        frame->pc += jump;
+                    }
+                } else {
+                    cosmoV_error(state, "Expected iterable object! '__next' not defined!");
+                }
                 break;
             }
             case OP_ADD: { // pop 2 values off the stack & try to add them together
