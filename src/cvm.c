@@ -117,13 +117,13 @@ static inline void callCFunction(CState *state, CosmoCFunction cfunc, int args, 
     int nres = cfunc(state, args, savedBase + 1);
     cosmoM_unfreezeGC(state);
 
-     // remember where the return values are
+    if (nres > nresults) // caller function wasn't expecting this many return values, cap it
+        nres = nresults;
+
+    // remember where the return values are
     CValue* results = cosmoV_getTop(state, nres-1);
 
     state->top = savedBase + offset; // set stack
-
-    if (nres > nresults) // caller function wasn't expecting this many return values, cap it
-        nres = nresults;
 
     // push the return value back onto the stack
     memcpy(state->top, results, sizeof(CValue) * nres); // copies the return values to the top of the stack
