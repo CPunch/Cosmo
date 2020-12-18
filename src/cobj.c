@@ -105,7 +105,7 @@ CObjObject *cosmoO_newObject(CState *state) {
     CObjObject *obj = (CObjObject*)cosmoO_allocateBase(state, sizeof(CObjObject), COBJ_OBJECT);
     obj->proto = state->protoObj;
     obj->istringFlags = 0;
-    obj->user = NULL; // reserved for C API
+    obj->userP = NULL; // reserved for C API
     cosmoV_pushValue(state, cosmoV_newObj(obj)); // so our GC can keep track of it
     cosmoT_initTable(state, &obj->tbl, ARRAY_START);
     cosmoV_pop(state);
@@ -266,12 +266,20 @@ void cosmoO_setObject(CState *state, CObjObject *object, CValue key, CValue val)
     }
 }
 
-void cosmoO_setUserData(CState *state, CObjObject *object, void *p) {
-    object->user = p;
+void cosmoO_setUserP(CState *state, CObjObject *object, void *p) {
+    object->userP = p;
 }
 
-void *cosmoO_getUserData(CState *state, CObjObject *object) {
-    return object->user;
+void *cosmoO_getUserP(CState *state, CObjObject *object) {
+    return object->userP;
+}
+
+void cosmoO_setUserI(CState *state, CObjObject *object, int i) {
+    object->userI = i;
+}
+
+int cosmoO_getUserI(CState *state, CObjObject *object) {
+    return object->userI;
 }
 
 bool rawgetIString(CState *state, CObjObject *object, int flag, CValue *val) {

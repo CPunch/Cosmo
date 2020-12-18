@@ -20,6 +20,7 @@ typedef enum IStringEnum {
     ISTRING_SETTER,     // __setter
     ISTRING_ITER,       // __iter
     ISTRING_NEXT,       // __next
+    ISTRING_RESERVED,   // __reserved
     ISTRING_MAX
 } IStringEnum;
 

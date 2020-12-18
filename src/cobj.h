@@ -47,7 +47,10 @@ typedef struct CObjObject {
     CommonHeader; // "is a" CObj
     cosmo_Flag istringFlags; // enables us to have a much faster lookup for reserved IStrings (like __init, __index, etc.)
     CTable tbl;
-    void *user; // userdata (NULL by default)
+    union { // userdata (NULL by default)
+        void *userP;
+        int userI;
+    };
     struct CObjObject *proto; // protoobject, describes the behavior of the object
 } CObjObject;
 
@@ -136,8 +139,10 @@ void cosmoO_setObject(CState *state, CObjObject *object, CValue key, CValue val)
 bool cosmoO_indexObject(CState *state, CObjObject *object, CValue key, CValue *val);
 bool cosmoO_newIndexObject(CState *state, CObjObject *object, CValue key, CValue val);
 
-void cosmoO_setUserData(CState *state, CObjObject *object, void *p);
-void *cosmoO_getUserData(CState *state, CObjObject *object);
+void cosmoO_setUserP(CState *state, CObjObject *object, void *p);
+void *cosmoO_getUserP(CState *state, CObjObject *object);
+void cosmoO_setUserI(CState *state, CObjObject *object, int i);
+int cosmoO_getUserI(CState *state, CObjObject *object);
 
 // internal string
 bool cosmoO_getIString(CState *state, CObjObject *object, int flag, CValue *val);

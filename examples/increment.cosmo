@@ -15,6 +15,20 @@ proto Vector
     function __index(self, key)
         return self.vector[key]
     end
+
+    function __iter(self)
+        self.iterIndex = 0
+
+        return self
+    end
+
+    function __next(self)
+        if self.iterIndex > self.x then
+            return nil
+        end
+
+        return vector[self.iterIndex++]
+    end
 end
 
 var vector = Vector()
@@ -23,6 +37,6 @@ for (var i = 0; i < 100000; i++) do
     vector.push(i)
 end
 
-for (var i = 0; i < 100000; i++) do
-    print(vector.pop() .. " : " .. vector[i])
+for i in vector do
+    print(i)
 end

@@ -126,7 +126,7 @@ static inline void callCFunction(CState *state, CosmoCFunction cfunc, int args, 
     state->top = savedBase + offset; // set stack
 
     // push the return value back onto the stack
-    memcpy(state->top, results, sizeof(CValue) * nres); // copies the return values to the top of the stack
+    memmove(state->top, results, sizeof(CValue) * nres); // copies the return values to the top of the stack
     state->top += nres; // and make sure to move state->top to match
 
     // now, if the caller function expected more return values, push nils onto the stack
@@ -159,7 +159,7 @@ bool call(CState *state, CObjClosure *closure, int args, int nresults, int offse
     popCallFrame(state, offset);
 
     // push the return value back onto the stack
-    memcpy(state->top, results, sizeof(CValue) * nres); // copies the return values to the top of the stack
+    memmove(state->top, results, sizeof(CValue) * nres); // copies the return values to the top of the stack
     state->top += nres; // and make sure to move state->top to match
 
     // now, if the caller function expected more return values, push nils onto the stack
@@ -285,6 +285,7 @@ COSMO_API void cosmoV_makeDictionary(CState *state, int pairs) {
 }
 
 COSMO_API bool cosmoV_getObject(CState *state, CObjObject *object, CValue key, CValue *val) {
+    cosmoV_pushValue(state, cosmoV_newObj(object));
     if (cosmoO_getObject(state, object, key, val)) {
         if (IS_OBJ(*val)) {
             if (cosmoV_readObj(*val)->type == COBJ_CLOSURE) { // is it a function? if so, make it a method to the current object
@@ -296,10 +297,51 @@ COSMO_API bool cosmoV_getObject(CState *state, CObjObject *object, CValue key, C
             }
         }
 
+        cosmoV_pop(state);
         return true;
     }
 
+    cosmoV_pop(state);
     return false;
+}
+
+int _dict__next(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "Expected 1 parameter, %d received!", nargs);
+        return 0;
+    }
+
+    if (!IS_OBJECT(args[0])) {
+        cosmoV_error(state, "Expected iterable object, %s received!", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    CObjObject *obj = cosmoV_readObject(args[0]);
+    int index = cosmoO_getUserI(state, obj); // we store the index in the userdata
+    CValue val;
+    
+    cosmoO_getIString(state, obj, ISTRING_RESERVED, &val);
+
+    if (!IS_DICT(val)) {
+        return 0; // someone set the __reserved member to something else. this will exit the iterator loop 
+    }
+
+    CObjDict *dict = (CObjDict*)cosmoV_readObj(val);
+
+    // while the entry is invalid, go to the next entry
+    CTableEntry *entry;
+    do {
+        entry = &dict->tbl.table[index++];
+    } while (IS_NIL(entry->key) && index < dict->tbl.capacity);
+    cosmoO_setUserI(state, obj, index); // update the userdata
+
+    if (!IS_NIL(entry->key)) { // if the entry is valid, return it's key and value pair
+        cosmoV_pushValue(state, entry->key);
+        cosmoV_pushValue(state, entry->val);
+        return 2; // we pushed 2 values onto the stack for the return values
+    } else {
+        return 0; // we have nothing to return, this should exit the iterator loop
+    }
 }
 
 #define NUMBEROP(typeConst, op)  \
@@ -564,14 +606,29 @@ int cosmoV_execute(CState *state) {
 
                 switch (cosmoV_readObj(*temp)->type) {
                     case COBJ_DICT: {
-                        //CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
+                        CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
 
-                        // TODO: add cosmoV_makeIter, which will make a dummy iterable object for dictionaries
-                        cosmoV_error(state, "unimpl. mass ping cpunch!!!!");
+                        cosmoV_pushValue(state, cosmoV_newObj(state->iStrings[ISTRING_RESERVED])); // key
+                        cosmoV_pushValue(state, cosmoV_newObj(dict)); // value
+
+                        cosmoV_pushLString(state, "__next", 6); // key
+                        CObjCFunction *dict_next = cosmoO_newCFunction(state, _dict__next);
+                        cosmoV_pushValue(state, cosmoV_newObj(dict_next)); // value
+
+                        cosmoV_makeObject(state, 2); // pushes the new object to the stack
+
+                        CObjObject *obj = cosmoV_readObject(*(cosmoV_getTop(state, 0)));
+                        cosmoO_setUserI(state, obj, 0); // increment for iterator
+
+                        // make our CObjMethod for OP_NEXT to call
+                        CObjMethod *method = cosmoO_newCMethod(state, dict_next, obj);
+
+                        cosmoV_setTop(state, 2); // pops the object & the dict
+                        cosmoV_pushValue(state, cosmoV_newObj(method)); // pushes the method for OP_NEXT
                         break;
                     }
                     case COBJ_OBJECT: {
-                        CObjObject *obj = (CObjObject*)cosmoV_readObj(*temp);
+                        CObjObject *obj = cosmoV_readObject(*temp);
                         CValue val;
 
                         // grab __iter & call it
