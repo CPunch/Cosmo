@@ -205,7 +205,7 @@ bool cosmoT_remove(CState* state, CTable *tbl, CValue key) {
 
     // crafts tombstone
     entry->key = cosmoV_newNil(); // this has to be nil
-    entry->val = cosmoV_newBoolean(false); // doesn't reall matter what this is, as long as it isn't nil
+    entry->val = cosmoV_newBoolean(false); // doesn't really matter what this is, as long as it isn't nil
     tbl->tombstones++;
 
     return true;

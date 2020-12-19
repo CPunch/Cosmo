@@ -44,7 +44,7 @@ static void resetBuffer(CLexState *state) {
     state->bufCap = 0;
 }
 
-// cancels the token heap buffer and free's it
+// cancels the token heap buffer and frees it
 static void freeBuffer(CLexState *state) {
     cosmoM_freearray(state->cstate, char, state->buffer, state->bufCap);
 

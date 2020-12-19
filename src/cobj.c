@@ -156,7 +156,7 @@ CObjMethod *cosmoO_newMethod(CState *state, CObjClosure *func, CObjObject *obj) 
 }
 
 CObjClosure *cosmoO_newClosure(CState *state, CObjFunction *func) {
-    // intialize array of pointers
+    // initialize array of pointers
     CObjUpval **upvalues = cosmoM_xmalloc(state, sizeof(CObjUpval*) * func->upvals);
 
     for (int i = 0; i < func->upvals; i++) {
@@ -236,7 +236,7 @@ bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val
         
         if (object->proto != NULL && cosmoO_getObject(state, object->proto, key, val))
             return true;
-        return false; // no protoobject to check against / key not founc
+        return false; // no protoobject to check against / key not found
     }
 
     return true;

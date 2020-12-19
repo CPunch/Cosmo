@@ -37,7 +37,7 @@ int cosmoB_foreach(CState *state, int nargs, CValue *args) {
         return 0;
     }
 
-    // loop through dictonary table, calling args[1] on active entries
+    // loop through dictionary table, calling args[1] on active entries
     CObjDict *dict = (CObjDict*)cosmoV_readObj(args[0]);
     
     for (int i = 0; i < dict->tbl.capacity; i++) {

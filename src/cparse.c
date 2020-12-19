@@ -103,7 +103,7 @@ static void initCompilerState(CParseState* pstate, CCompilerState *ccstate, Func
     else
         ccstate->function->name = cosmoO_copyString(pstate->state, UNNAMEDCHUNK, strlen(UNNAMEDCHUNK));
 
-    // mark first local slot as used (this'll hold the CObjFunction of the current function, or if it's a method it'll hold the currently bounded object)
+    // mark first local slot as used (this will hold the CObjFunction of the current function, or if it's a method it'll hold the currently bounded object)
     Local *local = &ccstate->locals[ccstate->localCount++];
     local->depth = 0;
     local->isCaptured = false;
@@ -461,7 +461,7 @@ static void namedVariable(CParseState *pstate, CToken name, bool canAssign, bool
         opSet = OP_SETUPVAL;
         inc = OP_INCUPVAL;
     } else {
-        // local & upvalue wasnt' found, assume it's a global!
+        // local & upvalue wasn't found, assume it's a global!
         arg = identifierConstant(pstate, &name);
         opGet = OP_GETGLOBAL;
         opSet = OP_SETGLOBAL;
@@ -668,7 +668,7 @@ static void increment(CParseState *pstate, int val) {
         } else if ((arg = getUpvalue(pstate->compiler, &name)) != -1) {
             op = OP_INCUPVAL;
         } else {
-            // local & upvalue wasnt' found, assume it's a global!
+            // local & upvalue wasn't found, assume it's a global!
             arg = identifierConstant(pstate, &name);
             op = OP_INCGLOBAL;
         }
@@ -1164,10 +1164,10 @@ static void forLoop(CParseState *pstate) {
 
     consume(pstate, TOKEN_LEFT_PAREN, "Expected '(' after 'for'");
 
-    // parse initalizer
+    // parse initializer
     if (!match(pstate, TOKEN_EOS)) {
         expressionStatement(pstate);
-        consume(pstate, TOKEN_EOS, "Expected ';' after initalizer!");
+        consume(pstate, TOKEN_EOS, "Expected ';' after initializer!");
     }
 
     int loopStart = getChunk(pstate)->count;

@@ -65,7 +65,7 @@ CState *cosmoV_newState() {
 
 void cosmoV_freeState(CState *state) {
 #ifdef GC_DEBUG
-    printf("state %p is being free'd!\n", state);
+    printf("state %p is being freed!\n", state);
 #endif
     // frees all the objects
     CObj *objs = state->objects;

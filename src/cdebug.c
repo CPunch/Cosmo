@@ -173,7 +173,7 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
         case OP_INCGLOBAL:
             return u8u16OperandInstruction("OP_INCGLOBAL", chunk, offset);
         case OP_INCUPVAL:
-            return u8u8OperandInstruction("OP_INCLOCAL", chunk, offset);
+            return u8u8OperandInstruction("OP_INCUPVAL", chunk, offset);
         case OP_INCINDEX:
             return u8OperandInstruction("OP_INCINDEX", chunk, offset);
         case OP_INCOBJECT:

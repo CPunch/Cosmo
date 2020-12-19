@@ -213,11 +213,11 @@ COSMOVMRESULT cosmoV_call(CState *state, int args, int nresults) {
             newObj->proto = protoObj;
             CValue ret;
 
-            // check if they defined an initalizer
+            // check if they defined an initializer
             if (cosmoO_getIString(state, protoObj, ISTRING_INIT, &ret)) {
                 invokeMethod(state, newObj, ret, args, nresults, 1);
             } else {
-                // no default initalizer
+                // no default initializer
                 if (args != 0) {
                     cosmoV_error(state, "Expected 0 parameters, got %d!", args);
                     return COSMOVM_RUNTIME_ERR;
@@ -638,16 +638,16 @@ int cosmoV_execute(CState *state) {
                             cosmoV_pushValue(state, cosmoV_newObj(obj));
                             cosmoV_call(state, 1, 1); // we expect 1 return value on the stack, the iterable object
 
-                            StkPtr iobj = cosmoV_getTop(state, 0);
+                            StkPtr iObj = cosmoV_getTop(state, 0);
 
-                            if (!IS_OBJECT(*iobj)) {
-                                cosmoV_error(state, "Expected iterable object! '__iter' returned %s, expected object!", cosmoV_typeStr(*iobj));
+                            if (!IS_OBJECT(*iObj)) {
+                                cosmoV_error(state, "Expected iterable object! '__iter' returned %s, expected object!", cosmoV_typeStr(*iObj));
                                 break;
                             }
 
-                            CObjObject *obj = (CObjObject*)cosmoV_readObj(*iobj);
+                            CObjObject *obj = (CObjObject*)cosmoV_readObj(*iObj);
 
-                            cosmoV_getObject(state, obj, cosmoV_newObj(state->iStrings[ISTRING_NEXT]), iobj);
+                            cosmoV_getObject(state, obj, cosmoV_newObj(state->iStrings[ISTRING_NEXT]), iObj);
                         } else {
                             cosmoV_error(state, "Expected iterable object! '__iter' not defined!");
                         }
@@ -711,7 +711,7 @@ int cosmoV_execute(CState *state) {
                 }
                 break;
             }
-            case OP_COUNT: { // pop 1 value off the stack & if it's a dictionary return the ammount of active entries it has
+            case OP_COUNT: { // pop 1 value off the stack & if it's a dictionary return the amount of active entries it has
                 StkPtr temp = cosmoV_getTop(state, 0);
 
                 if (!IS_OBJ(*temp) || cosmoV_readObj(*temp)->type != COBJ_DICT) {
@@ -744,7 +744,7 @@ int cosmoV_execute(CState *state) {
                 break;
             }
             case OP_INCLOCAL: { // this leaves the value on the stack
-                int8_t inc = READBYTE() - 128; // ammount we're incrementing by
+                int8_t inc = READBYTE() - 128; // amount we're incrementing by
                 uint8_t indx = READBYTE();
                 StkPtr val = &frame->base[indx];
 
@@ -759,7 +759,7 @@ int cosmoV_execute(CState *state) {
                 break;
             }
             case OP_INCGLOBAL: {
-                int8_t inc = READBYTE() - 128; // ammount we're incrementing by
+                int8_t inc = READBYTE() - 128; // amount we're incrementing by
                 uint16_t indx = READUINT();
                 CValue ident = constants[indx]; // grabs identifier
                 CValue *val = cosmoT_insert(state, &state->globals, ident);
@@ -775,7 +775,7 @@ int cosmoV_execute(CState *state) {
                 break;
             }
             case OP_INCUPVAL: {
-                int8_t inc = READBYTE() - 128; // ammount we're incrementing by
+                int8_t inc = READBYTE() - 128; // amount we're incrementing by
                 uint8_t indx = READBYTE();
                 CValue *val = frame->closure->upvalues[indx]->val;
 
@@ -790,7 +790,7 @@ int cosmoV_execute(CState *state) {
                 break;
             }
             case OP_INCINDEX: {
-                int8_t inc = READBYTE() - 128; // ammount we're incrementing by
+                int8_t inc = READBYTE() - 128; // amount we're incrementing by
                 StkPtr temp = cosmoV_getTop(state, 1); // object should be above the key
                 StkPtr key = cosmoV_getTop(state, 0); // grabs key
 
@@ -836,7 +836,7 @@ int cosmoV_execute(CState *state) {
                 break;
             }
             case OP_INCOBJECT: {
-                int8_t inc = READBYTE() - 128; // ammount we're incrementing by
+                int8_t inc = READBYTE() - 128; // amount we're incrementing by
                 uint16_t indx = READUINT();
                 StkPtr temp = cosmoV_getTop(state, 0); // object should be at the top of the stack
                 CValue ident = constants[indx]; // grabs identifier

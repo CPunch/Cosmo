@@ -10,7 +10,7 @@
 void *cosmoM_reallocate(CState* state, void *buf, size_t oldSize, size_t newSize) {
     state->allocatedBytes += newSize - oldSize;
 
-    if (newSize == 0) { // it needs to be free'd
+    if (newSize == 0) { // it needs to be freed
         free(buf);
         return NULL;
     }
@@ -62,7 +62,7 @@ void markTable(CState *state, CTable *tbl) {
     }
 }
 
-// free's white members from the table
+// frees white members from the table
 void tableRemoveWhite(CState *state, CTable *tbl) {
     if (tbl->table == NULL) // table is still being initialized
         return;
@@ -153,7 +153,7 @@ void markObject(CState *state, CObj *obj) {
     if (obj->type == COBJ_CFUNCTION || obj->type == COBJ_STRING) 
         return;
 
-    // we can use cosmoM_growaraay because we lock the GC when we entered in cosmoM_collectGarbage
+    // we can use cosmoM_growarray because we lock the GC when we entered in cosmoM_collectGarbage
     cosmoM_growarray(state, CObj*, state->grayStack.array, state->grayStack.count, state->grayStack.capacity);
 
     state->grayStack.array[state->grayStack.count++] = obj;
@@ -244,7 +244,7 @@ COSMO_API void cosmoM_collectGarbage(CState *state) {
 
     markRoots(state);
 
-    tableRemoveWhite(state, &state->strings); // make sure we aren't referencing any strings that are about to be free'd
+    tableRemoveWhite(state, &state->strings); // make sure we aren't referencing any strings that are about to be freed
     // now finally, free all the unmarked objects
     sweep(state);
 

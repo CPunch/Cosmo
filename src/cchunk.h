@@ -9,7 +9,7 @@
 typedef struct CValueArray CValueArray;
 
 typedef struct CChunk {
-    size_t capacity; // the ammount of space we've allocated for
+    size_t capacity; // the amount of space we've allocated for
     size_t count; // the space we're currently using
     INSTRUCTION *buf; // whole chunk
     CValueArray constants; // holds constants
@@ -19,8 +19,8 @@ typedef struct CChunk {
 
 CChunk *newChunk(CState* state, size_t startCapacity);
 void initChunk(CState* state, CChunk *chunk, size_t startCapacity);
-void cleanChunk(CState* state, CChunk *chunk); // free's everything but the struct
-void freeChunk(CState* state, CChunk *chunk); // free's everything including the struct
+void cleanChunk(CState* state, CChunk *chunk); // frees everything but the struct
+void freeChunk(CState* state, CChunk *chunk); // frees everything including the struct
 int addConstant(CState* state, CChunk *chunk, CValue value);
 
 // write to chunk

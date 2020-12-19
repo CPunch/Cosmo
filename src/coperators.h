@@ -3,13 +3,6 @@
 
 #include "cosmo.h"
 
-// instruction types
-typedef enum {
-    I_O, // just the operand (uint8_t)
-    I_OBYTE, // operand (uint8_t) + uint8_t
-    I_OSHORT, // operand (uint8_t) + uint16_t
-} InstructionType;
-
 // instructions 
 
 typedef enum {
