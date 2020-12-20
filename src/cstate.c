@@ -88,15 +88,17 @@ void cosmoV_freeState(CState *state) {
     free(state);
 }
 
-void cosmoV_register(CState *state, const char *identifier, CValue val) {
-    // we push the values so the garbage collector can find them
-    cosmoV_pushValue(state, val);
-    cosmoV_pushValue(state, cosmoV_newObj(cosmoO_copyString(state, identifier, strlen(identifier))));
+// expects 2*pairs values on the stack, each pair should consist of 1 key and 1 value
+void cosmoV_register(CState *state, int pairs) {
+    for (int i = 0; i < pairs; i++) {
+        StkPtr key = cosmoV_getTop(state, 1);
+        StkPtr val = cosmoV_getTop(state, 0);
 
-    CValue *oldVal = cosmoT_insert(state, &state->globals, *cosmoV_getTop(state, 0));
-    *oldVal = val;
-    
-    cosmoV_setTop(state, 2); // pops the 2 values off the stack
+        CValue *oldVal = cosmoT_insert(state, &state->globals, *key);
+        *oldVal = *val;
+        
+        cosmoV_setTop(state, 2); // pops the 2 values off the stack
+    }
 }
 
 void cosmoV_printStack(CState *state) {

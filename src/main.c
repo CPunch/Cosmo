@@ -52,9 +52,13 @@ static void repl() {
     cosmoB_loadLibrary(state);
     cosmoB_loadDebug(state);
 
-    // TODO: there's gotta be a better way to do this
-    cosmoV_register(state, "quit", cosmoV_newObj(cosmoO_newCFunction(state, cosmoB_quitRepl)));
-    cosmoV_register(state, "input", cosmoV_newObj(cosmoO_newCFunction(state, cosmoB_input)));
+    cosmoV_pushString(state, "quit");
+    cosmoV_pushCFunction(state, cosmoB_quitRepl);
+
+    cosmoV_pushString(state, "input");
+    cosmoV_pushCFunction(state, cosmoB_input);
+
+    cosmoV_register(state, 2);
 
     while (_ACTIVE) {
         printf("> ");
@@ -106,8 +110,6 @@ static void runFile(const char* fileName) {
     char* script = readFile(fileName);
     CState *state = cosmoV_newState();
     cosmoB_loadLibrary(state);
-
-    cosmoV_register(state, "input", cosmoV_newObj(cosmoO_newCFunction(state, cosmoB_input)));
 
     interpret(state, script, fileName);
 

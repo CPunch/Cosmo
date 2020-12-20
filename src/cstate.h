@@ -53,7 +53,8 @@ typedef struct CState {
 } CState;
 
 COSMO_API CState *cosmoV_newState();
-COSMO_API void cosmoV_register(CState *state, const char *identifier, CValue val);
+// expects 2*pairs values on the stack, each pair should consist of 1 key and 1 value
+COSMO_API void cosmoV_register(CState *state, int pairs); 
 COSMO_API void cosmoV_freeState(CState *state);
 COSMO_API void cosmoV_printStack(CState *state);
 

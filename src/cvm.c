@@ -611,7 +611,7 @@ int cosmoV_execute(CState *state) {
                         cosmoV_pushValue(state, cosmoV_newObj(state->iStrings[ISTRING_RESERVED])); // key
                         cosmoV_pushValue(state, cosmoV_newObj(dict)); // value
 
-                        cosmoV_pushLString(state, "__next", 6); // key
+                        cosmoV_pushString(state, "__next"); // key
                         CObjCFunction *dict_next = cosmoO_newCFunction(state, _dict__next);
                         cosmoV_pushValue(state, cosmoV_newObj(dict_next)); // value
 
