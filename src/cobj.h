@@ -154,6 +154,15 @@ CObjString *cosmoO_takeString(CState *state, char *str, size_t sz);
 // allocates a CObjStruct pointing directly to *str
 CObjString *cosmoO_allocateString(CState *state, const char *str, size_t sz, uint32_t hash);
 
+/*
+    formats strings to push onto the VM stack, formatting supported:
+
+    '%d' - decimal numbers  [int]
+    '%f' - floating point   [double]
+    '%s' - strings          [const char*]
+*/
+CObjString *cosmoO_pushVFString(CState *state, const char *format, va_list args);
+
 COSMO_API void printObject(CObj *o);
 const char *cosmoO_typeStr(CObj* obj);
 

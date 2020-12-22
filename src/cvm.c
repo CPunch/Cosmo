@@ -6,6 +6,13 @@
 #include <stdarg.h>
 #include <string.h>
 
+COSMO_API void cosmoV_pushFString(CState *state, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    cosmoO_pushVFString(state, format, args);
+    va_end(args);
+}
+
 void cosmoV_error(CState *state, const char *format, ...) {
     if (state->panic)
         return;
@@ -37,14 +44,12 @@ void cosmoV_error(CState *state, const char *format, ...) {
 
     va_list args;
     va_start(args, format);
-    vfprintf(stderr, format, args);
+    CObjString *errString = cosmoO_pushVFString(state, format, args);
     va_end(args);
-    fputs("\n", stderr);
-    
-    // TODO: push error onto the stack :P
-    state->panic = true;
 
+    printf("%.*s\n", errString->length, errString->str);
     cosmoV_printStack(state);
+    state->panic = true;
 }
 
 CObjUpval *captureUpvalue(CState *state, CValue *local) {
@@ -97,15 +102,30 @@ void popCallFrame(CState *state, int offset) {
     state->frameCount--;
 }
 
-CObjString *cosmoV_concat(CState *state, CObjString *strA, CObjString *strB) {
-    size_t sz = strA->length + strB->length;
-    char *buf = cosmoM_xmalloc(state, sz + 1); // +1 for null terminator
-    
-    memcpy(buf, strA->str, strA->length);
-    memcpy(buf + strA->length, strB->str, strB->length);
-    buf[sz] = '\0';
+void cosmoV_concat(CState *state, int vals) {
+    StkPtr start = state->top - vals;
+    StkPtr end = cosmoV_getTop(state, 0);
 
-    return cosmoO_takeString(state, buf, sz);
+    CObjString *result = cosmoV_toString(state, *start);
+    for (StkPtr current = start + 1; current <= end; current++) {
+        cosmoV_pushValue(state, cosmoV_newObj(result)); // so our GC can find our current result string
+        CObjString *otherStr = cosmoV_toString(state, *current);
+        cosmoV_pushValue(state, cosmoV_newObj(otherStr)); // also so our GC won't free otherStr
+
+        // concat the two strings together
+        size_t sz = result->length + otherStr->length;
+        char *buf = cosmoM_xmalloc(state, sz + 1); // +1 for null terminator
+        
+        memcpy(buf, result->str, result->length);
+        memcpy(buf + result->length, otherStr->str, otherStr->length);
+        buf[sz] = '\0';
+        result = cosmoO_takeString(state, buf, sz);
+
+        cosmoV_setTop(state, 2); // pop result & otherStr off the stack
+    }
+
+    state->top = start;
+    cosmoV_pushValue(state, cosmoV_newObj(result));
 }
 
 int cosmoV_execute(CState *state);
@@ -726,21 +746,7 @@ int cosmoV_execute(CState *state) {
             }
             case OP_CONCAT: {
                 uint8_t vals = READBYTE();
-                StkPtr start = state->top - vals;
-                StkPtr end = cosmoV_getTop(state, 0);
-
-                CObjString *result = cosmoV_toString(state, *start);
-                for (StkPtr current = start + 1; current <= end; current++) {
-                    cosmoV_pushValue(state, cosmoV_newObj(result)); // so our GC can find our current result string
-                    CObjString *otherStr = cosmoV_toString(state, *current);
-                    cosmoV_pushValue(state, cosmoV_newObj(otherStr)); // also so our GC won't free otherStr
-                    result = cosmoV_concat(state, result, otherStr);
-
-                    cosmoV_setTop(state, 2); // pop result & otherStr off the stack
-                }
-
-                state->top = start;
-                cosmoV_pushValue(state, cosmoV_newObj(result));
+                cosmoV_concat(state, vals);
                 break;
             }
             case OP_INCLOCAL: { // this leaves the value on the stack

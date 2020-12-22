@@ -17,6 +17,8 @@ COSMO_API COSMOVMRESULT cosmoV_call(CState *state, int args, int nresults);
 COSMO_API void cosmoV_makeObject(CState *state, int pairs);
 COSMO_API void cosmoV_makeDictionary(CState *state, int pairs);
 COSMO_API bool cosmoV_getObject(CState *state, CObjObject *object, CValue key, CValue *val);
+COSMO_API void cosmoV_concat(CState *state, int vals);
+COSMO_API void cosmoV_pushFString(CState *state, const char *format, ...);
 COSMO_API void cosmoV_error(CState *state, const char *format, ...);
 
 // nice to have wrappers

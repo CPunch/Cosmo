@@ -224,6 +224,46 @@ CObjString *cosmoO_allocateString(CState *state, const char *str, size_t sz, uin
     return strObj;
 }
 
+CObjString *cosmoO_pushVFString(CState *state, const char *format, va_list args) {
+    StkPtr start = state->top;
+
+    while (true) {
+        const char *end = strchr(format, '%'); // grab the next occurrence of '%'
+        if (end == NULL) // the end, no '%' found
+            break;
+
+        // push the string before '%'
+        cosmoV_pushLString(state, format, (end - format));
+        char c = *(end+1); // the character right after '%'
+
+        switch (c) {
+            case 'd': { // int
+                cosmoV_pushNumber(state, va_arg(args, int));
+                break;
+            }
+            case 'f': { // double
+                cosmoV_pushNumber(state, va_arg(args, double));
+                break;
+            }
+            case 's': { // const char *
+                cosmoV_pushString(state, va_arg(args, char *));
+                break;
+            }
+            default: {
+                char temp[2];
+                temp[0] = '%';
+                temp[1] = c;
+                cosmoV_pushLString(state, temp, 2);
+            }
+        }
+        format = end + 2; // + 2 because of % and the following character
+    }
+
+    cosmoV_pushString(state, format); // push the rest of the string
+    cosmoV_concat(state, state->top - start); // use cosmoV_concat to concat all the strings on the stack
+    return cosmoV_readString(*start); // start should be state->top - 1
+}
+
 bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val) {
     if (!cosmoT_get(&object->tbl, key, val)) { // if the field doesn't exist in the object, check the proto
         if (cosmoO_getIString(state, object, ISTRING_GETTER, val) && IS_OBJECT(*val) && cosmoO_getObject(state, cosmoV_readObject(*val), key, val)) {

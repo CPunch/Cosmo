@@ -52,6 +52,7 @@ static void repl() {
     cosmoB_loadLibrary(state);
     cosmoB_loadDebug(state);
 
+    // add our custom REPL functions
     cosmoV_pushString(state, "quit");
     cosmoV_pushCFunction(state, cosmoB_quitRepl);
 
@@ -110,6 +111,12 @@ static void runFile(const char* fileName) {
     char* script = readFile(fileName);
     CState *state = cosmoV_newState();
     cosmoB_loadLibrary(state);
+
+    // add our input() function to the global table
+    cosmoV_pushString(state, "input");
+    cosmoV_pushCFunction(state, cosmoB_input);
+
+    cosmoV_register(state, 1);
 
     interpret(state, script, fileName);
 
