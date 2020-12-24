@@ -5,17 +5,18 @@ for (var x = 0; x < 700; x++) do
         var str = i .. "." .. x
         if (i == 998) then
             print(i .. " reached")
-            break
+            break // exits the loop
         end
         
         print("for cont- " .. str)
-        continue
+        continue // this really doesn't have much effect since the loop is restarted anyways, but this is just to prove it works as expected
     end
 
+    // same example as the for loop but done manually using a while loop
     var i = 0
     while true do
         var str = i .. "." .. x
-        if (i++ == 1034) then
+        if (i++ == 998) then
             print("done")
             break
         end
