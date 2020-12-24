@@ -44,6 +44,8 @@ typedef enum {
 
     // keywords & reserved words
     TOKEN_AND,
+    TOKEN_BREAK,
+    TOKEN_CONTINUE,
     TOKEN_DO,
     TOKEN_ELSE,
     TOKEN_ELSEIF,

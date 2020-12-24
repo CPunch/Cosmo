@@ -1,0 +1,26 @@
+// just testing continues and breaks
+
+for (var x = 0; x < 700; x++) do
+    for (var i = 0; true; i++) do
+        var str = i .. "." .. x
+        if (i == 998) then
+            print(i .. " reached")
+            break
+        end
+        
+        print("for cont- " .. str)
+        continue
+    end
+
+    var i = 0
+    while true do
+        var str = i .. "." .. x
+        if (i++ == 1034) then
+            print("done")
+            break
+        end
+
+        print("while cont- " .. str)
+        continue
+    end
+end

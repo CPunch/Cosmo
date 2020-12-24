@@ -20,6 +20,14 @@ typedef struct {
     bool isLocal;
 } Upvalue;
 
+typedef struct {
+    int *breaks; // this array is dynamically allocated
+    int scope; // if -1, there is no loop
+    int startBytecode; // start index in the chunk of the loop
+    int breakCount; // # of breaks to patch
+    int breakCapacity;
+} LoopState;
+
 typedef enum {
     FTYPE_FUNCTION,
     FTYPE_METHOD, // a function bounded to an object (can use "this" identifer to access the current object :pog:)
@@ -27,11 +35,12 @@ typedef enum {
 } FunctionType;
 
 typedef struct CCompilerState {
-    CObjFunction *function;
-    FunctionType type;
-
     Local locals[256];
     Upvalue upvalues[256];
+    LoopState loop;
+
+    CObjFunction *function;
+    FunctionType type;
     int localCount;
     int scopeDepth;
     int pushedValues;
@@ -97,6 +106,8 @@ static void initCompilerState(CParseState* pstate, CCompilerState *ccstate, Func
     ccstate->type = type;
     ccstate->function = cosmoO_newFunction(pstate->state);
     ccstate->function->module = pstate->module;
+
+    ccstate->loop.scope = -1; // there is no loop yet
 
     if (type != FTYPE_SCRIPT) 
         ccstate->function->name = cosmoO_copyString(pstate->state, pstate->previous.start, pstate->previous.length);
@@ -737,6 +748,8 @@ ParseRule ruleTable[] = {
     [TOKEN_TRUE]            = {literal, NULL, PREC_NONE},
     [TOKEN_FALSE]           = {literal, NULL, PREC_NONE},
     [TOKEN_AND]             = {NULL, and_, PREC_AND},
+    [TOKEN_BREAK]           = {NULL, NULL, PREC_NONE},
+    [TOKEN_CONTINUE]        = {NULL, NULL, PREC_NONE},
     [TOKEN_DO]              = {NULL, NULL, PREC_NONE},
     [TOKEN_ELSE]            = {NULL, NULL, PREC_NONE},
     [TOKEN_ELSEIF]          = {NULL, NULL, PREC_NONE},
@@ -984,8 +997,30 @@ static void ifStatement(CParseState *pstate) {
     }
 }
 
+static void startLoop(CParseState *pstate) {
+    LoopState *lstate = &pstate->compiler->loop;
+    lstate->scope = pstate->compiler->scopeDepth;
+    lstate->breaks = cosmoM_xmalloc(pstate->state, sizeof(int) * ARRAY_START);
+    lstate->breakCount = 0;
+    lstate->breakCapacity = ARRAY_START;
+    lstate->startBytecode = getChunk(pstate)->count;
+}
+
+// this patches all the breaks 
+static void endLoop(CParseState *pstate) {
+    while (pstate->compiler->loop.breakCount > 0) {
+        patchJmp(pstate, pstate->compiler->loop.breaks[--pstate->compiler->loop.breakCount]);
+    }
+
+    cosmoM_freearray(pstate->state, int, pstate->compiler->loop.breaks,  pstate->compiler->loop.breakCapacity);
+}
+
 static void whileStatement(CParseState *pstate) {
+    LoopState cachedLoop = pstate->compiler->loop;
+    startLoop(pstate);
     int jumpLocation = getChunk(pstate)->count;
+
+    // get conditional
     expression(pstate, 1, true);
 
     consume(pstate, TOKEN_DO, "expected 'do' after conditional expression.");
@@ -996,8 +1031,11 @@ static void whileStatement(CParseState *pstate) {
     beginScope(pstate);
     block(pstate); // parse until 'end'
     endScope(pstate);
-
     writeJmpBack(pstate, jumpLocation);
+
+    // patch all the breaks, and restore the previous loop state
+    endLoop(pstate);
+    pstate->compiler->loop = cachedLoop;
     patchJmp(pstate, exitJump);
 }
 
@@ -1123,6 +1161,10 @@ static void forEachLoop(CParseState *pstate) {
 
     writeu8(pstate, OP_ITER); // checks if stack[top] is iterable and pushes the __next method onto the stack for OP_NEXT to call
 
+    // start loop scope
+    LoopState cachedLoop = pstate->compiler->loop;
+    startLoop(pstate);
+    pstate->compiler->loop.scope--; // scope should actually be 1 less than this
     int loopStart = getChunk(pstate)->count;
 
     // OP_NEXT expected a uint8_t after the opcode for how many values __next is expected to return
@@ -1137,15 +1179,17 @@ static void forEachLoop(CParseState *pstate) {
     valuePushed(pstate, values);
 
     // compile loop block
-    beginScope(pstate);
     block(pstate);
-    endScope(pstate);
 
     // pop all of the values, OP_NEXT will repopulate them
     endScope(pstate);
 
     // write jmp back to the start of the loop
     writeJmpBack(pstate, loopStart);
+
+    // patch all the breaks, and restore the previous loop state
+    endLoop(pstate);
+    pstate->compiler->loop = cachedLoop;
     patchJmp(pstate, jmpPatch); // and finally, patch our OP_NEXT
 
     // remove reserved local
@@ -1170,8 +1214,11 @@ static void forLoop(CParseState *pstate) {
         consume(pstate, TOKEN_EOS, "Expected ';' after initializer!");
     }
 
+    // start loop scope
+    LoopState cachedLoop = pstate->compiler->loop;
+    startLoop(pstate);
     int loopStart = getChunk(pstate)->count;
-    
+
     // parse conditional
     int exitJmp = -1;
     if (!match(pstate, TOKEN_EOS)) {
@@ -1185,6 +1232,10 @@ static void forLoop(CParseState *pstate) {
     // parse iterator
     if (!match(pstate, TOKEN_RIGHT_PAREN)) {
         int bodyJmp = writeJmp(pstate, OP_JMP);
+
+        // replace stale loop state
+        endLoop(pstate);
+        startLoop(pstate);
 
         int iteratorStart = getChunk(pstate)->count;
         expression(pstate, 0, true);
@@ -1207,7 +1258,42 @@ static void forLoop(CParseState *pstate) {
         patchJmp(pstate, exitJmp);
     }
 
+    // patch all the breaks, and restore the previous loop state
+    endLoop(pstate);
+    pstate->compiler->loop = cachedLoop;
+
     endScope(pstate);
+}
+
+static void breakStatement(CParseState *pstate) {
+    if (pstate->compiler->loop.scope == -1) {
+        error(pstate, "'break' cannot be used inside of a loop body!");
+        return;
+    }
+
+    // pop active scoped locals in the loop scope
+    int savedLocals = pstate->compiler->localCount;
+    popLocals(pstate, pstate->compiler->loop.scope);
+    pstate->compiler->localCount = savedLocals;
+
+    // add break to loop
+    cosmoM_growarray(pstate->state, int, pstate->compiler->loop.breaks, pstate->compiler->loop.breakCount, pstate->compiler->loop.breakCapacity);
+    pstate->compiler->loop.breaks[pstate->compiler->loop.breakCount++] = writeJmp(pstate, OP_JMP);
+}
+
+static void continueStatement(CParseState *pstate) {
+    if (pstate->compiler->loop.scope == -1) {
+        error(pstate, "'continue' cannot be used inside of a loop body!");
+        return;
+    }
+
+    // pop active scoped locals in the loop scope
+    int savedLocals = pstate->compiler->localCount;
+    popLocals(pstate, pstate->compiler->loop.scope);
+    pstate->compiler->localCount = savedLocals;
+
+    // jump to the start of the loop
+    writeJmpBack(pstate, pstate->compiler->loop.startBytecode);
 }
 
 static void synchronize(CParseState *pstate) {
@@ -1265,6 +1351,10 @@ static void expressionStatement(CParseState *pstate) {
         functionDeclaration(pstate);
     } else if (match(pstate, TOKEN_PROTO)) {
         _proto(pstate);
+    } else if (match(pstate, TOKEN_BREAK)) {
+        breakStatement(pstate);
+    } else if (match(pstate, TOKEN_CONTINUE)) {
+        continueStatement(pstate);
     } else if (match(pstate, TOKEN_RETURN)) {
         returnStatement(pstate);
     } else {

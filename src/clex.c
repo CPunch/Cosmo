@@ -5,6 +5,8 @@
 
 CReservedWord reservedWords[] = {
     {TOKEN_AND, "and", 3},
+    {TOKEN_BREAK, "break", 5},
+    {TOKEN_CONTINUE, "continue", 8},
     {TOKEN_DO, "do", 2},
     {TOKEN_ELSE, "else", 4},
     {TOKEN_ELSEIF, "elseif", 6},
