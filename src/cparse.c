@@ -1267,7 +1267,7 @@ static void forLoop(CParseState *pstate) {
 
 static void breakStatement(CParseState *pstate) {
     if (pstate->compiler->loop.scope == -1) {
-        error(pstate, "'break' cannot be used inside of a loop body!");
+        error(pstate, "'break' cannot be used outside of a loop body!");
         return;
     }
 
@@ -1283,7 +1283,7 @@ static void breakStatement(CParseState *pstate) {
 
 static void continueStatement(CParseState *pstate) {
     if (pstate->compiler->loop.scope == -1) {
-        error(pstate, "'continue' cannot be used inside of a loop body!");
+        error(pstate, "'continue' cannot be used outside of a loop body!");
         return;
     }
 
