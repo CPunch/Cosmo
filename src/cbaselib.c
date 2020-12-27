@@ -5,9 +5,15 @@
 #include "cmem.h"
 
 void cosmoB_loadLibrary(CState *state) {
+    // print
     cosmoV_pushString(state, "print");
     cosmoV_pushCFunction(state, cosmoB_print);
-    cosmoV_register(state, 1); // sets "print" global to cosmoB_print
+
+    // assert (for unit testing)
+    cosmoV_pushString(state, "assert");
+    cosmoV_pushCFunction(state, cosmoB_assert);
+
+    cosmoV_register(state, 2);
 }
 
 int cosmoB_print(CState *state, int nargs, CValue *args) {
@@ -18,6 +24,24 @@ int cosmoB_print(CState *state, int nargs, CValue *args) {
     printf("\n");
 
     return 0; // print doesn't return any args
+}
+
+int cosmoB_assert(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "assert() expected 1 argument, got %d!", nargs);
+        return 0; // nothing pushed onto the stack to return
+    }
+
+    if (!IS_BOOLEAN(args[0])) {
+        cosmoV_error(state, "assert() expected <boolean>, got %s!", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    if (!cosmoV_readBoolean(args[0])) { // expression passed was false, error!
+        cosmoV_error(state, "assert() failed!");
+    } // else do nothing :)
+
+    return 0;
 }
 
 int cosmoB_dsetProto(CState *state, int nargs, CValue *args) {
@@ -35,7 +59,7 @@ int cosmoB_dsetProto(CState *state, int nargs, CValue *args) {
 
 int cosmoB_dgetProto(CState *state, int nargs, CValue *args) {
     if (nargs != 1) {
-        cosmoV_error(state, "Expected 1 parameter, got %d!", nargs);
+        cosmoV_error(state, "Expected 1 argument, got %d!", nargs);
     }
 
     cosmoV_pushValue(state, cosmoV_newObj(cosmoV_readObject(args[0])->proto)); // just return the proto

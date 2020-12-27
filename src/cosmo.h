@@ -7,7 +7,11 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include <assert.h>
+
 //#define NAN_BOXXED
+
+#define COSMOASSERT(x) assert(x)
 
 // forward declare *most* stuff so our headers are cleaner
 typedef struct CState CState;

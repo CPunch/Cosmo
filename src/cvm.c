@@ -173,7 +173,7 @@ bool call(CState *state, CObjClosure *closure, int args, int nresults, int offse
         state->top -= extraArgs;
 
         pushCallFrame(state, closure, func->args + 1);
-    } else if (args < func->args) { // too few args passed, obvious user error
+    } else if (args != func->args) { // mismatched args
         cosmoV_error(state, "Expected %d arguments for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args);
         return false;
     } else {
