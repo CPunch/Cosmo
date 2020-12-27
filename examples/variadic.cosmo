@@ -1,0 +1,15 @@
+// adds all args passed (expects numbers)
+function add(start, ...args) 
+    // starting at `start`, add up all numbers passed
+    local total = start
+    for val in args do
+        total = total + val
+    end
+
+    return total
+end
+
+print("add(100) -> " .. add(100))
+print("add(100, 1, 2, 3, 4) -> " .. add(100, 1, 2, 3, 4))
+print("add(1, 2, 3, 4, 5, 6, 7, 8, 9, 10) -> " .. add(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
+print("add(-54, 2, 3, 4, 5, 6, 7, 8, 9, 10) -> " .. add(-54, 2, 3, 4, 5, 6, 7, 8, 9, 10))

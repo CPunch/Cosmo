@@ -713,7 +713,6 @@ static void predecrement(CParseState *pstate, bool canAssign) {
     increment(pstate, -1);
 }
 
-
 ParseRule ruleTable[] = {
     [TOKEN_LEFT_PAREN]      = {group, call_, PREC_CALL},
     [TOKEN_RIGHT_PAREN]     = {NULL, NULL, PREC_NONE},
@@ -725,6 +724,7 @@ ParseRule ruleTable[] = {
     [TOKEN_COLON]           = {NULL, NULL, PREC_NONE},
     [TOKEN_DOT]             = {NULL, dot, PREC_CALL},
     [TOKEN_DOT_DOT]         = {NULL, concat, PREC_CONCAT},
+    [TOKEN_DOT_DOT_DOT]     = {NULL, NULL, PREC_NONE},
     [TOKEN_MINUS]           = {unary, binary, PREC_TERM},
     [TOKEN_MINUS_MINUS]     = {predecrement, NULL, PREC_TERM},
     [TOKEN_PLUS]            = {NULL, binary, PREC_TERM},
@@ -1051,6 +1051,9 @@ static void function(CParseState *pstate, FunctionType type) {
     consume(pstate, TOKEN_LEFT_PAREN, "Expected '(' after identifier.");
     if (!check(pstate, TOKEN_RIGHT_PAREN)) {
         do {
+            if (check(pstate, TOKEN_DOT_DOT_DOT))
+                break;
+            
             // add arg to function
             compiler.function->args++;
             if (compiler.function->args > UINT16_MAX - 1) { // -1 since the function would already be on the stack
@@ -1058,11 +1061,19 @@ static void function(CParseState *pstate, FunctionType type) {
             }
 
             // parse identifier for param (force them to be a local)
-            uint16_t funcIdent = parseVariable(pstate, "Expected identifier for function!", true);
+            uint16_t funcIdent = parseVariable(pstate, "Expected identifier for parameter!", true);
             defineVariable(pstate, funcIdent, true);
             valuePushed(pstate, 1); // they *will* be populated during runtime
         } while (match(pstate, TOKEN_COMMA));
     }
+
+    if (match(pstate, TOKEN_DOT_DOT_DOT)) { // marks a function as variadic, now we expect an identifer for the populated variadic dictionary
+        uint16_t vari = parseVariable(pstate, "Expected identifier for variadic dictionary!", true);
+        defineVariable(pstate, vari, true);
+        valuePushed(pstate, 1);
+        compiler.function->variadic = true;
+    }
+
     consume(pstate, TOKEN_RIGHT_PAREN, "Expected ')' after parameters.");
 
     // compile function block

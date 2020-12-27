@@ -128,6 +128,7 @@ CObjFunction *cosmoO_newFunction(CState *state) {
     CObjFunction *func = (CObjFunction*)cosmoO_allocateBase(state, sizeof(CObjFunction), COBJ_FUNCTION);
     func->args = 0;
     func->upvals = 0;
+    func->variadic = false;
     func->name = NULL;
     func->module = NULL;
 

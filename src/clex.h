@@ -15,6 +15,7 @@ typedef enum {
     TOKEN_COLON,
     TOKEN_DOT,
     TOKEN_DOT_DOT,
+    TOKEN_DOT_DOT_DOT,
     TOKEN_MINUS,
     TOKEN_MINUS_MINUS,
     TOKEN_PLUS,

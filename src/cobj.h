@@ -64,6 +64,7 @@ typedef struct CObjFunction {
     CChunk chunk;
     int args;
     int upvals;
+    int variadic;
     CObjString *name;
     CObjString *module; // name of the "module"
 } CObjFunction;

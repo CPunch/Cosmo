@@ -316,7 +316,7 @@ CToken cosmoL_scanToken(CLexState *state) {
         case '-': 
             return match(state, '-') ? makeToken(state, TOKEN_MINUS_MINUS) : makeToken(state, TOKEN_MINUS);
         case '.': 
-            return match(state, '.') ? makeToken(state, TOKEN_DOT_DOT) : makeToken(state, TOKEN_DOT);
+            return match(state, '.') ? (match(state, '.') ? makeToken(state, TOKEN_DOT_DOT_DOT) : makeToken(state, TOKEN_DOT_DOT)) : makeToken(state, TOKEN_DOT);
         case '!':
             return match(state, '=') ? makeToken(state, TOKEN_BANG_EQUAL) : makeToken(state, TOKEN_BANG);
         case '=':

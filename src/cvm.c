@@ -141,7 +141,7 @@ static inline void callCFunction(CState *state, CosmoCFunction cfunc, int args, 
         nres = nresults;
 
     // remember where the return values are
-    CValue* results = cosmoV_getTop(state, nres-1);
+    StkPtr results = cosmoV_getTop(state, nres-1);
 
     state->top = savedBase + offset; // set stack
 
@@ -155,14 +155,32 @@ static inline void callCFunction(CState *state, CosmoCFunction cfunc, int args, 
 }
 
 bool call(CState *state, CObjClosure *closure, int args, int nresults, int offset) {
-    // missmatched args, thats an obvious user error, so error.
-    if (args != closure->function->args) {
-        cosmoV_error(state, "Expected %d parameters for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args);
+    CObjFunction *func = closure->function;
+
+    // if the function is variadic and theres more args than parameters, push the args into a dictionary
+    if (func->variadic && args >= func->args) {
+        int extraArgs = args - func->args;
+        StkPtr variStart = cosmoV_getTop(state, extraArgs-1);
+
+        // push key & value pairs
+        for (int i = 0; i < extraArgs; i++) {
+            cosmoV_pushNumber(state, i);
+            cosmoV_pushValue(state, *(variStart + i));
+        }
+
+        cosmoV_makeDictionary(state, extraArgs);
+        *variStart = *cosmoV_getTop(state, 0); // move dict on the stack to the vari local
+        state->top -= extraArgs;
+
+        pushCallFrame(state, closure, func->args + 1);
+    } else if (args < func->args) { // too few args passed, obvious user error
+        cosmoV_error(state, "Expected %d arguments for %s, got %d!", closure->function->args, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, args);
         return false;
+    } else {
+        // load function into callframe
+        pushCallFrame(state, closure, func->args);
     }
     
-    // load function into callframe
-    pushCallFrame(state, closure, closure->function->args);
 
     // execute
     int nres = cosmoV_execute(state);
@@ -173,12 +191,12 @@ bool call(CState *state, CObjClosure *closure, int args, int nresults, int offse
         nres = nresults;
 
     // remember where the return values are
-    CValue* results = cosmoV_getTop(state, nres-1);
+    StkPtr results = cosmoV_getTop(state, nres-1);
 
     // pop the callframe and return results :)
     popCallFrame(state, offset);
 
-    // push the return value back onto the stack
+    // push the return values back onto the stack
     memmove(state->top, results, sizeof(CValue) * nres); // copies the return values to the top of the stack
     state->top += nres; // and make sure to move state->top to match
 
