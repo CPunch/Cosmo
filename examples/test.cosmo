@@ -1,5 +1,7 @@
 // crafts a dummy proto
-proto test end
+proto test 
+    function __init(self) end
+end
 
 // instance of test
 var obj = test()

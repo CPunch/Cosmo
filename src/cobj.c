@@ -265,9 +265,9 @@ CObjString *cosmoO_pushVFString(CState *state, const char *format, va_list args)
     return cosmoV_readString(*start); // start should be state->top - 1
 }
 
-bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val) {
+bool cosmoO_getRawObject(CState *state, CObjObject *object, CValue key, CValue *val) {
     if (!cosmoT_get(&object->tbl, key, val)) { // if the field doesn't exist in the object, check the proto
-        if (cosmoO_getIString(state, object, ISTRING_GETTER, val) && IS_OBJECT(*val) && cosmoO_getObject(state, cosmoV_readObject(*val), key, val)) {
+        if (cosmoO_getIString(state, object, ISTRING_GETTER, val) && IS_OBJECT(*val) && cosmoO_getRawObject(state, cosmoV_readObject(*val), key, val)) {
             cosmoV_pushValue(state, *val); // push function
             cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
             cosmoV_call(state, 1, 1); // call the function with the 1 argument
@@ -275,7 +275,7 @@ bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val
             return true;
         }
         
-        if (object->proto != NULL && cosmoO_getObject(state, object->proto, key, val))
+        if (object->proto != NULL && cosmoO_getRawObject(state, object->proto, key, val))
             return true;
         return false; // no protoobject to check against / key not found
     }
@@ -283,11 +283,11 @@ bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val
     return true;
 }
 
-void cosmoO_setObject(CState *state, CObjObject *object, CValue key, CValue val) {
+void cosmoO_setRawObject(CState *state, CObjObject *object, CValue key, CValue val) {
     CValue ret;
 
     // first check for __setters
-    if (cosmoO_getIString(state, object, ISTRING_SETTER, &ret) && IS_OBJECT(ret) && cosmoO_getObject(state, cosmoV_readObject(ret), key, &ret)) {
+    if (cosmoO_getIString(state, object, ISTRING_SETTER, &ret) && IS_OBJECT(ret) && cosmoO_getRawObject(state, cosmoV_readObject(ret), key, &ret)) {
         cosmoV_pushValue(state, ret); // push function
         cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
         cosmoV_pushValue(state, val); // push new value

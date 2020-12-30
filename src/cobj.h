@@ -135,8 +135,8 @@ CObjClosure *cosmoO_newClosure(CState *state, CObjFunction *func);
 CObjString *cosmoO_toString(CState *state, CObj *val);
 CObjUpval *cosmoO_newUpvalue(CState *state, CValue *val);
 
-bool cosmoO_getObject(CState *state, CObjObject *object, CValue key, CValue *val);
-void cosmoO_setObject(CState *state, CObjObject *object, CValue key, CValue val);
+bool cosmoO_getRawObject(CState *state, CObjObject *object, CValue key, CValue *val);
+void cosmoO_setRawObject(CState *state, CObjObject *object, CValue key, CValue val);
 bool cosmoO_indexObject(CState *state, CObjObject *object, CValue key, CValue *val);
 bool cosmoO_newIndexObject(CState *state, CObjObject *object, CValue key, CValue val);
 
