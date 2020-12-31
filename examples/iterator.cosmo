@@ -13,12 +13,16 @@ proto Range
             return nil // exit iterator loop
         end
 
-        return self.i++, self.i
+        return self.i++
     end
 end
 
+for i in Range(10) do
+    print("->" .. i)
+end
+
 local total = 0
-for i, x in Range(1000000) do
+for i in Range(1000000) do
     total = total + i
 end
 
