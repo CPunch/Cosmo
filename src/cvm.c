@@ -673,9 +673,9 @@ int cosmoV_execute(CState *state) {
 
                             // call closure/cfunction
                             if (IS_CFUNCTION(val)) {
-                                callCFunction(state, cosmoV_readCFunction(val), args, nres, 0);
+                                callCFunction(state, cosmoV_readCFunction(val), args, nres, -1);
                             } else if (IS_CLOSURE(val)) {
-                                call(state, cosmoV_readClosure(val), args, nres, 0);
+                                call(state, cosmoV_readClosure(val), args, nres, -1);
                             } else {
                                 cosmoV_error(state, "Cannot call non-function value %s!", cosmoV_typeStr(val));
                                 return -1;

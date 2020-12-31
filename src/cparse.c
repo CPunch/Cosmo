@@ -371,7 +371,6 @@ static void alignStack(CParseState *pstate, int alignment) {
         writePop(pstate, pstate->compiler->pushedValues - alignment);
     } else if (pstate->compiler->pushedValues < alignment) {
         error(pstate, "Missing expression!");
-        printf("%d < %d\n", pstate->compiler->pushedValues, alignment);
     }
 
     pstate->compiler->pushedValues = alignment;
