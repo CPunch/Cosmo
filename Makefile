@@ -2,7 +2,7 @@
 
 CC=clang
 CFLAGS=-fPIE -Wall -O3 -std=c11
-LDFLAGS=#-fsanitize=address
+LDFLAGS=-lm #-fsanitize=address
 OUT=bin/cosmo
 
 CHDR=\

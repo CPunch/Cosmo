@@ -144,6 +144,8 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
             return simpleInstruction("OP_MULT", offset);
         case OP_DIV:
             return simpleInstruction("OP_DIV", offset);
+        case OP_MOD:
+            return simpleInstruction("OP_MOD", offset);
         case OP_TRUE:
             return simpleInstruction("OP_TRUE", offset);
         case OP_FALSE:

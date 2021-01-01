@@ -430,6 +430,7 @@ static void binary(CParseState *pstate, bool canAssign) {
         case TOKEN_MINUS:   writeu8Chunk(pstate->state, getChunk(pstate), OP_SUB, cachedLine); break;
         case TOKEN_STAR:    writeu8Chunk(pstate->state, getChunk(pstate), OP_MULT, cachedLine); break;
         case TOKEN_SLASH:   writeu8Chunk(pstate->state, getChunk(pstate), OP_DIV, cachedLine); break;
+        case TOKEN_PERCENT: writeu8Chunk(pstate->state, getChunk(pstate), OP_MOD, cachedLine); break;
         // EQUALITY
         case TOKEN_EQUAL_EQUAL:     writeu8Chunk(pstate->state, getChunk(pstate), OP_EQUAL, cachedLine); break;
         case TOKEN_GREATER:         writeu8Chunk(pstate->state, getChunk(pstate), OP_GREATER, cachedLine); break;
@@ -730,6 +731,7 @@ ParseRule ruleTable[] = {
     [TOKEN_PLUS_PLUS]       = {preincrement, NULL, PREC_TERM},
     [TOKEN_SLASH]           = {NULL, binary, PREC_FACTOR},
     [TOKEN_STAR]            = {NULL, binary, PREC_FACTOR},
+    [TOKEN_PERCENT]         = {NULL, binary, PREC_FACTOR},
     [TOKEN_POUND]           = {unary, NULL, PREC_NONE},
     [TOKEN_EOS]             = {NULL, NULL, PREC_NONE},
     [TOKEN_BANG]            = {unary, NULL, PREC_NONE},
