@@ -22,7 +22,7 @@ typedef enum {
     COBJ_UPVALUE,
 } CObjType;
 
-#define CommonHeader CObj _obj;
+#define CommonHeader CObj _obj
 #define readFlag(x, flag)   (x & (1u << flag))
 #define setFlagOn(x, flag)  (x |= (1u << flag))
 

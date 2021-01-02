@@ -287,8 +287,10 @@ static uint16_t identifierConstant(CParseState *pstate, CToken *name) {
 }
 
 static void addLocal(CParseState *pstate, CToken name) {
-    if (pstate->compiler->localCount > UINT8_MAX)
-        return error(pstate, "UInt overflow! Too many locals in scope!");
+    if (pstate->compiler->localCount > UINT8_MAX) {
+        error(pstate, "UInt overflow! Too many locals in scope!");
+        return;
+    }
 
     Local *local = &pstate->compiler->locals[pstate->compiler->localCount++];
     local->name = name;

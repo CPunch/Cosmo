@@ -37,7 +37,7 @@ void freeChunk(CState* state, CChunk *chunk) {
 
 int addConstant(CState* state, CChunk *chunk, CValue value) {
     // before adding the constant, check if we already have it
-    for (int i = 0; i < chunk->constants.count; i++) {
+    for (size_t i = 0; i < chunk->constants.count; i++) {
         if (cosmoV_equal(value, chunk->constants.values[i]))
             return i; // we already have a matching constant!
     }

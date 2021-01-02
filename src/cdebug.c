@@ -32,7 +32,7 @@ int u8u16OperandInstruction(const char *name, CChunk *chunk, int offset) {
     return offset + 4; // op + u8 + u16
 }
 
-int constInstruction(const char *name, CChunk *chunk, int offset, int indent) {
+int constInstruction(const char *name, CChunk *chunk, int offset) {
     int index = readu16Chunk(chunk, offset + 1);
     printf("%-16s [%05d] - ", name, index);
     CValue val = chunk->constants.values[index];
@@ -48,7 +48,7 @@ void disasmChunk(CChunk *chunk, const char *name, int indent) {
     printIndent(indent);
     printf("===[[ %s ]]===\n", name);
 
-    for (int offset = 0; offset < chunk->count;) {
+    for (size_t offset = 0; offset < chunk->count;) {
         offset = disasmInstr(chunk, offset, indent);
         printf("\n");
     }
@@ -69,11 +69,11 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
 
     switch (i) {
         case OP_LOADCONST: 
-            return constInstruction("OP_LOADCONST", chunk, offset, indent);
+            return constInstruction("OP_LOADCONST", chunk, offset);
         case OP_SETGLOBAL:
-            return constInstruction("OP_SETGLOBAL", chunk, offset, indent);
+            return constInstruction("OP_SETGLOBAL", chunk, offset);
         case OP_GETGLOBAL:
-            return constInstruction("OP_GETGLOBAL", chunk, offset, indent);
+            return constInstruction("OP_GETGLOBAL", chunk, offset);
         case OP_SETLOCAL:
             return u8OperandInstruction("OP_SETLOCAL", chunk, offset);
         case OP_GETLOCAL:

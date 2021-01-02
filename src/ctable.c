@@ -73,7 +73,7 @@ uint32_t getValueHash(CValue *val) {
                 return 0;
             
             memcpy(buf, &num, sizeof(buf));
-            for (int i = 0; i < sizeof(cosmo_Number)/sizeof(uint32_t); i++) buf[0] += buf[i];
+            for (size_t i = 0; i < sizeof(cosmo_Number)/sizeof(uint32_t); i++) buf[0] += buf[i];
             return buf[0];
         }
         // TODO: add support for other types
@@ -216,7 +216,7 @@ COSMO_API int cosmoT_count(CTable *tbl) {
     return tbl->count - tbl->tombstones;
 }
 
-CObjString *cosmoT_lookupString(CTable *tbl, const char *str, size_t length, uint32_t hash) {
+CObjString *cosmoT_lookupString(CTable *tbl, const char *str, int length, uint32_t hash) {
     if (tbl->count == 0) return 0; // sanity check
     uint32_t indx = hash & (tbl->capacity - 1); // since we know the capacity will *always* be a power of 2, we can use bitwise & to perform a MUCH faster mod operation
 

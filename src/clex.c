@@ -155,7 +155,7 @@ CTokenType identifierType(CLexState *state) {
     int length = state->currentChar - state->startChar;
 
     // check against reserved word list
-    for (int i = 0; i < sizeof(reservedWords) / sizeof(CReservedWord); i++) {
+    for (size_t i = 0; i < sizeof(reservedWords) / sizeof(CReservedWord); i++) {
         // it matches the reserved word
         if (reservedWords[i].len == length && memcmp(state->startChar, reservedWords[i].word, length) == 0) 
             return reservedWords[i].type;

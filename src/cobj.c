@@ -11,7 +11,7 @@ uint32_t hashString(const char *str, size_t sz) {
     uint32_t hash = sz;
     size_t step = (sz>>5)+1;
 
-    for (int i = sz; i >= step; i-=step)
+    for (size_t i = sz; i >= step; i-=step)
         hash = ((hash << 5) + (hash>>2)) + str[i-1];
 
     return hash;
@@ -394,12 +394,12 @@ CObjString *cosmoO_toString(CState *state, CObj *obj) {
         }
         case COBJ_OBJECT: { // TODO: maybe not safe??
             char buf[64];
-            int sz = sprintf(buf, "<obj> %p", obj) + 1; // +1 for the null character
+            int sz = sprintf(buf, "<obj> %p", (void*)obj) + 1; // +1 for the null character
             return cosmoO_copyString(state, buf, sz);
         }
         case COBJ_DICT: {
             char buf[64];
-            int sz = sprintf(buf, "<dict> %p", obj) + 1; // +1 for the null character
+            int sz = sprintf(buf, "<dict> %p", (void*)obj) + 1; // +1 for the null character
             return cosmoO_copyString(state, buf, sz);
         }
         default:
@@ -415,17 +415,17 @@ void printObject(CObj *o) {
             break;
         }
         case COBJ_OBJECT: {
-            printf("<obj> %p", o);
+            printf("<obj> %p", (void*)o);
             break;
         }
         case COBJ_DICT: {
             CObjDict *dict = (CObjDict*)o;
-            printf("<dict> %p", dict);
+            printf("<dict> %p", (void*)dict);
             break;
         }
         case COBJ_UPVALUE: {
             CObjUpval *upval = (CObjUpval*)o;
-            printf("<upvalue %p> -> ", upval->val);
+            printf("<upvalue %p> -> ", (void*)upval->val);
             printValue(*upval->val);
             break;
         }
@@ -444,17 +444,17 @@ void printObject(CObj *o) {
         }
         case COBJ_CFUNCTION: {
             CObjCFunction *objCFunc = (CObjCFunction*)o;
-            printf("<c function> %p", objCFunc->cfunc);
+            printf("<c function> %p", (void*)objCFunc->cfunc);
             break;
         }
         case COBJ_METHOD: {
             CObjMethod *method = (CObjMethod*)o;
-            printf("<method> %p : ", method->obj);
+            printf("<method> %p : ", (void*)method->obj);
             printValue(method->func);
             break;
         }
         default:
-            printf("<unkn obj %p>", o);
+            printf("<unkn obj %p>", (void*)o);
     }
 }
 

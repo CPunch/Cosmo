@@ -78,7 +78,7 @@ void tableRemoveWhite(CState *state, CTable *tbl) {
 }
 
 void markArray(CState *state, CValueArray *array) {
-    for (int i = 0; i < array->count; i++) {
+    for (size_t i = 0; i < array->count; i++) {
         markValue(state, array->values[i]);
     }
 }
@@ -132,7 +132,9 @@ void blackenObject(CState *state, CObj *obj) {
             break;
         }
         default:
-            printf("Unknown type in blackenObject with %p, type %d\n", obj, obj->type);
+#ifdef GC_DEBUG
+            printf("Unknown type in blackenObject with %p, type %d\n", (void*)obj, obj->type);
+#endif
             break;
     }
 }
