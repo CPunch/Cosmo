@@ -23,6 +23,42 @@ COSMO_API void cosmoV_error(CState *state, const char *format, ...);
 
 // nice to have wrappers
 
+// pushes value to the stack
+static inline void cosmoV_pushValue(CState *state, CValue val) {
+    ptrdiff_t stackSize = state->top - state->stack;
+
+    // we reserve 8 slots for the error string and whatever c api we might be in
+    if (stackSize >= STACK_MAX - 8) {
+        if (state->panic) { // we're in a panic state, let the 8 reserved slots be filled
+            if (stackSize < STACK_MAX)
+                *(state->top++) = val;
+            
+            return;
+        }
+
+        cosmoV_error(state, "Stack overflow!");
+        return;
+    }
+
+    *(state->top++) = val;
+}
+
+// sets stack->top to stack->top - indx
+static inline StkPtr cosmoV_setTop(CState *state, int indx) {
+    state->top -= indx;
+    return state->top;
+}
+
+// returns stack->top - indx - 1
+static inline StkPtr cosmoV_getTop(CState *state, int indx) {
+    return &state->top[-(indx + 1)];
+}
+
+// pops 1 value off the stack
+static inline StkPtr cosmoV_pop(CState *state) {
+    return cosmoV_setTop(state, 1);
+}
+
 // pushes a cosmo_Number to the stack
 static inline void cosmoV_pushNumber(CState *state, cosmo_Number num) {
     cosmoV_pushValue(state, cosmoV_newNumber(num));

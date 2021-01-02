@@ -18,6 +18,7 @@ COSMO_API void cosmoV_pushFString(CState *state, const char *format, ...) {
 void cosmoV_error(CState *state, const char *format, ...) {
     if (state->panic)
         return;
+    state->panic = true;
 
     // print stack trace
     for (int i = 0; i < state->frameCount; i++) {
@@ -50,8 +51,7 @@ void cosmoV_error(CState *state, const char *format, ...) {
     va_end(args);
 
     printf("%.*s\n", errString->length, errString->str);
-    cosmoV_printStack(state);
-    state->panic = true;
+    //cosmoV_printStack(state);
 }
 
 CObjUpval *captureUpvalue(CState *state, CValue *local) {
@@ -90,6 +90,11 @@ void closeUpvalues(CState *state, CValue *local) {
 }
 
 void pushCallFrame(CState *state, CObjClosure *closure, int args) {
+    if (state->frameCount >= FRAME_MAX) {
+        cosmoV_error(state, "Callframe overflow!");
+        return;
+    }
+
     CCallFrame *frame = &state->callFrame[state->frameCount++];
     frame->base = state->top - args - 1; // - 1 for the function
     frame->pc = closure->function->chunk.buf;

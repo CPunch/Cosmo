@@ -4,6 +4,7 @@
 #include "cchunk.h"
 #include "cdebug.h"
 #include "cmem.h"
+#include "cvm.h"
 
 #include <string.h>
 

@@ -33,6 +33,9 @@ typedef struct ArrayCObj {
 typedef struct CState {
     bool panic;
     int freezeGC; // when > 0, GC events will be ignored (for internal use)
+    int frameCount;
+
+    CObjObject *protoObj; // start met obj for all objects (NULL by default)
     CObj *objects; // tracks all of our allocated objects
     CObj *userRoots; // user definable roots, this holds CObjs that should be considered "roots", lets the VM know you are holding a reference to a CObj in your code
     ArrayCObj grayStack; // keeps track of which objects *haven't yet* been traversed in our GC, but *have been* found
@@ -44,12 +47,9 @@ typedef struct CState {
     CTable globals;
 
     CValue *top; // top of the stack
-    CValue stack[STACK_MAX]; // stack
-    CCallFrame callFrame[FRAME_MAX]; // call frames
-    int frameCount;
-
     CObjString *iStrings[ISTRING_MAX]; // strings used internally by the VM, eg. __init, __index & friends
-    CObjObject *protoObj; // start met obj for all objects (NULL by default)
+    CCallFrame callFrame[FRAME_MAX]; // call frames
+    CValue stack[STACK_MAX]; // stack
 } CState;
 
 COSMO_API CState *cosmoV_newState();
@@ -57,26 +57,5 @@ COSMO_API CState *cosmoV_newState();
 COSMO_API void cosmoV_register(CState *state, int pairs); 
 COSMO_API void cosmoV_freeState(CState *state);
 COSMO_API void cosmoV_printStack(CState *state);
-
-// pushes value to the stack
-static inline void cosmoV_pushValue(CState *state, CValue val) {
-    *(state->top++) = val;
-}
-
-// sets stack->top to stack->top - indx
-static inline StkPtr cosmoV_setTop(CState *state, int indx) {
-    state->top -= indx;
-    return state->top;
-}
-
-// returns stack->top - indx - 1
-static inline StkPtr cosmoV_getTop(CState *state, int indx) {
-    return &state->top[-(indx + 1)];
-}
-
-// pops 1 value off the stack
-static inline StkPtr cosmoV_pop(CState *state) {
-    return cosmoV_setTop(state, 1);
-}
 
 #endif
