@@ -912,39 +912,44 @@ int cosmoV_execute(CState *state) {
                 StkPtr key = cosmoV_getTop(state, 0); // grabs key
 
                  if (IS_OBJ(*temp)) {
-                    if (cosmoV_readObj(*temp)->type == COBJ_DICT) {
-                        CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
-                        CValue *val = cosmoT_insert(state, &dict->tbl, *key);
+                    switch (cosmoV_readObj(*temp)->type) {
+                        case COBJ_DICT: {
+                            CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
+                            CValue *val = cosmoT_insert(state, &dict->tbl, *key);
 
-                        // pops dict & key from stack
-                        cosmoV_setTop(state, 2);
+                            // pops dict & key from stack
+                            cosmoV_setTop(state, 2);
 
-                        if (IS_NUMBER(*val)) { 
-                            cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
-                            *val = cosmoV_newNumber(cosmoV_readNumber(*val) + inc);
-                        } else {
-                            cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
-                            return -1;
-                        }
-                    } else if (cosmoV_readObj(*temp)->type == COBJ_OBJECT) { // check for __newindex!
-                        CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
-                        CValue val;
-                        
-                        // call __index
-                        if (cosmoO_indexObject(state, object, *key, &val)) {
-                            if (IS_NUMBER(val)) { 
-                                cosmoV_pushValue(state, val); // pushes old value onto the stack :)
-
-                                // call __newindex
-                                cosmoO_newIndexObject(state, object, *key, cosmoV_newNumber(cosmoV_readNumber(val) + inc));
+                            if (IS_NUMBER(*val)) { 
+                                cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
+                                *val = cosmoV_newNumber(cosmoV_readNumber(*val) + inc);
                             } else {
-                                cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(val));
+                                cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
                                 return -1;
                             }
+                            break;
                         }
-                    } else {
-                        cosmoV_error(state, "Couldn't set index with type %s!", cosmoV_typeStr(*temp));
-                        return -1;
+                        case COBJ_OBJECT: {
+                            CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
+                            CValue val;
+                            
+                            // call __index
+                            if (cosmoO_indexObject(state, object, *key, &val)) {
+                                if (IS_NUMBER(val)) { 
+                                    cosmoV_pushValue(state, val); // pushes old value onto the stack :)
+
+                                    // call __newindex
+                                    cosmoO_newIndexObject(state, object, *key, cosmoV_newNumber(cosmoV_readNumber(val) + inc));
+                                } else {
+                                    cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(val));
+                                    return -1;
+                                }
+                            }
+                            break;
+                        }
+                        default:
+                            cosmoV_error(state, "Couldn't set index with type %s!", cosmoV_typeStr(*temp));
+                            return -1;
                     }
                 } else {
                     cosmoV_error(state, "Couldn't set index with type %s!", cosmoV_typeStr(*temp));
@@ -960,25 +965,49 @@ int cosmoV_execute(CState *state) {
                 CValue ident = constants[indx]; // grabs identifier
 
                 // sanity check
-                if (!IS_OBJ(*temp) || cosmoV_readObj(*temp)->type != COBJ_OBJECT) {
-                    cosmoV_error(state, "Couldn't set a field on non-object type %s!", cosmoV_typeStr(*temp));
-                    return -1;
-                }
+                if (IS_OBJ(*temp)) {
+                    switch (cosmoV_readObj(*temp)->type) {
+                        case COBJ_OBJECT: {
+                            CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
+                            CValue val;
+                            
+                            cosmoO_getRawObject(state, object, ident, &val);
 
-                CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
-                CValue val;
-                
-                cosmoO_getRawObject(state, object, ident, &val);
+                            // pop the object off the stack
+                            cosmoV_pop(state);
 
-                // pop the object off the stack
-                cosmoV_pop(state);
+                            // check that it's a number value
+                            if (IS_NUMBER(val)) { 
+                                cosmoV_pushValue(state, val); // pushes old value onto the stack :)
+                                cosmoO_setRawObject(state, object, ident, cosmoV_newNumber(cosmoV_readNumber(val) + inc));
+                            } else {
+                                cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(val));
+                                return -1;
+                            }
+                            break;
+                        }
+                        case COBJ_DICT: {
+                            CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
+                            CValue *val = cosmoT_insert(state, &dict->tbl, ident);
 
-                // check that it's a number value
-                if (IS_NUMBER(val)) { 
-                    cosmoV_pushValue(state, val); // pushes old value onto the stack :)
-                    cosmoO_setRawObject(state, object, ident, cosmoV_newNumber(cosmoV_readNumber(val) + inc));
+                            // pops dict from stack
+                            cosmoV_pop(state);
+
+                            if (IS_NUMBER(*val)) { 
+                                cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
+                                *val = cosmoV_newNumber(cosmoV_readNumber(*val) + inc);
+                            } else {
+                                cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
+                                return -1;
+                            }
+                            break;
+                        }
+                        default: 
+                            cosmoV_error(state, "Couldn't set a field on type %s!", cosmoV_typeStr(*temp));
+                            return -1;
+                    }
                 } else {
-                    cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(val));
+                    cosmoV_error(state, "Couldn't set a field on type %s!", cosmoV_typeStr(*temp));
                     return -1;
                 }
 
