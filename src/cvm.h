@@ -6,6 +6,13 @@
 #include "cosmo.h"
 #include "cstate.h"
 
+/* 
+    SAFE_STACK:
+        if undefined, the stack will not be checked for stack overflows. This may improve performance, however 
+    this will produce undefined behavior as you reach the stack limit (and may cause a seg fault!). It is recommended to keep this enabled.
+*/
+#define SAFE_STACK
+
 typedef enum {
     COSMOVM_OK,
     COSMOVM_RUNTIME_ERR,
@@ -25,6 +32,7 @@ COSMO_API void cosmoV_error(CState *state, const char *format, ...);
 
 // pushes value to the stack
 static inline void cosmoV_pushValue(CState *state, CValue val) {
+#ifdef SAFE_STACK
     ptrdiff_t stackSize = state->top - state->stack;
 
     // we reserve 8 slots for the error string and whatever c api we might be in
@@ -39,6 +47,7 @@ static inline void cosmoV_pushValue(CState *state, CValue val) {
         cosmoV_error(state, "Stack overflow!");
         return;
     }
+#endif
 
     *(state->top++) = val;
 }

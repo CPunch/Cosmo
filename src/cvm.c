@@ -90,10 +90,12 @@ void closeUpvalues(CState *state, CValue *local) {
 }
 
 void pushCallFrame(CState *state, CObjClosure *closure, int args) {
+#ifdef SAFE_STACK
     if (state->frameCount >= FRAME_MAX) {
         cosmoV_error(state, "Callframe overflow!");
         return;
     }
+#endif
 
     CCallFrame *frame = &state->callFrame[state->frameCount++];
     frame->base = state->top - args - 1; // - 1 for the function
