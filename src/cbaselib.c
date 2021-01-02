@@ -32,6 +32,17 @@ int cosmoB_assert(CState *state, int nargs, CValue *args) {
     return 0;
 }
 
+int cosmoB_type(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "type() expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    // push the type string to the stack
+    cosmoV_pushString(state, cosmoV_typeStr(args[0]));
+    return 1; // 1 return value, the type string :D
+}
+
 // ================================================================ [STRING.*] ================================================================
 
 // string.sub
@@ -77,6 +88,35 @@ int cosmoB_sSub(CState *state, int nargs, CValue *args) {
     return 1;
 }
 
+void cosmoB_loadLibrary(CState *state) {
+    // print
+    cosmoV_pushString(state, "print");
+    cosmoV_pushCFunction(state, cosmoB_print);
+
+    // assert (for unit testing)
+    cosmoV_pushString(state, "assert");
+    cosmoV_pushCFunction(state, cosmoB_assert);
+
+    // type
+    cosmoV_pushString(state, "type");
+    cosmoV_pushCFunction(state, cosmoB_type);
+
+    // string.
+    cosmoV_pushString(state, "string");
+
+    // sub
+    cosmoV_pushString(state, "sub");
+    cosmoV_pushCFunction(state, cosmoB_sSub);
+    
+    cosmoV_makeDictionary(state, 1);
+    // string.
+
+    // register these all to the global table
+    cosmoV_register(state, 4);
+}
+
+// ================================================================ [DEBUG] ================================================================
+
 int cosmoB_dsetProto(CState *state, int nargs, CValue *args) {
     if (nargs == 2) {
         CObjObject *obj = cosmoV_readObject(args[0]); // object to set proto too
@@ -100,29 +140,6 @@ int cosmoB_dgetProto(CState *state, int nargs, CValue *args) {
     return 1; // 1 result
 }
 
-void cosmoB_loadLibrary(CState *state) {
-    // print
-    cosmoV_pushString(state, "print");
-    cosmoV_pushCFunction(state, cosmoB_print);
-
-    // assert (for unit testing)
-    cosmoV_pushString(state, "assert");
-    cosmoV_pushCFunction(state, cosmoB_assert);
-
-    // string.
-    cosmoV_pushString(state, "string");
-
-    // sub
-    cosmoV_pushString(state, "sub");
-    cosmoV_pushCFunction(state, cosmoB_sSub);
-    
-    cosmoV_makeDictionary(state, 1);
-    // string.
-
-    // register these all to the global table
-    cosmoV_register(state, 3);
-}
-
 void cosmoB_loadDebug(CState *state) {
     // make __getter object for debug proto
     cosmoV_pushString(state, "__getter");
@@ -131,7 +148,7 @@ void cosmoB_loadDebug(CState *state) {
     cosmoV_pushString(state, "__proto"); // key
     cosmoV_pushCFunction(state, cosmoB_dgetProto); // value
 
-    cosmoV_makeObject(state, 1);
+    cosmoV_makeDictionary(state, 1);
 
     // make __setter object
     cosmoV_pushString(state, "__setter");
@@ -139,7 +156,7 @@ void cosmoB_loadDebug(CState *state) {
     cosmoV_pushString(state, "__proto");
     cosmoV_pushCFunction(state, cosmoB_dsetProto);
 
-    cosmoV_makeObject(state, 1);
+    cosmoV_makeDictionary(state, 1);
 
     // we call makeObject leting it know there are 2 sets of key & value pairs on the stack
     cosmoV_makeObject(state, 2);
