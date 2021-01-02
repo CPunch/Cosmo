@@ -646,7 +646,62 @@ static void _index(CParseState *pstate, bool canAssign) {
         writeu8(pstate, OP_INDEX);
     }
     
-    valuePopped(pstate, 1); // pops key & object but also pushes the field so total popped is 1
+    valuePopped(pstate, 1); // pops key & object but also pushes the value so total popped is 1
+}
+
+// ++test.field[1]
+static void walkIndexes(CParseState *pstate, int lastIndexType, uint16_t lastIdent, int val) {
+    uint16_t ident = lastIdent;
+    int indexType = lastIndexType;
+
+    while (true) {
+        if (match(pstate, TOKEN_DOT)) {
+            consume(pstate, TOKEN_IDENTIFIER, "Expected property name after '.'.");
+            ident = identifierConstant(pstate, &pstate->previous);
+            indexType = 0;
+        } else if (match(pstate, TOKEN_LEFT_BRACKET)) {
+            indexType = 1;
+        } else // end of indexes, break out of the loop
+            break;
+        
+        switch (lastIndexType) {
+            case 0: // .
+                writeu8(pstate, OP_LOADCONST); // pushes ident to stack
+                writeu16(pstate, lastIdent);
+                writeu8(pstate, OP_GETOBJECT); // grabs property
+                break;
+            case 1: // []
+                writeu8(pstate, OP_INDEX); // so, that was a normal index, perform that
+                valuePopped(pstate, 1); // pops the key & dict off the stack, but pushes the value
+                break;
+            default: // no previous index
+                break;
+        }
+
+        if (indexType == 1) { // currently parsed token was a TOKEN_LEFT_BRACKET, meaning an index
+            expression(pstate, 1, true); // grabs key
+            consume(pstate, TOKEN_RIGHT_BRACKET, "Expected ']' to end index.");
+        }
+
+        lastIndexType = indexType;
+        lastIdent = ident;
+    }
+
+    switch (indexType) {
+        case 0: // .
+             writeu8(pstate, OP_INCOBJECT);
+            writeu8(pstate, 128 + val); // setting signed values in an unsigned int 
+            writeu16(pstate, ident);
+            valuePopped(pstate, 1); // popped the object off the stack
+            break;
+        case 1: // []
+            writeu8(pstate, OP_INCINDEX);
+            writeu8(pstate, 128 + val);
+            valuePopped(pstate, 2); // popped the dictionary & the key off the stack, but pushes the previous value
+            break;
+        default: // no previous index
+                break;
+    }
 }
 
 static void increment(CParseState *pstate, int val) {
@@ -656,20 +711,17 @@ static void increment(CParseState *pstate, int val) {
         consume(pstate, TOKEN_IDENTIFIER, "Expected property name after '.'.");
         uint16_t ident = identifierConstant(pstate, &pstate->previous);
 
-        while (match(pstate, TOKEN_DOT)) {
-            // grab the field from the object
-            writeu8(pstate, OP_LOADCONST); // pushes ident to stack
-            writeu16(pstate, ident);
-            writeu8(pstate, OP_GETOBJECT);
-            
-            consume(pstate, TOKEN_IDENTIFIER, "Expected property name after '.'.");
-            ident = identifierConstant(pstate, &pstate->previous);
-        }
+        // walk the indexes
+        walkIndexes(pstate, 0, ident, val);
+    } else if (match(pstate, TOKEN_LEFT_BRACKET)) { // dictionary?
+        namedVariable(pstate, name, false, false); // just get the dictionary
 
-        writeu8(pstate, OP_INCOBJECT);
-        writeu8(pstate, 128 + val); // setting signed values in an unsigned int 
-        writeu16(pstate, ident);
-        valuePopped(pstate, 1); // popped the object off the stack
+        // grab key
+        expression(pstate, 1, true);
+        consume(pstate, TOKEN_RIGHT_BRACKET, "Expected ']' to end index.");
+
+        // walk the indexes
+        walkIndexes(pstate, 1, 0, val);
     } else {
         uint8_t op;
         int arg = getLocal(pstate->compiler, &name);
