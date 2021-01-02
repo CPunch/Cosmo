@@ -298,8 +298,13 @@ static void addLocal(CParseState *pstate, CToken name) {
     local->isCaptured = false;
 }
 
-static int addUpvalue(CCompilerState *ccstate, uint8_t indx, bool isLocal) {
+static int addUpvalue(CParseState *pstate, CCompilerState *ccstate, uint8_t indx, bool isLocal) {
     int upvals = ccstate->function->upvals;
+
+    if (upvals > UINT8_MAX) {
+        error(pstate, "UInt overflow! Too many upvalues in scope!");
+        return -1;
+    }
 
     // check and make sure we haven't already captured it
     for (int i = 0; i < upvals; i++) {
@@ -307,8 +312,6 @@ static int addUpvalue(CCompilerState *ccstate, uint8_t indx, bool isLocal) {
         if (upval->index == indx && upval->isLocal == isLocal) // it matches! return that
             return i;
     }
-
-    // TODO: throw error if upvals >= UINT8_MAX
 
     ccstate->upvalues[upvals].index = indx;
     ccstate->upvalues[upvals].isLocal = isLocal;
@@ -327,19 +330,19 @@ static int getLocal(CCompilerState *ccstate, CToken *name) {
     return -1;
 }
 
-static int getUpvalue(CCompilerState *ccstate, CToken *name) {
+static int getUpvalue(CParseState *pstate, CCompilerState *ccstate, CToken *name) {
     if (ccstate->enclosing == NULL) // there's no upvalues to lookup!
         return -1;
 
     int local = getLocal(ccstate->enclosing, name);
     if (local != -1) {
         ccstate->enclosing->locals[local].isCaptured = true;
-        return addUpvalue(ccstate, local, true);
+        return addUpvalue(pstate, ccstate, local, true);
     }
 
-    int upval = getUpvalue(ccstate->enclosing, name);
+    int upval = getUpvalue(pstate, ccstate->enclosing, name);
     if (upval != -1)
-        return addUpvalue(ccstate, upval, false);
+        return addUpvalue(pstate, ccstate, upval, false);
 
     return -1; // failed!
 }
@@ -470,7 +473,7 @@ static void namedVariable(CParseState *pstate, CToken name, bool canAssign, bool
         opGet = OP_GETLOCAL;
         opSet = OP_SETLOCAL;
         inc = OP_INCLOCAL;
-    } else if ((arg = getUpvalue(pstate->compiler, &name)) != -1) {
+    } else if ((arg = getUpvalue(pstate, pstate->compiler, &name)) != -1) {
         opGet = OP_GETUPVAL;
         opSet = OP_SETUPVAL;
         inc = OP_INCUPVAL;
@@ -564,7 +567,7 @@ static void call_(CParseState *pstate, bool canAssign) {
     valuePopped(pstate, argCount + 1); // all of these values will be popped off the stack when returned (+1 for the function)
     writeu8(pstate, OP_CALL);
     writeu8(pstate, argCount);
-    writeu8(pstate, pstate->compiler->expectedValues); // TODO
+    writeu8(pstate, pstate->compiler->expectedValues);
     valuePushed(pstate, pstate->compiler->expectedValues);
 }
 
@@ -619,7 +622,7 @@ static void dot(CParseState *pstate, bool canAssign) {
         uint8_t args = parseArguments(pstate);
         writeu8(pstate, OP_INVOKE);
         writeu8(pstate, args);
-        writeu8(pstate, pstate->compiler->expectedValues); // TODO
+        writeu8(pstate, pstate->compiler->expectedValues); 
         valuePopped(pstate, args+1); // args + function
         valuePushed(pstate, pstate->compiler->expectedValues);
     } else {
@@ -731,7 +734,7 @@ static void increment(CParseState *pstate, int val) {
         if (arg != -1) {
             // we found it in out local table!
             op = OP_INCLOCAL;
-        } else if ((arg = getUpvalue(pstate->compiler, &name)) != -1) {
+        } else if ((arg = getUpvalue(pstate, pstate->compiler, &name)) != -1) {
             op = OP_INCUPVAL;
         } else {
             // local & upvalue wasn't found, assume it's a global!
@@ -1480,7 +1483,7 @@ CObjFunction* cosmoP_compileString(CState *state, const char *source, const char
         endCompiler(&parser);
         freeParseState(&parser);
 
-        // the VM still expects a result on the stack TODO: push the error string to the stack
+        // the VM still expects a result on the stack
         cosmoV_pushValue(state, cosmoV_newNil());
         cosmoM_unfreezeGC(state);
         return NULL;
