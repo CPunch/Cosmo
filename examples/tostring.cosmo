@@ -3,14 +3,14 @@ proto test
         self.setArg(x)
     end
 
-    function fact(self)
+    function __tostring(self)
         var total = 1
 
         for (var i = self.x; i > 0; i = i - 1) do
             total = total * i;
         end
 
-        return total
+        return "The factorial of " .. self.x .. " is " .. total
     end
 
     function setArg(self, x)
@@ -24,6 +24,6 @@ for (var x = 1; x < 1000; x = x + 1) do
     for (var i = 1; i < 100; i = i + 1) do
         t.setArg(i)
 
-        print(t.fact())
+        print(t)
     end
 end
