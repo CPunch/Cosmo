@@ -42,6 +42,7 @@ CState *cosmoV_newState() {
 
     // setup all strings used by the VM
     state->iStrings[ISTRING_INIT] = cosmoO_copyString(state, "__init", 6);
+    state->iStrings[ISTRING_TOSTRING] = cosmoO_copyString(state, "__tostring", 10);
     state->iStrings[ISTRING_INDEX] = cosmoO_copyString(state, "__index", 7);
     state->iStrings[ISTRING_NEWINDEX] = cosmoO_copyString(state, "__newindex", 10);
 

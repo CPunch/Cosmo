@@ -139,12 +139,16 @@ void cosmoV_concat(CState *state, int vals) {
 
 int cosmoV_execute(CState *state);
 
-static inline void callCFunction(CState *state, CosmoCFunction cfunc, int args, int nresults, int offset) {
+static inline bool callCFunction(CState *state, CosmoCFunction cfunc, int args, int nresults, int offset) {
     StkPtr savedBase = cosmoV_getTop(state, args);
 
     cosmoM_freezeGC(state); // we don't want a GC event during c api because we don't actually trust the user to know how to evade the GC
     int nres = cfunc(state, args, savedBase + 1);
     cosmoM_unfreezeGC(state);
+
+    // if the state paniced during the c function, return false and leave the stack preserved (so the error string is left)
+    if (state->panic)
+        return false;
 
     if (nres > nresults) // caller function wasn't expecting this many return values, cap it
         nres = nresults;
@@ -161,9 +165,11 @@ static inline void callCFunction(CState *state, CosmoCFunction cfunc, int args, 
     // now, if the caller function expected more return values, push nils onto the stack
     for (int i = nres; i < nresults; i++)
         cosmoV_pushValue(state, cosmoV_newNil());
+    
+    return true;
 }
 
-bool call(CState *state, CObjClosure *closure, int args, int nresults, int offset) {
+static inline bool call(CState *state, CObjClosure *closure, int args, int nresults, int offset) {
     CObjFunction *func = closure->function;
 
     // if the function is variadic and theres more args than parameters, push the args into a dictionary
@@ -221,14 +227,14 @@ bool invokeMethod(CState* state, CObjObject *obj, CValue func, int args, int nre
     *temp = cosmoV_newObj(obj);
 
     if (IS_CFUNCTION(func)) {
-        callCFunction(state, cosmoV_readCFunction(func), args+1, nresults, offset);
+        return callCFunction(state, cosmoV_readCFunction(func), args+1, nresults, offset);
     } else if (IS_CLOSURE(func)) {
-        call(state, cosmoV_readClosure(func), args+1, nresults, offset); // offset = 1 so our stack is properly reset
+        return call(state, cosmoV_readClosure(func), args+1, nresults, offset); // offset = 1 so our stack is properly reset
     } else {
         cosmoV_error(state, "Cannot invoke non-function type %s!", cosmoV_typeStr(func));
     }
 
-    return true;
+    return false;
 }
 
 // args = # of pass parameters
@@ -243,9 +249,9 @@ COSMOVMRESULT cosmoV_call(CState *state, int args, int nresults) {
     switch (cosmoV_readObj(*val)->type) {
         case COBJ_CLOSURE: {
             CObjClosure *closure = (CObjClosure*)cosmoV_readObj(*val);
-            if (!call(state, closure, args, nresults, 0)) {
+            if (!call(state, closure, args, nresults, 0))
                 return COSMOVM_RUNTIME_ERR;
-            }
+
             break;
         }
         case COBJ_METHOD: {
@@ -275,7 +281,9 @@ COSMOVMRESULT cosmoV_call(CState *state, int args, int nresults) {
         case COBJ_CFUNCTION: {
             // it's a C function, so call it
             CosmoCFunction cfunc = ((CObjCFunction*)cosmoV_readObj(*val))->cfunc;
-            callCFunction(state, cfunc, args, nresults, 0);
+            if (!callCFunction(state, cfunc, args, nresults, 0))
+                return COSMOVM_RUNTIME_ERR;
+
             break;
         }
         default: 
@@ -484,9 +492,8 @@ int cosmoV_execute(CState *state) {
             case OP_CALL: {
                 uint8_t args = READBYTE();
                 uint8_t nres = READBYTE();
-                COSMOVMRESULT result = cosmoV_call(state, args, nres);
-                if (result != COSMOVM_OK) {
-                    return result;
+                if (cosmoV_call(state, args, nres) != COSMOVM_OK) {
+                    return -1;
                 }
                 break;
             }
@@ -682,9 +689,11 @@ int cosmoV_execute(CState *state) {
 
                             // call closure/cfunction
                             if (IS_CFUNCTION(val)) {
-                                callCFunction(state, cosmoV_readCFunction(val), args, nres, -1);
+                                if (!callCFunction(state, cosmoV_readCFunction(val), args, nres, -1))
+                                    return -1;
                             } else if (IS_CLOSURE(val)) {
-                                call(state, cosmoV_readClosure(val), args, nres, -1);
+                                if (!call(state, cosmoV_readClosure(val), args, nres, -1))
+                                    return -1;
                             } else {
                                 cosmoV_error(state, "Cannot call non-function value %s!", cosmoV_typeStr(val));
                                 return -1;
@@ -751,7 +760,8 @@ int cosmoV_execute(CState *state) {
                             cosmoV_pop(state); // pop the object from the stack
                             cosmoV_pushValue(state, val);
                             cosmoV_pushValue(state, cosmoV_newObj(obj));
-                            cosmoV_call(state, 1, 1); // we expect 1 return value on the stack, the iterable object
+                            if (cosmoV_call(state, 1, 1) != COSMOVM_OK) // we expect 1 return value on the stack, the iterable object
+                                return -1;
 
                             StkPtr iObj = cosmoV_getTop(state, 0);
 
@@ -787,7 +797,8 @@ int cosmoV_execute(CState *state) {
                 }
 
                 cosmoV_pushValue(state, *temp);
-                cosmoV_call(state, 0, nresults);
+                if (cosmoV_call(state, 0, nresults) != COSMOVM_OK)
+                    return -1;
 
                 if (IS_NIL(*(cosmoV_getTop(state, 0)))) { // __next returned a nil, which means to exit the loop
                     cosmoV_setTop(state, nresults); // pop the return values

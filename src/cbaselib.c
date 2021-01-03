@@ -81,7 +81,7 @@ int cosmoB_sSub(CState *state, int nargs, CValue *args) {
 
         cosmoV_pushLString(state, str->str + ((int)indx), ((int)length));
     } else {
-        cosmoV_error(state, "Expected 2 or 3 parameters, got %d!", nargs);
+        cosmoV_error(state, "Expected 2 or 3 arguments, got %d!", nargs);
         return 0;
     }
 

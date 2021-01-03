@@ -181,33 +181,34 @@ CObjUpval *cosmoO_newUpvalue(CState *state, CValue *val) {
     return upval;
 }
 
-CObjString *cosmoO_copyString(CState *state, const char *str, size_t sz) {
-    uint32_t hash = hashString(str, sz);
-    CObjString *lookup = cosmoT_lookupString(&state->strings, str, sz, hash);
+CObjString *cosmoO_copyString(CState *state, const char *str, size_t length) {
+    uint32_t hash = hashString(str, length);
+    CObjString *lookup = cosmoT_lookupString(&state->strings, str, length, hash);
 
     // have we already interned this string?
     if (lookup != NULL)
         return lookup;
 
-    char *buf = cosmoM_xmalloc(state, sizeof(char) * (sz + 1)); // +1 for null terminator
-    memcpy(buf, str, sz); // copy string to heap
-    buf[sz] = '\0'; // don't forget our null terminator
+    char *buf = cosmoM_xmalloc(state, sizeof(char) * (length + 1)); // +1 for null terminator
+    memcpy(buf, str, length); // copy string to heap
+    buf[length] = '\0'; // don't forget our null terminator
 
-    return cosmoO_allocateString(state, buf, sz, hash);
+    return cosmoO_allocateString(state, buf, length, hash);
 }
 
-CObjString *cosmoO_takeString(CState *state, char *str, size_t sz) {
-    uint32_t hash = hashString(str, sz);
+// length shouldn't include the null terminator! (char array should also have been allocated using cosmoM_xmalloc!)
+CObjString *cosmoO_takeString(CState *state, char *str, size_t length) {
+    uint32_t hash = hashString(str, length);
 
-    CObjString *lookup = cosmoT_lookupString(&state->strings, str, sz, hash);
+    CObjString *lookup = cosmoT_lookupString(&state->strings, str, length, hash);
 
     // have we already interned this string?
     if (lookup != NULL) {
-        cosmoM_freearray(state, char, str, sz); // free our passed character array, it's unneeded!
+        cosmoM_freearray(state, char, str, length + 1); // free our passed character array, it's unneeded!
         return lookup;
     }
 
-    return cosmoO_allocateString(state, str, sz, hash);
+    return cosmoO_allocateString(state, str, length, hash);
 }
 
 CObjString *cosmoO_allocateString(CState *state, const char *str, size_t sz, uint32_t hash) {
@@ -270,7 +271,8 @@ bool cosmoO_getRawObject(CState *state, CObjObject *object, CValue key, CValue *
         if (cosmoO_getIString(state, object, ISTRING_GETTER, val) && IS_OBJECT(*val) && cosmoO_getRawObject(state, cosmoV_readObject(*val), key, val)) {
             cosmoV_pushValue(state, *val); // push function
             cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
-            cosmoV_call(state, 1, 1); // call the function with the 1 argument
+            if (cosmoV_call(state, 1, 1) != COSMOVM_OK) // call the function with the 1 argument
+                return false;
             *val = *cosmoV_pop(state); // set value to the return value of __index
             return true;
         }
@@ -352,7 +354,8 @@ bool cosmoO_indexObject(CState *state, CObjObject *object, CValue key, CValue *v
         cosmoV_pushValue(state, *val); // push function
         cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
         cosmoV_pushValue(state, key); // push key
-        cosmoV_call(state, 2, 1); // call the function with the 2 arguments
+        if (cosmoV_call(state, 2, 1) != COSMOVM_OK) // call the function with the 2 arguments
+            return false;
         *val = *cosmoV_pop(state); // set value to the return value of __index
         return true;
     } else { // there's no __index function defined!
@@ -370,8 +373,7 @@ bool cosmoO_newIndexObject(CState *state, CObjObject *object, CValue key, CValue
         cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
         cosmoV_pushValue(state, key); // push key & value pair
         cosmoV_pushValue(state, val);
-        cosmoV_call(state, 3, 0);
-        return true;
+        return cosmoV_call(state, 3, 0) == COSMOVM_OK;
     } else { // there's no __newindex function defined
         cosmoV_error(state, "Couldn't set index on object without __newindex function!");
     }
@@ -392,10 +394,31 @@ CObjString *cosmoO_toString(CState *state, CObj *obj) {
             CObjFunction *func = (CObjFunction*)obj;
             return func->name != NULL ? func->name : cosmoO_copyString(state, UNNAMEDCHUNK, strlen(UNNAMEDCHUNK)); 
         }
-        case COBJ_OBJECT: { // TODO: maybe not safe??
-            char buf[64];
-            int sz = sprintf(buf, "<obj> %p", (void*)obj) + 1; // +1 for the null character
-            return cosmoO_copyString(state, buf, sz);
+        case COBJ_OBJECT: {
+            CObjObject *object = (CObjObject*)obj;
+            CValue res;
+
+            if (cosmoO_getIString(state, object, ISTRING_TOSTRING, &res)) {
+                cosmoV_pushValue(state, res);
+                cosmoV_pushValue(state, cosmoV_newObj(object));
+                if (cosmoV_call(state, 1, 1) != COSMOVM_OK)
+                    return cosmoO_copyString(state, "<err>", 5);
+
+                // make sure the __tostring function returned a string
+                StkPtr ret = cosmoV_getTop(state, 0);
+                if (!IS_STRING(*ret)) {
+                    cosmoV_error(state, "__tostring expected to return <string>, got %s!", cosmoV_typeStr(*ret));
+                    return cosmoO_copyString(state, "<err>", 5);
+                }
+
+                // return string
+                cosmoV_pop(state);
+                return (CObjString*)cosmoV_readObj(*ret);
+            } else { 
+                char buf[64];
+                int sz = sprintf(buf, "<obj> %p", (void*)obj) + 1; // +1 for the null character
+                return cosmoO_copyString(state, buf, sz);
+            }
         }
         case COBJ_DICT: {
             char buf[64];

@@ -85,6 +85,7 @@ typedef struct {
 
 static void parsePrecedence(CParseState*, Precedence);
 static void variable(CParseState *pstate, bool canAssign);
+static int expressionPrecedence(CParseState *pstate, int needed, Precedence prec, bool forceNeeded);
 static int expression(CParseState *pstate, int needed, bool forceNeeded);
 static void statement(CParseState *pstate);
 static void declaration(CParseState *pstate);
@@ -412,7 +413,7 @@ static void unary(CParseState *pstate, bool canAssign) {
     int cachedLine = pstate->previous.line; // eval'ing the next expression might change the line number
 
     // only eval the next *value*
-    parsePrecedence(pstate, PREC_UNARY);
+    expressionPrecedence(pstate, 1, PREC_UNARY, true);
 
     switch(type) {
         case TOKEN_MINUS:   writeu8Chunk(pstate->state, getChunk(pstate), OP_NEGATE, cachedLine); break;
@@ -428,7 +429,7 @@ static void binary(CParseState *pstate, bool canAssign) {
     CTokenType type = pstate->previous.type; // already consumed
     int cachedLine = pstate->previous.line; // eval'ing the next expression might change the line number
 
-    parsePrecedence(pstate, getRule(type)->level + 1);
+    expressionPrecedence(pstate, 1, getRule(type)->level + 1, true);
 
     switch (type) {
         // ARITH
@@ -519,7 +520,7 @@ static void and_(CParseState *pstate, bool canAssign) {
     int jump = writeJmp(pstate, OP_EJMP); // conditional jump without popping
 
     writePop(pstate, 1);
-    parsePrecedence(pstate, PREC_AND);
+    expressionPrecedence(pstate, 1, PREC_AND, true);
 
     patchJmp(pstate, jump);
 }
@@ -531,7 +532,7 @@ static void or_(CParseState *pstate, bool canAssign) {
     patchJmp(pstate, elseJump);
     writePop(pstate, 1);
 
-    parsePrecedence(pstate, PREC_OR);
+    expressionPrecedence(pstate, 1, PREC_OR, true);
     
     patchJmp(pstate, endJump);
 }
@@ -549,7 +550,7 @@ static void concat(CParseState *pstate, bool canAssign) {
 
     int vars = 1; // we already have something on the stack
     do {
-        parsePrecedence(pstate, getRule(type)->level + 1); // parse until next concat
+        expressionPrecedence(pstate, 1, getRule(type)->level + 1, true); // parse until next concat
         vars++;
     } while (match(pstate, TOKEN_DOT_DOT));
 
@@ -1377,12 +1378,12 @@ static void synchronize(CParseState *pstate) {
     }
 }
 
-static int expression(CParseState *pstate, int needed, bool forceNeeded) {
+static int expressionPrecedence(CParseState *pstate, int needed, Precedence prec, bool forceNeeded) {
     int lastExpected = pstate->compiler->expectedValues;
     int saved = pstate->compiler->pushedValues + needed;
     pstate->compiler->expectedValues = needed;
 
-    parsePrecedence(pstate, PREC_ASSIGNMENT);
+    parsePrecedence(pstate, prec);
 
     if (pstate->compiler->pushedValues > saved) {
         writePop(pstate, pstate->compiler->pushedValues - saved);
@@ -1394,6 +1395,10 @@ static int expression(CParseState *pstate, int needed, bool forceNeeded) {
     pstate->compiler->expectedValues = lastExpected;
 
     return pstate->compiler->pushedValues - (saved - needed);
+}
+
+static int expression(CParseState *pstate, int needed, bool forceNeeded) {
+    return expressionPrecedence(pstate, needed, PREC_ASSIGNMENT, forceNeeded);
 }
 
 static void expressionStatement(CParseState *pstate) {

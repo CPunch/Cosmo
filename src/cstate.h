@@ -14,6 +14,7 @@ typedef struct CCallFrame {
 
 typedef enum IStringEnum {
     ISTRING_INIT,       // __init
+    ISTRING_TOSTRING,   // __tostring
     ISTRING_INDEX,      // __index
     ISTRING_NEWINDEX,   // __newindex
     ISTRING_GETTER,     // __getter
