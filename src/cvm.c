@@ -138,19 +138,29 @@ void cosmoV_concat(CState *state, int vals) {
 }
 
 int cosmoV_execute(CState *state);
+bool invokeMethod(CState* state, CObjObject *obj, CValue func, int args, int nresults, int offset);
 
-static inline bool callCFunction(CState *state, CosmoCFunction cfunc, int args, int nresults, int offset) {
+/*
+    calls a native C Function with # args on the stack, nresults are pushed onto the stack upon return.
+
+    returns:
+        false: state paniced during C Function, stack is preserved so that the error is left on the stack
+        true: state->top is moved to base + offset + nresults, with nresults pushed onto the stack from base + offset
+*/
+static bool callCFunction(CState *state, CosmoCFunction cfunc, int args, int nresults, int offset) {
     StkPtr savedBase = cosmoV_getTop(state, args);
 
-    cosmoM_freezeGC(state); // we don't want a GC event during c api because we don't actually trust the user to know how to evade the GC
+    // we don't want a GC event during c api because we don't actually trust the user to know how to evade the GC
+    cosmoM_freezeGC(state);
     int nres = cfunc(state, args, savedBase + 1);
     cosmoM_unfreezeGC(state);
 
-    // if the state paniced during the c function, return false and leave the stack preserved (so the error string is left)
+    // if the state paniced during the c function, return false and leave the stack preserved (so the error is left on the stack)
     if (state->panic)
         return false;
 
-    if (nres > nresults) // caller function wasn't expecting this many return values, cap it
+    // caller function wasn't expecting this many return values, cap it
+    if (nres > nresults)
         nres = nresults;
 
     // remember where the return values are
@@ -169,7 +179,14 @@ static inline bool callCFunction(CState *state, CosmoCFunction cfunc, int args, 
     return true;
 }
 
-static inline bool call(CState *state, CObjClosure *closure, int args, int nresults, int offset) {
+/*
+    calls a raw closure object with # args on the stack, nresults are pushed onto the stack upon return.
+    
+    returns:
+        false: state paniced, stack is preserved so that the error is left on the stack
+        true: stack->top is moved to base + offset + nresults, with nresults pushed onto the stack from base + offset
+*/
+static bool rawCall(CState *state, CObjClosure *closure, int args, int nresults, int offset) {
     CObjFunction *func = closure->function;
 
     // if the function is variadic and theres more args than parameters, push the args into a dictionary
@@ -221,77 +238,101 @@ static inline bool call(CState *state, CObjClosure *closure, int args, int nresu
     return true;
 }
 
+bool callCValue(CState *state, CValue func, int args, int nresults, int offset) {
+    if (GET_TYPE(func) != COSMO_TOBJ) {
+        cosmoV_error(state, "Cannot call non-function type %s!", cosmoV_typeStr(func));
+        return false;
+    }
+
+    switch (cosmoV_readObj(func)->type) {
+        case COBJ_CLOSURE: 
+            return rawCall(state, cosmoV_readClosure(func), args, nresults, offset);
+        case COBJ_METHOD: {
+            CObjMethod *method = (CObjMethod*)cosmoV_readObj(func);
+            return invokeMethod(state, method->obj, method->func, args, nresults, offset + 1);
+        }
+        case COBJ_OBJECT: { // object is being instantiated, making another object
+            CObjObject *protoObj = (CObjObject*)cosmoV_readObj(func);
+            CObjObject *newObj = cosmoO_newObject(state);
+            newObj->proto = protoObj;
+            CValue ret;
+
+            // check if they defined an initializer (we accept 0 return values)
+            if (cosmoO_getIString(state, protoObj, ISTRING_INIT, &ret)) {
+                if (!invokeMethod(state, newObj, ret, args, 0, offset + 1))
+                    return false;
+            } else {
+                // no default initializer
+                cosmoV_error(state, "Expected __init() in proto, object cannot be instantiated!");
+                return false;
+            }
+
+            if (nresults > 0) {
+                cosmoV_pushValue(state, cosmoV_newObj(newObj));
+
+                // push the nils to fill up the expected return values
+                for (int i = 0; i < nresults - 1; i++) { // -1 since the we already pushed the important value
+                    cosmoV_pushValue(state, cosmoV_newNil());
+                }
+            }
+            break;
+        }
+        case COBJ_CFUNCTION:
+            return callCFunction(state, cosmoV_readCFunction(func), args, nresults, offset);
+        default: 
+            cosmoV_error(state, "Cannot call non-function value %s!", cosmoV_typeStr(func));
+            return false;
+    }
+
+    return true;
+}
+
 bool invokeMethod(CState* state, CObjObject *obj, CValue func, int args, int nresults, int offset) {
     // first, set the first argument to the object
     StkPtr temp = cosmoV_getTop(state, args);
     *temp = cosmoV_newObj(obj);
 
-    if (IS_CFUNCTION(func)) {
-        return callCFunction(state, cosmoV_readCFunction(func), args+1, nresults, offset);
-    } else if (IS_CLOSURE(func)) {
-        return call(state, cosmoV_readClosure(func), args+1, nresults, offset); // offset = 1 so our stack is properly reset
-    } else {
-        cosmoV_error(state, "Cannot invoke non-function type %s!", cosmoV_typeStr(func));
-    }
-
-    return false;
+    return callCValue(state, func, args+1, nresults, offset);
 }
 
-// args = # of pass parameters
+// wraps cosmoV_call in a protected state, error string will be pushed onto the stack if function call failed, else return values are passed
+COSMOVMRESULT cosmoV_pcall(CState *state, int args, int nresults) {
+    StkPtr base = cosmoV_getTop(state, args);
+
+    COSMOVMRESULT res = cosmoV_call(state, args, nresults);
+
+    if (res != COSMOVM_OK) {
+        // restore panic state
+        state->panic = false;
+
+        // error is on the stack, grab it
+        StkPtr err = cosmoV_getTop(state, 0);
+        state->top = base;
+
+        if (nresults > 0) {
+            cosmoV_pushValue(state, *err);
+
+            // push the nils to fill up the expected return values
+            for (int i = 0; i < nresults - 1; i++) { // -1 since the we already pushed the important value
+                cosmoV_pushValue(state, cosmoV_newNil());
+            }
+        }
+    }
+
+    return res;
+}
+
+/*
+    calls a callable object at stack->top - args - 1, passing the # of args to the callable, and ensuring nresults are returned
+
+    returns:
+        COSMOVM_OK: callable object exited normally
+        COSMOVM_RUNTIME_ERR: an error occurred, the error will be at the top of the stack (the rest of the stack is junk)
+*/
 COSMOVMRESULT cosmoV_call(CState *state, int args, int nresults) {
     StkPtr val = cosmoV_getTop(state, args); // function will always be right above the args
 
-    if (GET_TYPE(*val) != COSMO_TOBJ) {
-        cosmoV_error(state, "Cannot call non-function type %s!", cosmoV_typeStr(*val));
-        return COSMOVM_RUNTIME_ERR;
-    }
-
-    switch (cosmoV_readObj(*val)->type) {
-        case COBJ_CLOSURE: {
-            CObjClosure *closure = (CObjClosure*)cosmoV_readObj(*val);
-            if (!call(state, closure, args, nresults, 0))
-                return COSMOVM_RUNTIME_ERR;
-
-            break;
-        }
-        case COBJ_METHOD: {
-            CObjMethod *method = (CObjMethod*)cosmoV_readObj(*val);
-            invokeMethod(state, method->obj, method->func, args, nresults, 1);
-            break;
-        }
-        case COBJ_OBJECT: { // object is being instantiated, making another object
-            CObjObject *protoObj = (CObjObject*)cosmoV_readObj(*val);
-            CObjObject *newObj = cosmoO_newObject(state);
-            newObj->proto = protoObj;
-            CValue ret;
-
-            // check if they defined an initializer
-            if (cosmoO_getIString(state, protoObj, ISTRING_INIT, &ret)) {
-                invokeMethod(state, newObj, ret, args, nresults, 1);
-            } else {
-                // no default initializer
-                cosmoV_error(state, "Expected __init() in proto, object cannot be instantiated!");
-                return 0;
-            }
-
-            cosmoV_pop(state); // pops the return value, it's unused
-            cosmoV_pushValue(state, cosmoV_newObj(newObj));
-            break;
-        }
-        case COBJ_CFUNCTION: {
-            // it's a C function, so call it
-            CosmoCFunction cfunc = ((CObjCFunction*)cosmoV_readObj(*val))->cfunc;
-            if (!callCFunction(state, cfunc, args, nresults, 0))
-                return COSMOVM_RUNTIME_ERR;
-
-            break;
-        }
-        default: 
-            cosmoV_error(state, "Cannot call non-function value %s!", cosmoV_typeStr(*val));
-            return COSMOVM_RUNTIME_ERR;
-    }
-
-    return state->panic ? COSMOVM_RUNTIME_ERR : COSMOVM_OK;
+    return callCValue(state, *val, args, nresults, 0) ? COSMOVM_OK : COSMOVM_RUNTIME_ERR;
 }
 
 static inline bool isFalsey(StkPtr val) {
@@ -688,16 +729,8 @@ int cosmoV_execute(CState *state) {
                             cosmoT_get(&dict->tbl, *key, &val);
 
                             // call closure/cfunction
-                            if (IS_CFUNCTION(val)) {
-                                if (!callCFunction(state, cosmoV_readCFunction(val), args, nres, -1))
-                                    return -1;
-                            } else if (IS_CLOSURE(val)) {
-                                if (!call(state, cosmoV_readClosure(val), args, nres, -1))
-                                    return -1;
-                            } else {
-                                cosmoV_error(state, "Cannot call non-function value %s!", cosmoV_typeStr(val));
+                            if (!callCValue(state, val, args, nres, -1))
                                 return -1;
-                            }
                             break;
                         }
                         case COBJ_OBJECT: {
