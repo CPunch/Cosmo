@@ -45,10 +45,10 @@ typedef union CValue {
 #define GET_TYPE(x) \
     ((((x).data & MASK_QUIETNAN) == MASK_QUIETNAN) ? (((x).data & MASK_TYPE) >> 48) : COSMO_TNUMBER)
 
-static const uint64_t SIG_MASK =    (MASK_QUIETNAN | MASK_TYPE);
-static const uint64_t BOOL_SIG =    (MASK_QUIETNAN | ((uint64_t)(COSMO_TBOOLEAN) << 48));
-static const uint64_t OBJ_SIG =     (MASK_QUIETNAN | ((uint64_t)(COSMO_TOBJ) << 48));
-static const uint64_t NIL_SIG =     (MASK_QUIETNAN | ((uint64_t)(COSMO_TNIL) << 48));
+#define SIG_MASK    (MASK_QUIETNAN | MASK_TYPE)
+#define BOOL_SIG    (MASK_QUIETNAN | ((uint64_t)(COSMO_TBOOLEAN) << 48))
+#define OBJ_SIG     (MASK_QUIETNAN | ((uint64_t)(COSMO_TOBJ) << 48))
+#define NIL_SIG     (MASK_QUIETNAN | ((uint64_t)(COSMO_TNIL) << 48))
 
 #define cosmoV_newNumber(x)     ((CValue){.num = x})
 #define cosmoV_newBoolean(x)    ((CValue){.data = MAKE_PAYLOAD(x) | BOOL_SIG})

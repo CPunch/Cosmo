@@ -26,7 +26,7 @@
     cosmoM_reallocate(state, x, sizeof(type), 0)
 
 #define cosmoM_isFrozen(state) \
-    state->freezeGC > 0
+    (state->freezeGC > 0)
 
 // if debugging, print the locations of when the state is frozen/unfrozen
 #ifdef GC_DEBUG

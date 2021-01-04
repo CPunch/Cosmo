@@ -9,6 +9,13 @@
 
 #include <assert.h>
 
+/* 
+    SAFE_STACK:
+        if undefined, the stack will not be checked for stack overflows. This may improve performance, however 
+    this will produce undefined behavior as you reach the stack limit (and may cause a seg fault!). It is recommended to keep this enabled.
+*/
+#define SAFE_STACK
+
 //#define NAN_BOXXED
 
 #define COSMOASSERT(x) assert(x)
