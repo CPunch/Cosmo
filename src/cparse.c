@@ -465,7 +465,7 @@ static void _etterOP(CParseState *pstate, uint8_t op, int arg) {
         writeu8(pstate, arg);
 }
 
-static void namedVariable(CParseState *pstate, CToken name, bool canAssign, bool canIncrement) {
+static void namedVariable(CParseState *pstate, CToken name, bool canAssign, bool canIncrement, int expectedValues) {
     uint8_t opGet, opSet, inc;
     int arg = getLocal(pstate->compiler, &name);
 
@@ -486,9 +486,35 @@ static void namedVariable(CParseState *pstate, CToken name, bool canAssign, bool
         inc = OP_INCGLOBAL;
     }
 
-    if (canAssign && match(pstate, TOKEN_EQUAL)) {
-        // setter
-        expression(pstate, 1, true);
+    if (canAssign && match(pstate, TOKEN_COMMA)) {
+        expectedValues++;
+
+        consume(pstate, TOKEN_IDENTIFIER, "Expected another identifer!");
+
+        namedVariable(pstate, pstate->previous, true, false, expectedValues);
+        _etterOP(pstate, opSet, arg);
+        valuePopped(pstate, 1);
+    } else if (canAssign && match(pstate, TOKEN_EQUAL)) {
+        expectedValues++;
+
+        // consume all the ','
+        do {
+            int pushed = expression(pstate, expectedValues, false);
+            expectedValues -= pushed;
+
+            if (expectedValues < 0) { // these values need to be thrown away
+                writePop(pstate, -expectedValues);
+                valuePopped(pstate, -expectedValues);
+                expectedValues = 1;
+            }
+        } while (match(pstate, TOKEN_COMMA));
+
+        // for any expected value we didn't get
+        while (expectedValues-- > 0) {
+            valuePushed(pstate, 1);
+            writeu8(pstate, OP_NIL);
+        }
+
         _etterOP(pstate, opSet, arg);
         valuePopped(pstate, 1);
     } else if (canIncrement && match(pstate, TOKEN_PLUS_PLUS)) { // i++
@@ -542,7 +568,7 @@ static void anonFunction(CParseState *pstate, bool canAssign) {
 }
 
 static void variable(CParseState *pstate, bool canAssign) {
-    namedVariable(pstate, pstate->previous, canAssign, true);
+    namedVariable(pstate, pstate->previous, canAssign, true, 0);
 }
 
 static void concat(CParseState *pstate, bool canAssign) {
@@ -713,14 +739,14 @@ static void walkIndexes(CParseState *pstate, int lastIndexType, uint16_t lastIde
 static void increment(CParseState *pstate, int val) {
     CToken name = pstate->previous;
     if (match(pstate, TOKEN_DOT)) { // object?
-        namedVariable(pstate, name, false, false); // just get the object
+        namedVariable(pstate, name, false, false, 0); // just get the object
         consume(pstate, TOKEN_IDENTIFIER, "Expected property name after '.'.");
         uint16_t ident = identifierConstant(pstate, &pstate->previous);
 
         // walk the indexes
         walkIndexes(pstate, 0, ident, val);
     } else if (match(pstate, TOKEN_LEFT_BRACKET)) { // dictionary?
-        namedVariable(pstate, name, false, false); // just get the dictionary
+        namedVariable(pstate, name, false, false, 0); // just get the dictionary
 
         // grab key
         expression(pstate, 1, true);
@@ -1398,7 +1424,7 @@ static int expressionPrecedence(CParseState *pstate, int needed, Precedence prec
 }
 
 static int expression(CParseState *pstate, int needed, bool forceNeeded) {
-    return expressionPrecedence(pstate, needed, PREC_ASSIGNMENT, forceNeeded);
+    return expressionPrecedence(pstate, needed, PREC_ASSIGNMENT + 1, forceNeeded); // anything above assignments are an expression
 }
 
 static void expressionStatement(CParseState *pstate) {
@@ -1433,8 +1459,8 @@ static void expressionStatement(CParseState *pstate) {
     } else if (match(pstate, TOKEN_RETURN)) {
         returnStatement(pstate);
     } else {
-        // we don't need/want any values on the stack, so call expression with 0 values needed
-        expression(pstate, 0, false);
+        // expression or assignment
+        expressionPrecedence(pstate, 0, PREC_ASSIGNMENT, false);
     }
 
     // realign the stack
