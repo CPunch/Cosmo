@@ -120,6 +120,16 @@ void blackenObject(CState *state, CObj *obj) {
             markObject(state, (CObj*)method->obj);
             break;
         }
+        case COBJ_ERROR: {
+            CObjError *err = (CObjError*)obj;
+            markValue(state, err->err);
+
+            // mark callframes
+            for (int i = 0; i < err->frameCount; i++) 
+                markObject(state, (CObj*)err->frames[i].closure);
+
+            break;
+        }
         case COBJ_CLOSURE: {
             CObjClosure *closure = (CObjClosure*)obj;
             markObject(state, (CObj*)closure->function);
@@ -232,8 +242,10 @@ void markRoots(CState *state) {
     // mark the user defined roots
     markUserRoots(state);
 
-    // mark our proto object
+    // mark other misc. internally reserved objects
     markObject(state, (CObj*)state->protoObj);
+    markObject(state, (CObj*)state->error);
+
     traceGrays(state);
 }
 

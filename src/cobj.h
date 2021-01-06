@@ -8,6 +8,7 @@
 #include "ctable.h"
 
 typedef struct CState CState;
+typedef struct CCallFrame CCallFrame;
 typedef uint32_t cosmo_Flag;
 
 typedef enum {
@@ -16,6 +17,7 @@ typedef enum {
     COBJ_DICT, // dictionary
     COBJ_FUNCTION,
     COBJ_CFUNCTION,
+    COBJ_ERROR,
     // internal use
     COBJ_METHOD,
     COBJ_CLOSURE,
@@ -42,6 +44,15 @@ typedef struct CObjString {
     char *str;
     uint32_t hash; // for hashtable lookup
 } CObjString;
+
+typedef struct CObjError {
+    CommonHeader; // "is a" CObj
+    bool parserError; // if true, cosmoV_printError will format the error to the lexer
+    int frameCount;
+    int line; // reserved for parser errors
+    CValue err; // error string
+    CCallFrame *frames;
+} CObjError;
 
 typedef struct CObjObject {
     CommonHeader; // "is a" CObj
@@ -129,6 +140,7 @@ CObjObject *cosmoO_newObject(CState *state);
 CObjDict *cosmoO_newDictionary(CState *state);
 CObjFunction *cosmoO_newFunction(CState *state);
 CObjCFunction *cosmoO_newCFunction(CState *state, CosmoCFunction func);
+CObjError *cosmoO_newError(CState *state, CValue err);
 CObjMethod *cosmoO_newMethod(CState *state, CObjClosure *func, CObjObject *obj);
 CObjMethod *cosmoO_newCMethod(CState *state,  CObjCFunction *func, CObjObject *obj);
 CObjClosure *cosmoO_newClosure(CState *state, CObjFunction *func);
@@ -161,6 +173,7 @@ CObjString *cosmoO_allocateString(CState *state, const char *str, size_t sz, uin
     '%d' - decimal numbers  [int]
     '%f' - floating point   [double]
     '%s' - strings          [const char*]
+    '%t' - cosmo tokens     [CToken *]
 */
 CObjString *cosmoO_pushVFString(CState *state, const char *format, va_list args);
 

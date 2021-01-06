@@ -15,43 +15,78 @@ COSMO_API void cosmoV_pushFString(CState *state, const char *format, ...) {
     va_end(args);
 }
 
-void cosmoV_error(CState *state, const char *format, ...) {
-    if (state->panic)
-        return;
-    state->panic = true;
+// inserts val at state->top - indx - 1, moving everything else up
+COSMO_API void cosmo_insert(CState *state, int indx, CValue val) {
+    StkPtr tmp = cosmoV_getTop(state, indx);
 
+    // moves everything up
+    for (StkPtr i = state->top; i > tmp; i--)
+        *i = *(i-1);
+    
+    *tmp = val;
+    state->top++;
+}
+
+void cosmoV_printError(CState *state, CObjError *err) {
     // print stack trace
-    for (int i = 0; i < state->frameCount; i++) {
-        CCallFrame *frame = &state->callFrame[i];
+    for (int i = 0; i < err->frameCount; i++) {
+        CCallFrame *frame = &err->frames[i];
         CObjFunction *function = frame->closure->function;
         CChunk *chunk = &function->chunk;
 
         int line = chunk->lineInfo[frame->pc - chunk->buf - 1];
 
-        if (i == state->frameCount - 1) { // it's the last call frame, prepare for the objection to be printed
+        if (i == err->frameCount - 1 && !err->parserError) // it's the last call frame (and not a parser error), prepare for the objection to be printed
             fprintf(stderr, "Objection in %.*s on [line %d] in ", function->module->length, function->module->str, line);
-            if (function->name == NULL) { // unnamed chunk
-                fprintf(stderr, "%s\n\t", UNNAMEDCHUNK);
-            } else {
-                fprintf(stderr, "%.*s()\n\t", function->name->length, function->name->str);
-            }
-        } else {
+        else
             fprintf(stderr, "[line %d] in ", line);
-            if (function->name == NULL) { // unnamed chunk
-                fprintf(stderr, "%s\n", UNNAMEDCHUNK);
-            } else {
-                fprintf(stderr, "%.*s()\n", function->name->length, function->name->str);
-            }
+        
+        if (function->name == NULL) { // unnamed chunk
+            fprintf(stderr, "%s\n", UNNAMEDCHUNK);
+        } else {
+            fprintf(stderr, "%.*s()\n", function->name->length, function->name->str);
         }
     }
 
+    if (err->parserError)
+        fprintf(stderr, "Objection while parsing on [line %d]\n", err->line);
+
+    // finally, print the error message
+    CObjString *errString = cosmoV_toString(state, err->err);
+    printf("\t%.*s\n", errString->length, errString->str);
+}
+
+/*
+    takes value on top of the stack and wraps an CObjError around it, state->error is set to that value
+    the value on the stack is *expected* to be a string, but not required, so
+    yes, this means you could throw a nil value if you really wanted too..
+*/
+CObjError* cosmoV_throw(CState *state) {
+    StkPtr temp = cosmoV_getTop(state, 0);
+
+    CObjError *error = cosmoO_newError(state, *temp);
+    state->error = error;
+    state->panic = true;
+
+    cosmoV_pop(state); // pops thrown value off the stack
+    return error;
+}
+
+void cosmoV_error(CState *state, const char *format, ...) {
+    if (state->panic)
+        return;
+    
+    // i set panic before calling cosmoO_pushVFString, since that can also call cosmoV_error
+    state->panic = true;
+
+    // format the error string and push it onto the stack
     va_list args;
     va_start(args, format);
-    CObjString *errString = cosmoO_pushVFString(state, format, args);
+    cosmoO_pushVFString(state, format, args);
     va_end(args);
 
-    printf("%.*s\n", errString->length, errString->str);
-    //cosmoV_printStack(state);
+    // throw the error onto the state
+    cosmoV_throw(state);
 }
 
 CObjUpval *captureUpvalue(CState *state, CValue *local) {
@@ -144,7 +179,7 @@ bool invokeMethod(CState* state, CObjObject *obj, CValue func, int args, int nre
     calls a native C Function with # args on the stack, nresults are pushed onto the stack upon return.
 
     returns:
-        false: state paniced during C Function, stack is preserved so that the error is left on the stack
+        false: state paniced during C Function, error is at state->error
         true: state->top is moved to base + offset + nresults, with nresults pushed onto the stack from base + offset
 */
 static bool callCFunction(CState *state, CosmoCFunction cfunc, int args, int nresults, int offset) {
@@ -155,9 +190,6 @@ static bool callCFunction(CState *state, CosmoCFunction cfunc, int args, int nre
     int nres = cfunc(state, args, savedBase + 1);
     cosmoM_unfreezeGC(state);
 
-    // if the state paniced during the c function, return false and leave the stack preserved (so the error is left on the stack)
-    if (state->panic)
-        return false;
 
     // caller function wasn't expecting this many return values, cap it
     if (nres > nresults)
@@ -168,6 +200,10 @@ static bool callCFunction(CState *state, CosmoCFunction cfunc, int args, int nre
 
     state->top = savedBase + offset; // set stack
 
+    // if the state paniced during the c function, return false
+    if (state->panic)
+        return false;
+    
     // push the return value back onto the stack
     memmove(state->top, results, sizeof(CValue) * nres); // copies the return values to the top of the stack
     state->top += nres; // and make sure to move state->top to match
@@ -183,7 +219,7 @@ static bool callCFunction(CState *state, CosmoCFunction cfunc, int args, int nre
     calls a raw closure object with # args on the stack, nresults are pushed onto the stack upon return.
     
     returns:
-        false: state paniced, stack is preserved so that the error is left on the stack
+        false: state paniced, error is at state->error
         true: stack->top is moved to base + offset + nresults, with nresults pushed onto the stack from base + offset
 */
 static bool rawCall(CState *state, CObjClosure *closure, int args, int nresults, int offset) {
@@ -215,8 +251,6 @@ static bool rawCall(CState *state, CObjClosure *closure, int args, int nresults,
 
     // execute
     int nres = cosmoV_execute(state);
-    if (nres == -1) // panic state
-        return false;
 
     if (nres > nresults) // caller function wasn't expecting this many return values, cap it
         nres = nresults;
@@ -226,6 +260,9 @@ static bool rawCall(CState *state, CObjClosure *closure, int args, int nresults,
 
     // pop the callframe and return results :)
     popCallFrame(state, offset);
+    
+    if (state->panic) // panic state
+        return false;
 
     // push the return values back onto the stack
     memmove(state->top, results, sizeof(CValue) * nres); // copies the return values to the top of the stack
@@ -247,6 +284,8 @@ bool callCValue(CState *state, CValue func, int args, int nresults, int offset) 
     switch (cosmoV_readObj(func)->type) {
         case COBJ_CLOSURE: 
             return rawCall(state, cosmoV_readClosure(func), args, nresults, offset);
+        case COBJ_CFUNCTION:
+            return callCFunction(state, cosmoV_readCFunction(func), args, nresults, offset);
         case COBJ_METHOD: {
             CObjMethod *method = (CObjMethod*)cosmoV_readObj(func);
             return invokeMethod(state, method->obj, method->func, args, nresults, offset + 1);
@@ -277,8 +316,6 @@ bool callCValue(CState *state, CValue func, int args, int nresults, int offset) 
             }
             break;
         }
-        case COBJ_CFUNCTION:
-            return callCFunction(state, cosmoV_readCFunction(func), args, nresults, offset);
         default: 
             cosmoV_error(state, "Cannot call non-function value %s!", cosmoV_typeStr(func));
             return false;
@@ -295,31 +332,20 @@ bool invokeMethod(CState* state, CObjObject *obj, CValue func, int args, int nre
     return callCValue(state, func, args+1, nresults, offset);
 }
 
-// wraps cosmoV_call in a protected state, error string will be pushed onto the stack if function call failed, else return values are passed
+// wraps cosmoV_call in a protected state, CObjError will be pushed onto the stack if function call failed, else return values are passed
 COSMOVMRESULT cosmoV_pcall(CState *state, int args, int nresults) {
     StkPtr base = cosmoV_getTop(state, args);
 
-    COSMOVMRESULT res = cosmoV_call(state, args, nresults);
-
-    if (res != COSMOVM_OK) {
+    if (!callCValue(state, *base, args, nresults, 0)) {
         // restore panic state
         state->panic = false;
+        state->error = NULL;
 
-        // error is on the stack, grab it
-        StkPtr err = cosmoV_getTop(state, 0);
-        state->top = base;
-
-        if (nresults > 0) {
-            cosmoV_pushValue(state, *err);
-
-            // push the nils to fill up the expected return values
-            for (int i = 0; i < nresults - 1; i++) { // -1 since the we already pushed the important value
-                cosmoV_pushValue(state, cosmoV_newNil());
-            }
-        }
+        cosmoV_pushValue(state, cosmoV_newObj(state->error));
+        return COSMOVM_RUNTIME_ERR;
     }
 
-    return res;
+    return COSMOVM_OK;
 }
 
 /*
@@ -327,7 +353,7 @@ COSMOVMRESULT cosmoV_pcall(CState *state, int args, int nresults) {
 
     returns:
         COSMOVM_OK: callable object exited normally
-        COSMOVM_RUNTIME_ERR: an error occurred, the error will be at the top of the stack (the rest of the stack is junk)
+        COSMOVM_RUNTIME_ERR: an error occurred, grab the error from state->error
 */
 COSMOVMRESULT cosmoV_call(CState *state, int args, int nresults) {
     StkPtr val = cosmoV_getTop(state, args); // function will always be right above the args

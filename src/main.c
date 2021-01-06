@@ -40,8 +40,12 @@ static void interpret(CState *state, const char *script, const char *mod) {
         COSMOVMRESULT res = cosmoV_call(state, 0, 0); // 0 args being passed, 0 results expected
 
         if (res == COSMOVM_RUNTIME_ERR)
-            state->panic = false; // so our repl isn't broken
+            cosmoV_printError(state, state->error);
+    } else {
+        cosmoV_printError(state, state->error);
     }
+
+    state->panic = false; // so our repl isn't broken
 }
 
 static void repl() {

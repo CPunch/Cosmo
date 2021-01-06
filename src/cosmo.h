@@ -36,6 +36,7 @@ typedef struct CObjUpval CObjUpval;
 typedef struct CObjFunction CObjFunction;
 typedef struct CObjCFunction CObjCFunction;
 typedef struct CObjMethod CObjMethod;
+typedef struct CObjError CObjError;
 typedef struct CObjObject CObjObject;
 typedef struct CObjClosure CObjClosure;
 

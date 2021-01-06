@@ -140,29 +140,41 @@ static void freeParseState(CParseState *pstate) {
     cosmoL_freeLexState(pstate->state, pstate->lex);
 }
 
-static void errorAt(CParseState *pstate, CToken *token, const char * msg) {
+static void errorAt(CParseState *pstate, CToken *token, const char *format, va_list args) {
     if (pstate->hadError)
         return;
 
-    fprintf(stderr, "[line %d] Objection", token->line);
 
     if (token->type == TOKEN_EOF) {
-        fprintf(stderr, " at end");
+        cosmoV_pushString(pstate->state, "At end: ");
     } else if (!(token->type == TOKEN_ERROR)) {
-        fprintf(stderr, " at '%.*s'", token->length, token->start);
+        cosmoV_pushFString(pstate->state, "At '%t'", token); // this is why the '%t' exist in cosmoO_pushFString lol
     }
 
-    printf(": \n\t%s\n", msg);
+    cosmoO_pushVFString(pstate->state, format, args);
+
+    cosmoV_concat(pstate->state, 2); // concats the two strings together
+
+    CObjError *err = cosmoV_throw(pstate->state);
+    err->line = token->line;
+    err->parserError = true;
+
     pstate->hadError = true;
     pstate->panic = true;
 }
 
-static void errorAtCurrent(CParseState *pstate, const char *msg) {
-    errorAt(pstate, &pstate->current, msg);
+static void errorAtCurrent(CParseState *pstate, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    errorAt(pstate, &pstate->current, format, args);
+    va_end(args);
 }
 
-static void error(CParseState *pstate, const char *msg) {
-    errorAt(pstate, &pstate->previous, msg);
+static void error(CParseState *pstate, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    errorAt(pstate, &pstate->previous, format, args);
+    va_end(args);
 }
 
 static void advance(CParseState *pstate) {

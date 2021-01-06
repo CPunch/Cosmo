@@ -31,7 +31,9 @@ CState *cosmoV_newState() {
     state->top = state->stack;
     state->frameCount = 0;
     state->openUpvalues = NULL;
+
     state->protoObj = NULL;
+    state->error = NULL;
 
     cosmoT_initTable(state, &state->strings, 8); // init string table
     cosmoT_initTable(state, &state->globals, 8); // init global table

@@ -3,6 +3,7 @@
 #include "cobj.h"
 #include "cmem.h"
 #include "cvm.h"
+#include "clex.h"
 
 #include <string.h>
 
@@ -75,6 +76,12 @@ void cosmoO_free(CState *state, CObj* obj) {
             cosmoM_free(state, CObjMethod, obj); // we don't own the closure or the object so /shrug
             break;
         }
+        case COBJ_ERROR: {
+            CObjError *err = (CObjError*)obj;
+            cosmoM_freearray(state, CCallFrame, err->frames, err->frameCount);
+            cosmoM_free(state, CObjError, obj);
+            break;
+        }
         case COBJ_CLOSURE: {
             CObjClosure* closure = (CObjClosure*)obj;
             cosmoM_freearray(state, CObjUpval*, closure->upvalues, closure->upvalueCount);
@@ -140,6 +147,21 @@ CObjCFunction *cosmoO_newCFunction(CState *state, CosmoCFunction func) {
     CObjCFunction *cfunc = (CObjCFunction*)cosmoO_allocateBase(state, sizeof(CObjCFunction), COBJ_CFUNCTION);
     cfunc->cfunc = func;
     return cfunc;
+}
+
+CObjError *cosmoO_newError(CState *state, CValue err) {
+    CObjError *cerror = (CObjError*)cosmoO_allocateBase(state, sizeof(CObjError), COBJ_ERROR);
+    cerror->err = err;
+    cerror->frameCount = state->frameCount;
+
+    // allocate the callframe
+    cerror->frames = cosmoM_xmalloc(state, sizeof(CCallFrame) * cerror->frameCount);
+
+    // clone the call frame
+    for (int i = 0; i < state->frameCount; i++)
+        cerror->frames[i] = state->callFrame[i];
+    
+    return cerror;
 }
 
 CObjMethod *cosmoO_newCMethod(CState *state, CObjCFunction *func, CObjObject *obj) {
@@ -249,6 +271,11 @@ CObjString *cosmoO_pushVFString(CState *state, const char *format, va_list args)
             }
             case 's': { // const char *
                 cosmoV_pushString(state, va_arg(args, char *));
+                break;
+            }
+            case 't': { // CToken *
+                CToken *token = va_arg(args, CToken *);
+                cosmoV_pushLString(state, token->start, token->length);
                 break;
             }
             default: {
@@ -419,6 +446,10 @@ CObjString *cosmoO_toString(CState *state, CObj *obj) {
                 int sz = sprintf(buf, "<obj> %p", (void*)obj) + 1; // +1 for the null character
                 return cosmoO_copyString(state, buf, sz);
             }
+        }
+        case COBJ_ERROR: {
+            CObjError *err = (CObjError*)obj;
+            return cosmoV_toString(state, err->err);
         }
         case COBJ_DICT: {
             char buf[64];

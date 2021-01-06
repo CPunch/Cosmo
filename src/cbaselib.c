@@ -21,7 +21,7 @@ int cosmoB_assert(CState *state, int nargs, CValue *args) {
     }
 
     if (!IS_BOOLEAN(args[0])) {
-        cosmoV_error(state, "assert() expected (<boolean>), got (%s!)", cosmoV_typeStr(args[0]));
+        cosmoV_typeError(state, "assert()", "<boolean>", "%s", cosmoV_typeStr(args[0]));
         return 0;
     }
 
@@ -43,13 +43,28 @@ int cosmoB_type(CState *state, int nargs, CValue *args) {
     return 1; // 1 return value, the type string :D
 }
 
+int cosmoB_pcall(CState *state, int nargs, CValue *args) {
+    if (nargs < 1) {
+        cosmoV_error(state, "pcall() expected at least 1 argument!");
+        return 0;
+    }
+
+    // call the passed callable
+    COSMOVMRESULT res = cosmoV_pcall(state, nargs-1, 1);
+
+    // insert false before the result
+    cosmo_insert(state, 0, cosmoV_newBoolean(res == COSMOVM_OK));
+    cosmoV_printStack(state);
+    return 2;
+}
+
 // ================================================================ [STRING.*] ================================================================
 
 // string.sub
 int cosmoB_sSub(CState *state, int nargs, CValue *args) {
     if (nargs == 2) {
         if (!IS_STRING(args[0]) || !IS_NUMBER(args[1])) {
-            cosmoV_error(state, "string.sub() expected (<string>, <number>), got (%s, %s)!", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
+            cosmoV_typeError(state, "string.sub()", "<string>, <number>", "%s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
             return 0;
         }
 
@@ -58,14 +73,14 @@ int cosmoB_sSub(CState *state, int nargs, CValue *args) {
 
         // make sure we stay within memory
         if (indx < 0 || indx >= str->length) {
-            cosmoV_error(state, "string.sub() Expected index to be 0-%d, got %d!", str->length, indx);
+            cosmoV_error(state, "string.sub() expected index to be 0-%d, got %d!", str->length, indx);
             return 0;
         }
 
         cosmoV_pushLString(state, str->str + ((int)indx), str->length - ((int)indx));
     } else if (nargs == 3) {
         if (!IS_STRING(args[0]) || !IS_NUMBER(args[1]) || !IS_NUMBER(args[2])) {
-            cosmoV_error(state, "string.sub() expected (<string>, <number>, <number>), got (%s, %s, %s)!", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]), cosmoV_typeStr(args[2]));
+            cosmoV_typeError(state, "string.sub()", "<string>, <number>, <number>", "%s, %s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]), cosmoV_typeStr(args[2]));
             return 0;
         }
 
@@ -75,7 +90,7 @@ int cosmoB_sSub(CState *state, int nargs, CValue *args) {
 
         // make sure we stay within memory
         if (indx + length < 0 || indx + length >= str->length || indx < 0 || indx >= str->length) {
-            cosmoV_error(state, "string.sub() Expected subbed string goes out of bounds, max length is %d!", str->length);
+            cosmoV_error(state, "string.sub() expected subbed string goes out of bounds, max length is %d!", str->length);
             return 0;
         }
 
@@ -101,6 +116,10 @@ void cosmoB_loadLibrary(CState *state) {
     cosmoV_pushString(state, "type");
     cosmoV_pushCFunction(state, cosmoB_type);
 
+    // pcall
+    cosmoV_pushString(state, "pcall");
+    cosmoV_pushCFunction(state, cosmoB_pcall);
+
     // string.
     cosmoV_pushString(state, "string");
 
@@ -112,7 +131,7 @@ void cosmoB_loadLibrary(CState *state) {
     // string.
 
     // register these all to the global table
-    cosmoV_register(state, 4);
+    cosmoV_register(state, 5);
 }
 
 // ================================================================ [DEBUG] ================================================================

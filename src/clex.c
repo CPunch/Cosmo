@@ -205,6 +205,7 @@ CToken parseString(CLexState *state) {
                     case 'r': case 'n': appendBuffer(state, '\n'); break;
                     case 't': appendBuffer(state, '\t'); break;
                     case '\\': appendBuffer(state, '\\'); break;
+                    case '"': appendBuffer(state, '"'); break;
                     default: {
                         if (isNumerical(peek(state))) {
                             char *numStart = state->currentChar;
