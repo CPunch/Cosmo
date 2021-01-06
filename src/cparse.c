@@ -75,7 +75,7 @@ typedef enum {
     PREC_PRIMARY        // everything else
 } Precedence;
 
-typedef void (*ParseFunc)(CParseState* pstate, bool canAssign);
+typedef void (*ParseFunc)(CParseState* pstate, bool canAssign, Precedence curPrec);
 
 typedef struct {
     ParseFunc prefix;
@@ -84,7 +84,6 @@ typedef struct {
 } ParseRule;
 
 static void parsePrecedence(CParseState*, Precedence);
-static void variable(CParseState *pstate, bool canAssign);
 static int expressionPrecedence(CParseState *pstate, int needed, Precedence prec, bool forceNeeded);
 static int expression(CParseState *pstate, int needed, bool forceNeeded);
 static void statement(CParseState *pstate);
@@ -144,11 +143,12 @@ static void errorAt(CParseState *pstate, CToken *token, const char *format, va_l
     if (pstate->hadError)
         return;
 
-
     if (token->type == TOKEN_EOF) {
         cosmoV_pushString(pstate->state, "At end: ");
     } else if (!(token->type == TOKEN_ERROR)) {
-        cosmoV_pushFString(pstate->state, "At '%t'", token); // this is why the '%t' exist in cosmoO_pushFString lol
+        cosmoV_pushFString(pstate->state, "At '%t': ", token); // this is why the '%t' exist in cosmoO_pushFString lol
+    } else {
+        cosmoV_pushString(pstate->state, "Lexer error: ");
     }
 
     cosmoO_pushVFString(pstate->state, format, args);
@@ -395,19 +395,24 @@ static void alignStack(CParseState *pstate, int alignment) {
     pstate->compiler->pushedValues = alignment;
 }
 
+// last in precedence expression?
+static bool isLast(CParseState *pstate, Precedence pType) {
+    return pType > getRule(pstate->current.type)->level;
+}
+
 // ================================================================ [PARSER] ================================================================
 
-static void number(CParseState *pstate, bool canAssign) {
+static void number(CParseState *pstate, bool canAssign, Precedence prec) {
     cosmo_Number num = strtod(pstate->previous.start, NULL);
     writeConstant(pstate, cosmoV_newNumber(num));
 }
 
-static void string(CParseState *pstate, bool canAssign) {
+static void string(CParseState *pstate, bool canAssign, Precedence prec) {
     CObjString *strObj = cosmoO_takeString(pstate->state, pstate->previous.start, pstate->previous.length);
     writeConstant(pstate, cosmoV_newObj((CObj*)strObj));
 }
 
-static void literal(CParseState *pstate, bool canAssign) {
+static void literal(CParseState *pstate, bool canAssign, Precedence prec) {
     switch (pstate->previous.type) {
         case TOKEN_TRUE:    writeu8(pstate, OP_TRUE); break;
         case TOKEN_FALSE:   writeu8(pstate, OP_FALSE); break;
@@ -420,7 +425,7 @@ static void literal(CParseState *pstate, bool canAssign) {
 }
 
 // parses prefix operators
-static void unary(CParseState *pstate, bool canAssign) {
+static void unary(CParseState *pstate, bool canAssign, Precedence prec) {
     CTokenType type = pstate->previous.type;
     int cachedLine = pstate->previous.line; // eval'ing the next expression might change the line number
 
@@ -437,7 +442,7 @@ static void unary(CParseState *pstate, bool canAssign) {
 }
 
 // parses infix operators
-static void binary(CParseState *pstate, bool canAssign) {
+static void binary(CParseState *pstate, bool canAssign, Precedence prec) {
     CTokenType type = pstate->previous.type; // already consumed
     int cachedLine = pstate->previous.line; // eval'ing the next expression might change the line number
 
@@ -464,7 +469,7 @@ static void binary(CParseState *pstate, bool canAssign) {
     valuePopped(pstate, 1); // we pop 2 values off the stack and push 1 for a net pop of 1 value
 }
 
-static void group(CParseState *pstate, bool canAssign) {
+static void group(CParseState *pstate, bool canAssign, Precedence prec) {
     expression(pstate, 1, true);
     consume(pstate, TOKEN_RIGHT_PAREN, "Expected ')'");
 }
@@ -554,7 +559,7 @@ static void namedVariable(CParseState *pstate, CToken name, bool canAssign, bool
     }
 }
 
-static void and_(CParseState *pstate, bool canAssign) {
+static void and_(CParseState *pstate, bool canAssign, Precedence prec) {
     int jump = writeJmp(pstate, OP_EJMP); // conditional jump without popping
 
     writePop(pstate, 1);
@@ -563,7 +568,7 @@ static void and_(CParseState *pstate, bool canAssign) {
     patchJmp(pstate, jump);
 }
 
-static void or_(CParseState *pstate, bool canAssign) {
+static void or_(CParseState *pstate, bool canAssign, Precedence prec) {
     int elseJump = writeJmp(pstate, OP_EJMP);
     int endJump = writeJmp(pstate, OP_JMP);
 
@@ -575,15 +580,15 @@ static void or_(CParseState *pstate, bool canAssign) {
     patchJmp(pstate, endJump);
 }
 
-static void anonFunction(CParseState *pstate, bool canAssign) {
+static void anonFunction(CParseState *pstate, bool canAssign, Precedence prec) {
     function(pstate, FTYPE_FUNCTION);
 }
 
-static void variable(CParseState *pstate, bool canAssign) {
+static void variable(CParseState *pstate, bool canAssign, Precedence prec) {
     namedVariable(pstate, pstate->previous, canAssign, true, 0);
 }
 
-static void concat(CParseState *pstate, bool canAssign) {
+static void concat(CParseState *pstate, bool canAssign, Precedence prec) {
     CTokenType type = pstate->previous.type;
 
     int vars = 1; // we already have something on the stack
@@ -598,19 +603,25 @@ static void concat(CParseState *pstate, bool canAssign) {
     valuePopped(pstate, vars - 1); // - 1 because we're pushing the concat result
 }
 
-static void call_(CParseState *pstate, bool canAssign) {
+static void call_(CParseState *pstate, bool canAssign, Precedence prec) {
     // we enter having already consumed the '('
+    int returnNum = pstate->compiler->expectedValues;
 
     // grab our arguments
     uint8_t argCount = parseArguments(pstate);
     valuePopped(pstate, argCount + 1); // all of these values will be popped off the stack when returned (+1 for the function)
     writeu8(pstate, OP_CALL);
     writeu8(pstate, argCount);
-    writeu8(pstate, pstate->compiler->expectedValues);
-    valuePushed(pstate, pstate->compiler->expectedValues);
+
+    // if we're not the last token in this expression or we're expecting multiple values, we should return only 1 value!!
+    if (!isLast(pstate, prec) || (returnNum > 1 && check(pstate, TOKEN_COMMA)))
+        returnNum = 1;
+    
+    writeu8(pstate, returnNum);
+    valuePushed(pstate, returnNum);
 }
 
-static void object(CParseState *pstate, bool canAssign) {
+static void object(CParseState *pstate, bool canAssign, Precedence prec) {
     // already consumed the beginning '{'
     int entries = 0;
 
@@ -637,7 +648,7 @@ static void object(CParseState *pstate, bool canAssign) {
     valuePushed(pstate, 1);
 }
 
-static void dot(CParseState *pstate, bool canAssign) {
+static void dot(CParseState *pstate, bool canAssign, Precedence prec) {
     consume(pstate, TOKEN_IDENTIFIER, "Expected property name after '.'.");
     uint16_t name = identifierConstant(pstate, &pstate->previous);
 
@@ -672,7 +683,7 @@ static void dot(CParseState *pstate, bool canAssign) {
     }
 }
 
-static void _index(CParseState *pstate, bool canAssign) {
+static void _index(CParseState *pstate, bool canAssign, Precedence prec) {
     expression(pstate, 1, true);
     consume(pstate, TOKEN_RIGHT_BRACKET, "Expected ']' to end index.");
 
@@ -795,7 +806,7 @@ static void increment(CParseState *pstate, int val) {
 }
 
 // ++i
-static void preincrement(CParseState *pstate, bool canAssign) {
+static void preincrement(CParseState *pstate, bool canAssign, Precedence prec) {
     // expect identifier
     consume(pstate, TOKEN_IDENTIFIER, "Expected identifier after '++'");
 
@@ -803,7 +814,7 @@ static void preincrement(CParseState *pstate, bool canAssign) {
 }
 
 // --i
-static void predecrement(CParseState *pstate, bool canAssign) {
+static void predecrement(CParseState *pstate, bool canAssign, Precedence prec) {
     // expect identifier
     consume(pstate, TOKEN_IDENTIFIER, "Expected identifier after '--'");
 
@@ -881,12 +892,12 @@ static void parsePrecedence(CParseState *pstate, Precedence prec) {
         return;
 
     bool canAssign = prec <= PREC_ASSIGNMENT;
-    prefix(pstate, canAssign);
+    prefix(pstate, canAssign, prec);
 
     while (prec <= getRule(pstate->current.type)->level) {
         ParseFunc infix = getRule(pstate->current.type)->infix;
         advance(pstate);
-        infix(pstate, canAssign);
+        infix(pstate, canAssign, prec);
     }
 
     if (canAssign && match(pstate, TOKEN_EQUAL)) {
