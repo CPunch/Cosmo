@@ -339,9 +339,15 @@ COSMOVMRESULT cosmoV_pcall(CState *state, int args, int nresults) {
     if (!callCValue(state, *base, args, nresults, 0)) {
         // restore panic state
         state->panic = false;
-        state->error = NULL;
 
-        cosmoV_pushValue(state, cosmoV_newObj(state->error));
+        if (nresults > 0) {
+            cosmoV_pushValue(state, cosmoV_newObj(state->error));
+            
+            // push other expected results onto the stack
+            for (int i = 0; i < nresults-1; i++)
+                cosmoV_pushValue(state, cosmoV_newNil());
+        }
+
         return COSMOVM_RUNTIME_ERR;
     }
 

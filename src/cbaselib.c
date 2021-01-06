@@ -54,7 +54,6 @@ int cosmoB_pcall(CState *state, int nargs, CValue *args) {
 
     // insert false before the result
     cosmo_insert(state, 0, cosmoV_newBoolean(res == COSMOVM_OK));
-    cosmoV_printStack(state);
     return 2;
 }
 
