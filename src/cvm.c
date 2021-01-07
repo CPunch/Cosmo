@@ -680,8 +680,8 @@ int cosmoV_execute(CState *state) {
             }
             case OP_GETOBJECT: {
                 CValue val; // to hold our value
-                StkPtr key = cosmoV_getTop(state, 0); // key should be the top of the stack
-                StkPtr temp = cosmoV_getTop(state, 1); // after that should be the object
+                StkPtr temp = cosmoV_getTop(state, 0); // that should be the object
+                uint16_t ident = READUINT(); // use for the key
 
                 // sanity check
                 if (IS_OBJ(*temp)) {
@@ -689,13 +689,13 @@ int cosmoV_execute(CState *state) {
                         case COBJ_DICT: { // syntax sugar, makes "namespaces" possible
                             CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
 
-                            cosmoT_get(&dict->tbl, *key, &val);
+                            cosmoT_get(&dict->tbl, constants[ident], &val);
                             break;
                         }
                         case COBJ_OBJECT: {
                             CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
 
-                            cosmoV_getObject(state, object, *key, &val);
+                            cosmoV_getObject(state, object, constants[ident], &val);
                             break;
                         }
                         default:
@@ -707,21 +707,21 @@ int cosmoV_execute(CState *state) {
                     return -1;
                 }
 
-                cosmoV_setTop(state, 2); // pops the object & the key
+                cosmoV_setTop(state, 1); // pops the object
                 cosmoV_pushValue(state, val); // pushes the field result
                 break;
             }
             case OP_SETOBJECT: {
                 StkPtr value = cosmoV_getTop(state, 0); // value is at the top of the stack
-                StkPtr key = cosmoV_getTop(state, 1);
-                StkPtr temp = cosmoV_getTop(state, 2); // object is after the key
+                StkPtr temp = cosmoV_getTop(state, 1); // object is after the value
+                uint16_t ident = READUINT(); // use for the key
 
                 // sanity check
                 if (IS_OBJ(*temp)) {
                     switch (cosmoV_readObj(*temp)->type) {
                         case COBJ_DICT: { // index and set the table
                             CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
-                            CValue *newVal = cosmoT_insert(state, &dict->tbl, *key);
+                            CValue *newVal = cosmoT_insert(state, &dict->tbl, constants[ident]);
 
                             *newVal = *value; // set the index
                             break;
@@ -729,7 +729,7 @@ int cosmoV_execute(CState *state) {
                         case COBJ_OBJECT: {
                             CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
 
-                            cosmoO_setRawObject(state, object, *key, *value);
+                            cosmoO_setRawObject(state, object, constants[ident], *value);
                             break;
                         }
                         default:
@@ -742,7 +742,7 @@ int cosmoV_execute(CState *state) {
                 }
 
                 // pop everything off the stack
-                cosmoV_setTop(state, 3);
+                cosmoV_setTop(state, 2);
                 break;
             }
             case OP_INVOKE: { // this is an optimization made by the parser, instead of allocating a CObjMethod every time we want to invoke a method, we shrink it down into one minimal instruction!

@@ -185,14 +185,16 @@ COSMO_API CValue* cosmoT_insert(CState *state, CTable *tbl, CValue key) {
 }
 
 bool cosmoT_get(CTable *tbl, CValue key, CValue *val) {
+    // sanity check
     if (tbl->count == 0) {
         *val = cosmoV_newNil();
-        return false; // sanity check
+        return false;
     }
     
     CTableEntry *entry = findEntry(tbl->table, tbl->capacity - 1, key);
     *val = entry->val;
     
+    // return if get was successful
     return !(IS_NIL(entry->key));
 }
 

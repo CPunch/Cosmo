@@ -19,11 +19,12 @@ typedef struct CTable {
 COSMO_API void cosmoT_initTable(CState *state, CTable *tbl, int startCap);
 COSMO_API void cosmoT_clearTable(CState *state, CTable *tbl);
 COSMO_API void cosmoT_addTable(CState *state, CTable *from, CTable *to);
-COSMO_API CValue *cosmoT_insert(CState *state, CTable *tbl, CValue key);
 COSMO_API int cosmoT_count(CTable *tbl);
 
-CObjString *cosmoT_lookupString(CTable *tbl, const char *str, int length, uint32_t hash);
 bool cosmoT_checkShrink(CState *state, CTable *tbl);
+
+CObjString *cosmoT_lookupString(CTable *tbl, const char *str, int length, uint32_t hash);
+COSMO_API CValue *cosmoT_insert(CState *state, CTable *tbl, CValue key);
 bool cosmoT_get(CTable *tbl, CValue key, CValue *val);
 bool cosmoT_remove(CState *state, CTable *tbl, CValue key);
 

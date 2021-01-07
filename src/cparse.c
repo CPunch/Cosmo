@@ -653,11 +653,11 @@ static void dot(CParseState *pstate, bool canAssign, Precedence prec) {
     uint16_t name = identifierConstant(pstate, &pstate->previous);
 
     if (canAssign && match(pstate, TOKEN_EQUAL)) {
-        writeu8(pstate, OP_LOADCONST);
-        writeu16(pstate, name);
         expression(pstate, 1, true);
+
         writeu8(pstate, OP_SETOBJECT);
-        valuePopped(pstate, 2); // pops key, value & object
+        writeu16(pstate, name);
+        valuePopped(pstate, 2); // value & object
     } else if (match(pstate, TOKEN_PLUS_PLUS)) { // increment the field
         writeu8(pstate, OP_INCOBJECT);
         writeu8(pstate, 128 + 1);
@@ -676,9 +676,8 @@ static void dot(CParseState *pstate, bool canAssign, Precedence prec) {
         valuePopped(pstate, args+1); // args + function
         valuePushed(pstate, pstate->compiler->expectedValues);
     } else {
-        writeu8(pstate, OP_LOADCONST);
-        writeu16(pstate, name);
         writeu8(pstate, OP_GETOBJECT);
+        writeu16(pstate, name);
         // pops key & object but also pushes the field so total popped is 1
     }
 }
@@ -705,6 +704,7 @@ static void _index(CParseState *pstate, bool canAssign, Precedence prec) {
 }
 
 // ++test.field[1]
+// this function is kind of spaghetti, feel free to rewrite (if you dare!)
 static void walkIndexes(CParseState *pstate, int lastIndexType, uint16_t lastIdent, int val) {
     uint16_t ident = lastIdent;
     int indexType = lastIndexType;
@@ -721,9 +721,8 @@ static void walkIndexes(CParseState *pstate, int lastIndexType, uint16_t lastIde
         
         switch (lastIndexType) {
             case 0: // .
-                writeu8(pstate, OP_LOADCONST); // pushes ident to stack
-                writeu16(pstate, lastIdent);
                 writeu8(pstate, OP_GETOBJECT); // grabs property
+                writeu16(pstate, lastIdent);
                 break;
             case 1: // []
                 writeu8(pstate, OP_INDEX); // so, that was a normal index, perform that
@@ -1279,7 +1278,7 @@ static void forEachLoop(CParseState *pstate) {
 
     consume(pstate, TOKEN_DO, "Expected 'do' before loop block!");
 
-    writeu8(pstate, OP_ITER); // checks if stack[top] is iterable and pushes the __next method onto the stack for OP_NEXT to call
+    writeu8(pstate, OP_ITER); // checks if stack[top] is iterable and pushes the __next metamethod onto the stack for OP_NEXT to call
 
     // start loop scope
     LoopState cachedLoop = pstate->compiler->loop;
@@ -1434,6 +1433,7 @@ static int expressionPrecedence(CParseState *pstate, int needed, Precedence prec
 
     parsePrecedence(pstate, prec);
 
+    // make sure we're returning with the expected values they needed on the stack
     if (pstate->compiler->pushedValues > saved) {
         writePop(pstate, pstate->compiler->pushedValues - saved);
         valuePopped(pstate, pstate->compiler->pushedValues - saved);
@@ -1442,7 +1442,6 @@ static int expressionPrecedence(CParseState *pstate, int needed, Precedence prec
     }
 
     pstate->compiler->expectedValues = lastExpected;
-
     return pstate->compiler->pushedValues - (saved - needed);
 }
 

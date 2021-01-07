@@ -127,9 +127,9 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
         case OP_NEWOBJECT:
             return u16OperandInstruction("OP_NEWOBJECT", chunk, offset);
         case OP_GETOBJECT:
-            return simpleInstruction("OP_GETOBJECT", offset);
+            return constInstruction("OP_GETOBJECT", chunk, offset);
         case OP_SETOBJECT:
-            return simpleInstruction("OP_SETOBJECT", offset);
+            return constInstruction("OP_SETOBJECT", chunk, offset);
         case OP_INVOKE:
             return u8u8OperandInstruction("OP_INVOKE", chunk, offset);
         case OP_ITER:
