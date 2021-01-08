@@ -17,13 +17,15 @@ COSMO_API COSMOVMRESULT cosmoV_call(CState *state, int args, int nresults);
 COSMO_API COSMOVMRESULT cosmoV_pcall(CState *state, int args, int nresults);
 COSMO_API void cosmoV_makeObject(CState *state, int pairs);
 COSMO_API void cosmoV_makeDictionary(CState *state, int pairs);
-COSMO_API bool cosmoV_getObject(CState *state, CObjObject *object, CValue key, CValue *val);
 COSMO_API void cosmoV_concat(CState *state, int vals);
 COSMO_API void cosmoV_pushFString(CState *state, const char *format, ...);
 COSMO_API void cosmoV_printError(CState *state, CObjError *err);
 COSMO_API CObjError* cosmoV_throw(CState *state);
 COSMO_API void cosmoV_error(CState *state, const char *format, ...);
 COSMO_API void cosmo_insert(CState *state, int indx, CValue val);
+
+COSMO_API bool cosmoV_get(CState *state, CObj *obj, CValue key, CValue *val);
+COSMO_API bool cosmoV_set(CState *state, CObj *obj, CValue key, CValue val);
 
 // nice to have wrappers
 

@@ -22,6 +22,7 @@ CObj *cosmoO_allocateBase(CState *state, size_t sz, CObjType type) {
     CObj* obj = (CObj*)cosmoM_xmalloc(state, sz);
     obj->type = type;
     obj->isMarked = false;
+    obj->proto = state->protoObjects[type];
 
     obj->next = state->objects;
     state->objects = obj;
@@ -88,6 +89,7 @@ void cosmoO_free(CState *state, CObj* obj) {
             cosmoM_free(state, CObjClosure, closure);
             break;
         }
+        case COBJ_MAX: { /* stubbed, should never happen */ }
     }
 }
 
@@ -110,7 +112,6 @@ bool cosmoO_equal(CObj* obj1, CObj* obj2) {
 
 CObjObject *cosmoO_newObject(CState *state) {
     CObjObject *obj = (CObjObject*)cosmoO_allocateBase(state, sizeof(CObjObject), COBJ_OBJECT);
-    obj->proto = state->protoObj;
     obj->istringFlags = 0;
     obj->userP = NULL; // reserved for C API
     cosmoV_pushValue(state, cosmoV_newObj(obj)); // so our GC can keep track of it
@@ -164,16 +165,9 @@ CObjError *cosmoO_newError(CState *state, CValue err) {
     return cerror;
 }
 
-CObjMethod *cosmoO_newCMethod(CState *state, CObjCFunction *func, CObjObject *obj) {
+CObjMethod *cosmoO_newMethod(CState *state, CValue func, CObj *obj) {
     CObjMethod *method = (CObjMethod*)cosmoO_allocateBase(state, sizeof(CObjMethod), COBJ_METHOD);
-    method->func = cosmoV_newObj(func);
-    method->obj = obj;
-    return method;
-}
-
-CObjMethod *cosmoO_newMethod(CState *state, CObjClosure *func, CObjObject *obj) {
-    CObjMethod *method = (CObjMethod*)cosmoO_allocateBase(state, sizeof(CObjMethod), COBJ_METHOD);
-    method->func = cosmoV_newObj(func);
+    method->func = func;
     method->obj = obj;
     return method;
 }
@@ -304,8 +298,10 @@ bool cosmoO_getRawObject(CState *state, CObjObject *object, CValue key, CValue *
             return true;
         }
         
-        if (object->proto != NULL && cosmoO_getRawObject(state, object->proto, key, val))
+        if (object->_obj.proto != NULL && cosmoO_getRawObject(state, object->_obj.proto, key, val))
             return true;
+        
+        *val = cosmoV_newNil();
         return false; // no protoobject to check against / key not found
     }
 
@@ -325,7 +321,7 @@ void cosmoO_setRawObject(CState *state, CObjObject *object, CValue key, CValue v
     }
 
     // if the key is an IString, we need to reset the cache
-    if (IS_STRING(key) && ((CObjString*)cosmoV_readObj(key))->isIString)
+    if (IS_STRING(key) && cosmoV_readString(key)->isIString)
         object->istringFlags = 0; // reset cache
 
     if (IS_NIL(val)) { // if we're setting an index to nil, we can safely mark that as a tombstone
@@ -371,7 +367,7 @@ bool cosmoO_getIString(CState *state, CObjObject *object, int flag, CValue *val)
     do {
         if (rawgetIString(state, obj, flag, val))
             return true;
-    } while ((obj = obj->proto) != NULL); // sets obj to it's proto and compares it to NULL
+    } while ((obj = obj->_obj.proto) != NULL); // sets obj to it's proto and compares it to NULL
 
     return false; // obj->proto was false, the istring doesn't exist in this object chain
 }
@@ -409,7 +405,29 @@ bool cosmoO_newIndexObject(CState *state, CObjObject *object, CValue key, CValue
 }
 
 CObjString *cosmoO_toString(CState *state, CObj *obj) {
-    switch (obj->type) {
+    CObjObject *protoObject = cosmoO_grabProto(obj);
+    CValue res;
+
+    // use user-defined __tostring
+    if (protoObject != NULL && cosmoO_getIString(state, protoObject, ISTRING_TOSTRING, &res)) {
+        cosmoV_pushValue(state, res);
+        cosmoV_pushValue(state, cosmoV_newObj(obj));
+        if (cosmoV_call(state, 1, 1) != COSMOVM_OK)
+            return cosmoO_copyString(state, "<err>", 5);
+
+        // make sure the __tostring function returned a string
+        StkPtr ret = cosmoV_getTop(state, 0);
+        if (!IS_STRING(*ret)) {
+            cosmoV_error(state, "__tostring expected to return <string>, got %s!", cosmoV_typeStr(*ret));
+            return cosmoO_copyString(state, "<err>", 5);
+        }
+
+        // return string
+        cosmoV_pop(state);
+        return (CObjString*)cosmoV_readObj(*ret);
+    }
+
+   switch (obj->type) {
         case COBJ_STRING: {
             return (CObjString*)obj;
         }
@@ -422,30 +440,9 @@ CObjString *cosmoO_toString(CState *state, CObj *obj) {
             return func->name != NULL ? func->name : cosmoO_copyString(state, UNNAMEDCHUNK, strlen(UNNAMEDCHUNK)); 
         }
         case COBJ_OBJECT: {
-            CObjObject *object = (CObjObject*)obj;
-            CValue res;
-
-            if (cosmoO_getIString(state, object, ISTRING_TOSTRING, &res)) {
-                cosmoV_pushValue(state, res);
-                cosmoV_pushValue(state, cosmoV_newObj(object));
-                if (cosmoV_call(state, 1, 1) != COSMOVM_OK)
-                    return cosmoO_copyString(state, "<err>", 5);
-
-                // make sure the __tostring function returned a string
-                StkPtr ret = cosmoV_getTop(state, 0);
-                if (!IS_STRING(*ret)) {
-                    cosmoV_error(state, "__tostring expected to return <string>, got %s!", cosmoV_typeStr(*ret));
-                    return cosmoO_copyString(state, "<err>", 5);
-                }
-
-                // return string
-                cosmoV_pop(state);
-                return (CObjString*)cosmoV_readObj(*ret);
-            } else { 
-                char buf[64];
-                int sz = sprintf(buf, "<obj> %p", (void*)obj) + 1; // +1 for the null character
-                return cosmoO_copyString(state, buf, sz);
-            }
+            char buf[64];
+            int sz = sprintf(buf, "<obj> %p", (void*)obj) + 1; // +1 for the null character
+            return cosmoO_copyString(state, buf, sz);
         }
         case COBJ_ERROR: {
             CObjError *err = (CObjError*)obj;

@@ -2,14 +2,6 @@
 #define COBJ_H
 
 #include "cosmo.h"
-#include "cstate.h"
-#include "cchunk.h"
-#include "cvalue.h"
-#include "ctable.h"
-
-typedef struct CState CState;
-typedef struct CCallFrame CCallFrame;
-typedef uint32_t cosmo_Flag;
 
 typedef enum {
     COBJ_STRING,
@@ -22,7 +14,17 @@ typedef enum {
     COBJ_METHOD,
     COBJ_CLOSURE,
     COBJ_UPVALUE,
+    COBJ_MAX
 } CObjType;
+
+#include "cstate.h"
+#include "cchunk.h"
+#include "cvalue.h"
+#include "ctable.h"
+
+typedef struct CState CState;
+typedef struct CCallFrame CCallFrame;
+typedef uint32_t cosmo_Flag;
 
 #define CommonHeader CObj _obj
 #define readFlag(x, flag)   (x & (1u << flag))
@@ -35,6 +37,7 @@ typedef struct CObj {
     bool isMarked; // for the GC
     struct CObj *next;
     struct CObj *nextRoot; // for the root linked list
+    struct CObjObject *proto; // protoobject, describes the behavior of the object
 } CObj;
 
 typedef struct CObjString {
@@ -62,7 +65,6 @@ typedef struct CObjObject {
         void *userP;
         int userI;
     };
-    struct CObjObject *proto; // protoobject, describes the behavior of the object
 } CObjObject;
 
 typedef struct CObjDict { // dictionary, a wrapper for CTable
@@ -94,7 +96,7 @@ typedef struct CObjClosure {
 
 typedef struct CObjMethod {
     CommonHeader; // "is a " CObj
-    CObjObject *obj; // obj this method is bound too
+    CObj *obj; // obj this method is bound too
     CValue func;
 } CObjMethod;
 
@@ -141,11 +143,20 @@ CObjDict *cosmoO_newDictionary(CState *state);
 CObjFunction *cosmoO_newFunction(CState *state);
 CObjCFunction *cosmoO_newCFunction(CState *state, CosmoCFunction func);
 CObjError *cosmoO_newError(CState *state, CValue err);
-CObjMethod *cosmoO_newMethod(CState *state, CObjClosure *func, CObjObject *obj);
-CObjMethod *cosmoO_newCMethod(CState *state,  CObjCFunction *func, CObjObject *obj);
+CObjMethod *cosmoO_newMethod(CState *state, CValue func, CObj *obj);
 CObjClosure *cosmoO_newClosure(CState *state, CObjFunction *func);
 CObjString *cosmoO_toString(CState *state, CObj *val);
 CObjUpval *cosmoO_newUpvalue(CState *state, CValue *val);
+
+// grabs the base proto of the CObj* (if CObj is a CObjObject, that is returned)
+static inline CObjObject *cosmoO_grabProto(CObj *obj) {
+    CObjObject *object = obj->proto;
+
+    if (obj->type == COBJ_OBJECT)
+        object = (CObjObject*)obj;
+    
+    return object;
+}
 
 bool cosmoO_getRawObject(CState *state, CObjObject *object, CValue key, CValue *val);
 void cosmoO_setRawObject(CState *state, CObjObject *object, CValue key, CValue val);

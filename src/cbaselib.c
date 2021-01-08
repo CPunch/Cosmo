@@ -131,13 +131,24 @@ void cosmoB_loadLibrary(CState *state) {
 
     // register these all to the global table
     cosmoV_register(state, 5);
+
+    // make string object for CObjStrings
+
+    // sub
+    cosmoV_pushString(state, "sub");
+    cosmoV_pushCFunction(state, cosmoB_sSub);
+    
+    cosmoV_makeObject(state, 1);
+
+    StkPtr obj = cosmoV_pop(state);
+    state->protoObjects[COBJ_STRING] = cosmoV_readObject(*obj);
 }
 
 // ================================================================ [DEBUG] ================================================================
 
 int cosmoB_dsetProto(CState *state, int nargs, CValue *args) {
     if (nargs == 2) {
-        CObjObject *obj = cosmoV_readObject(args[0]); // object to set proto too
+        CObj *obj = cosmoV_readObj(args[0]); // object to set proto too
         CObjObject *proto = cosmoV_readObject(args[1]);
 
         obj->proto = proto; // boom done
@@ -153,7 +164,7 @@ int cosmoB_dgetProto(CState *state, int nargs, CValue *args) {
         cosmoV_error(state, "Expected 1 argument, got %d!", nargs);
     }
 
-    cosmoV_pushValue(state, cosmoV_newObj(cosmoV_readObject(args[0])->proto)); // just return the proto
+    cosmoV_pushValue(state, cosmoV_newObj(cosmoV_readObject(args[0])->_obj.proto)); // just return the proto
 
     return 1; // 1 result
 }
@@ -179,6 +190,6 @@ void cosmoB_loadDebug(CState *state) {
     // we call makeObject leting it know there are 2 sets of key & value pairs on the stack
     cosmoV_makeObject(state, 2);
 
-    // set debug proto to the debug object
-    state->protoObj = cosmoV_readObject(*cosmoV_pop(state));
+    // set debug protos to the debug object
+    state->protoObjects[COBJ_OBJECT] = cosmoV_readObject(*cosmoV_pop(state));
 }

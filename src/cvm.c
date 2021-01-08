@@ -173,7 +173,7 @@ void cosmoV_concat(CState *state, int vals) {
 }
 
 int cosmoV_execute(CState *state);
-bool invokeMethod(CState* state, CObjObject *obj, CValue func, int args, int nresults, int offset);
+bool invokeMethod(CState* state, CObj *obj, CValue func, int args, int nresults, int offset);
 
 /*
     calls a native C Function with # args on the stack, nresults are pushed onto the stack upon return.
@@ -293,12 +293,12 @@ bool callCValue(CState *state, CValue func, int args, int nresults, int offset) 
         case COBJ_OBJECT: { // object is being instantiated, making another object
             CObjObject *protoObj = (CObjObject*)cosmoV_readObj(func);
             CObjObject *newObj = cosmoO_newObject(state);
-            newObj->proto = protoObj;
+            newObj->_obj.proto = protoObj;
             CValue ret;
 
             // check if they defined an initializer (we accept 0 return values)
             if (cosmoO_getIString(state, protoObj, ISTRING_INIT, &ret)) {
-                if (!invokeMethod(state, newObj, ret, args, 0, offset + 1))
+                if (!invokeMethod(state, (CObj*)newObj, ret, args, 0, offset + 1))
                     return false;
             } else {
                 // no default initializer
@@ -324,7 +324,7 @@ bool callCValue(CState *state, CValue func, int args, int nresults, int offset) 
     return true;
 }
 
-bool invokeMethod(CState* state, CObjObject *obj, CValue func, int args, int nresults, int offset) {
+bool invokeMethod(CState* state, CObj *obj, CValue func, int args, int nresults, int offset) {
     // first, set the first argument to the object
     StkPtr temp = cosmoV_getTop(state, args);
     *temp = cosmoV_newObj(obj);
@@ -409,25 +409,44 @@ COSMO_API void cosmoV_makeDictionary(CState *state, int pairs) {
     cosmoV_pushValue(state, cosmoV_newObj(newObj));
 }
 
-COSMO_API bool cosmoV_getObject(CState *state, CObjObject *object, CValue key, CValue *val) {
+COSMO_API bool cosmoV_get(CState *state, CObj *_obj, CValue key, CValue *val) {
+    CObjObject *object = cosmoO_grabProto(_obj);
+    
+    // no proto to get from
+    if (object == NULL) {
+        cosmoV_error(state, "No proto defined! Couldn't get from type %s", cosmoO_typeStr(_obj));
+        *val = cosmoV_newNil();
+        return false;
+    }
+
     cosmoV_pushValue(state, cosmoV_newObj(object));
+
     if (cosmoO_getRawObject(state, object, key, val)) {
-        if (IS_OBJ(*val)) {
-            if (cosmoV_readObj(*val)->type == COBJ_CLOSURE) { // is it a function? if so, make it a method to the current object
-                CObjMethod *method = cosmoO_newMethod(state, (CObjClosure*)cosmoV_readObj(*val), object);
-                *val = cosmoV_newObj(method);
-            } else if (cosmoV_readObj(*val)->type == COBJ_CFUNCTION) {
-                CObjMethod *method = cosmoO_newCMethod(state, (CObjCFunction*)cosmoV_readObj(*val), object);
-                *val = cosmoV_newObj(method);
-            } // else, just pass the raw object
-        }
+        // is it a function? if so, make it a method to the current object
+        if (IS_OBJ(*val) && (cosmoV_readObj(*val)->type == COBJ_CLOSURE || cosmoV_readObj(*val)->type == COBJ_CFUNCTION)) {
+            CObjMethod *method = cosmoO_newMethod(state, *val, _obj);
+            *val = cosmoV_newObj(method);
+        } // else, just pass the raw object
 
         cosmoV_pop(state);
         return true;
     }
 
     cosmoV_pop(state);
-    return false;
+    return true;
+}
+
+COSMO_API bool cosmoV_set(CState *state, CObj *_obj, CValue key, CValue val) {
+    CObjObject *object = cosmoO_grabProto(_obj);
+
+    // no proto to set to
+    if (object == NULL) {
+        cosmoV_error(state, "No proto defined! Couldn't set to type %s", cosmoO_typeStr(_obj));
+        return false;
+    }
+
+    cosmoO_setRawObject(state, object, key, val);
+    return true;
 }
 
 int _dict__next(CState *state, int nargs, CValue *args) {
@@ -615,17 +634,19 @@ int cosmoV_execute(CState *state) {
                             cosmoT_get(&dict->tbl, *key, &val);
                             break;
                         }
-                        case COBJ_OBJECT: { // check for __index
-                            CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
+                        default: { // check for __index metamethod
+                            CObjObject *object = cosmoO_grabProto(cosmoV_readObj(*temp));
+
+                            if (object == NULL) {
+                                cosmoV_error(state, "No proto defined! Couldn't __index from type %s", cosmoV_typeStr(*temp));
+                                return -1;
+                            }
 
                             if (!cosmoO_indexObject(state, object, *key, &val)) // if returns false, cosmoV_error was called
                                 return -1;
 
                             break;
                         }
-                        default:
-                            cosmoV_error(state, "Couldn't index type %s!", cosmoV_typeStr(*temp));
-                            return -1;
                     }
 
                     cosmoV_setTop(state, 2); // pops the object & the key
@@ -651,17 +672,19 @@ int cosmoV_execute(CState *state) {
                             *newVal = *value; // set the index
                             break;
                         }
-                        case COBJ_OBJECT: { // check for __newindex
-                            CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
+                        default: { // check for __newindex
+                            CObjObject *object = cosmoO_grabProto(cosmoV_readObj(*temp));
+
+                            if (object == NULL) {
+                                cosmoV_error(state, "No proto defined! Couldn't __newindex from type %s", cosmoV_typeStr(*temp));
+                                return -1;
+                            }
 
                             if (!cosmoO_newIndexObject(state, object, *key, *value)) // if it returns false, cosmoV_error was called
                                 return -1;
 
                             break;
                         }
-                        default:
-                            cosmoV_error(state, "Couldn't set index with type %s!", cosmoV_typeStr(*temp));
-                            return -1;
                     }
 
                     // pop everything off the stack
@@ -692,15 +715,9 @@ int cosmoV_execute(CState *state) {
                             cosmoT_get(&dict->tbl, constants[ident], &val);
                             break;
                         }
-                        case COBJ_OBJECT: {
-                            CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
-
-                            cosmoV_getObject(state, object, constants[ident], &val);
-                            break;
-                        }
                         default:
-                            cosmoV_error(state, "Couldn't get from type %s!", cosmoV_typeStr(*temp));
-                            return -1;
+                            if (!cosmoV_get(state, cosmoV_readObj(*temp), constants[ident], &val))
+                                return -1;
                     }
                 } else {
                     cosmoV_error(state, "Couldn't get from type %s!", cosmoV_typeStr(*temp));
@@ -726,15 +743,9 @@ int cosmoV_execute(CState *state) {
                             *newVal = *value; // set the index
                             break;
                         }
-                        case COBJ_OBJECT: {
-                            CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
-
-                            cosmoO_setRawObject(state, object, constants[ident], *value);
-                            break;
-                        }
                         default:
-                            cosmoV_error(state, "Couldn't set a field on type %s!", cosmoV_typeStr(*temp));
-                            return -1;
+                            if (!cosmoV_set(state, cosmoV_readObj(*temp), constants[ident], *value))
+                                return -1;
                     }
                 } else {
                     cosmoV_error(state, "Couldn't set a field on type %s!", cosmoV_typeStr(*temp));
@@ -765,18 +776,20 @@ int cosmoV_execute(CState *state) {
                                 return -1;
                             break;
                         }
-                        case COBJ_OBJECT: {
-                            CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
+                        default: {
+                            CObjObject *object = cosmoO_grabProto(cosmoV_readObj(*temp));
 
-                            cosmoO_getRawObject(state, object, *key, &val); // we use cosmoO_getRawObject instead of the cosmoV_getObject wrapper so we get the raw value from the object instead of the CObjMethod wrapper
+                            if (object == NULL) {
+                                cosmoV_error(state, "No proto defined! Couldn't get from type %s!", cosmoV_typeStr(*temp));
+                                return -1;
+                            }
+
+                            cosmoO_getRawObject(state, object, *key, &val); // we use cosmoO_getRawObject instead of the wrapper so we get the raw value from the object instead of the CObjMethod wrapper
 
                             // now invoke the method!
-                            invokeMethod(state, object, val, args, nres, 0);
+                            invokeMethod(state, cosmoV_readObj(*temp), val, args, nres, 0);
                             break;
                         }
-                        default:
-                            cosmoV_error(state, "Couldn't get from type %s!", cosmoV_typeStr(*temp));
-                            return -1;
                     }
                 } else {
                     cosmoV_error(state, "Couldn't get from type %s!", cosmoV_typeStr(*temp));
@@ -793,9 +806,10 @@ int cosmoV_execute(CState *state) {
                     return -1;
                 }
 
-                switch (cosmoV_readObj(*temp)->type) {
+                CObj *obj = cosmoV_readObj(*temp);
+                switch (obj->type) {
                     case COBJ_DICT: {
-                        CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
+                        CObjDict *dict = (CObjDict*)obj;
 
                         cosmoV_pushValue(state, cosmoV_newObj(state->iStrings[ISTRING_RESERVED])); // key
                         cosmoV_pushValue(state, cosmoV_newObj(dict)); // value
@@ -810,18 +824,23 @@ int cosmoV_execute(CState *state) {
                         cosmoO_setUserI(state, obj, 0); // increment for iterator
 
                         // make our CObjMethod for OP_NEXT to call
-                        CObjMethod *method = cosmoO_newCMethod(state, dict_next, obj);
+                        CObjMethod *method = cosmoO_newMethod(state, cosmoV_newObj(dict_next), (CObj*)obj);
 
                         cosmoV_setTop(state, 2); // pops the object & the dict
                         cosmoV_pushValue(state, cosmoV_newObj(method)); // pushes the method for OP_NEXT
                         break;
                     }
-                    case COBJ_OBJECT: {
-                        CObjObject *obj = cosmoV_readObject(*temp);
+                    default: {
+                        CObjObject *object = cosmoO_grabProto(obj);
                         CValue val;
 
+                        if (object == NULL) {
+                            cosmoV_error(state, "No proto defined! Couldn't get from type %s", cosmoO_typeStr(obj));
+                            return -1;
+                        }
+
                         // grab __iter & call it
-                        if (cosmoO_getIString(state, obj, ISTRING_ITER, &val)) {
+                        if (cosmoO_getIString(state, object, ISTRING_ITER, &val)) {
                             cosmoV_pop(state); // pop the object from the stack
                             cosmoV_pushValue(state, val);
                             cosmoV_pushValue(state, cosmoV_newObj(obj));
@@ -831,13 +850,12 @@ int cosmoV_execute(CState *state) {
                             StkPtr iObj = cosmoV_getTop(state, 0);
 
                             if (!IS_OBJECT(*iObj)) {
-                                cosmoV_error(state, "Expected iterable object! '__iter' returned %s, expected object!", cosmoV_typeStr(*iObj));
+                                cosmoV_error(state, "Expected iterable object! '__iter' returned %s, expected <object>!", cosmoV_typeStr(*iObj));
                                 return -1;
                             }
 
-                            CObjObject *obj = (CObjObject*)cosmoV_readObj(*iObj);
-
-                            cosmoV_getObject(state, obj, cosmoV_newObj(state->iStrings[ISTRING_NEXT]), iObj);
+                            // get __next method and place it at the top of the stack
+                            cosmoV_get(state, cosmoV_readObj(*iObj), cosmoV_newObj(state->iStrings[ISTRING_NEXT]), iObj);
                         } else {
                             cosmoV_error(state, "Expected iterable object! '__iter' not defined!");
                             return -1;
@@ -845,9 +863,6 @@ int cosmoV_execute(CState *state) {
 
                         break;
                     }
-                    default:
-                        cosmoV_error(state, "Couldn't iterate over non-iterator type %s!", cosmoV_typeStr(*temp));
-                        return -1;
                 }
                 break;
             }
@@ -1005,9 +1020,14 @@ int cosmoV_execute(CState *state) {
                             }
                             break;
                         }
-                        case COBJ_OBJECT: {
-                            CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
+                        default: {
+                            CObjObject *object = cosmoO_grabProto(cosmoV_readObj(*temp));
                             CValue val;
+
+                            if (object == NULL) {
+                                cosmoV_error(state, "No proto defined! Couldn't __index from type %s", cosmoV_typeStr(*temp));
+                                return -1;
+                            }
                             
                             // call __index
                             if (cosmoO_indexObject(state, object, *key, &val)) {
@@ -1015,17 +1035,17 @@ int cosmoV_execute(CState *state) {
                                     cosmoV_pushValue(state, val); // pushes old value onto the stack :)
 
                                     // call __newindex
-                                    cosmoO_newIndexObject(state, object, *key, cosmoV_newNumber(cosmoV_readNumber(val) + inc));
+                                    if (!cosmoO_newIndexObject(state, object, *key, cosmoV_newNumber(cosmoV_readNumber(val) + inc)))
+                                        return -1;
                                 } else {
                                     cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(val));
                                     return -1;
                                 }
+                            } else {
+                                return -1;
                             }
                             break;
                         }
-                        default:
-                            cosmoV_error(state, "Couldn't set index with type %s!", cosmoV_typeStr(*temp));
-                            return -1;
                     }
                 } else {
                     cosmoV_error(state, "Couldn't set index with type %s!", cosmoV_typeStr(*temp));
@@ -1043,25 +1063,6 @@ int cosmoV_execute(CState *state) {
                 // sanity check
                 if (IS_OBJ(*temp)) {
                     switch (cosmoV_readObj(*temp)->type) {
-                        case COBJ_OBJECT: {
-                            CObjObject *object = (CObjObject*)cosmoV_readObj(*temp);
-                            CValue val;
-                            
-                            cosmoO_getRawObject(state, object, ident, &val);
-
-                            // pop the object off the stack
-                            cosmoV_pop(state);
-
-                            // check that it's a number value
-                            if (IS_NUMBER(val)) { 
-                                cosmoV_pushValue(state, val); // pushes old value onto the stack :)
-                                cosmoO_setRawObject(state, object, ident, cosmoV_newNumber(cosmoV_readNumber(val) + inc));
-                            } else {
-                                cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(val));
-                                return -1;
-                            }
-                            break;
-                        }
                         case COBJ_DICT: {
                             CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
                             CValue *val = cosmoT_insert(state, &dict->tbl, ident);
@@ -1078,9 +1079,27 @@ int cosmoV_execute(CState *state) {
                             }
                             break;
                         }
-                        default: 
-                            cosmoV_error(state, "Couldn't set a field on type %s!", cosmoV_typeStr(*temp));
-                            return -1;
+                        default: {
+                            CObj *obj = cosmoV_readObj(*temp);
+                            CValue val;
+                            
+                            if (!cosmoV_get(state, obj, ident, &val))
+                                return -1;
+
+                            // pop the object off the stack
+                            cosmoV_pop(state);
+
+                            // check that it's a number value
+                            if (IS_NUMBER(val)) { 
+                                cosmoV_pushValue(state, val); // pushes old value onto the stack :)
+                                if (!cosmoV_set(state, obj, ident, cosmoV_newNumber(cosmoV_readNumber(val) + inc)))
+                                    return -1;
+                            } else {
+                                cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(val));
+                                return -1;
+                            }
+                            break;
+                        }
                     }
                 } else {
                     cosmoV_error(state, "Couldn't set a field on type %s!", cosmoV_typeStr(*temp));

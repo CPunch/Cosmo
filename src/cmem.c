@@ -85,6 +85,7 @@ void markArray(CState *state, CValueArray *array) {
 
 // mark all references associated with the object
 void blackenObject(CState *state, CObj *obj) {
+    markObject(state, (CObj*)obj->proto);
     switch (obj->type) {
         case COBJ_STRING:
         case COBJ_CFUNCTION:
@@ -94,7 +95,6 @@ void blackenObject(CState *state, CObj *obj) {
             // mark everything this object is keeping track of
             CObjObject *cobj = (CObjObject*)obj;
             markTable(state, &cobj->tbl);
-            markObject(state, (CObj*)cobj->proto);
             break;
         }
         case COBJ_DICT: { // dictionaries are just wrappers for CTable
@@ -243,8 +243,10 @@ void markRoots(CState *state) {
     markUserRoots(state);
 
     // mark other misc. internally reserved objects
-    markObject(state, (CObj*)state->protoObj);
     markObject(state, (CObj*)state->error);
+
+    for (int i = 0; i < COBJ_MAX; i++)
+        markObject(state, (CObj*)state->protoObjects[i]);
 
     traceGrays(state);
 }

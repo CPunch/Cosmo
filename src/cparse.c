@@ -1357,7 +1357,7 @@ static void forLoop(CParseState *pstate) {
         startLoop(pstate);
 
         int iteratorStart = getChunk(pstate)->count;
-        expression(pstate, 0, true);
+        expressionPrecedence(pstate, 0, PREC_ASSIGNMENT, true); // any expression (including assignment)
         consume(pstate, TOKEN_RIGHT_PAREN, "Expected ')' after iterator");
 
         writeJmpBack(pstate, loopStart);

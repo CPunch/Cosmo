@@ -2,8 +2,8 @@
 #define CSTATE_H
 
 #include "cosmo.h"
-#include "cvalue.h"
 #include "cobj.h"
+#include "cvalue.h"
 #include "ctable.h"
 
 typedef struct CCallFrame {
@@ -36,7 +36,6 @@ typedef struct CState {
     int freezeGC; // when > 0, GC events will be ignored (for internal use)
     int frameCount;
 
-    CObjObject *protoObj; // start met obj for all objects (NULL by default)
     CObjError *error; // NULL, unless panic is true
     CObj *objects; // tracks all of our allocated objects
     CObj *userRoots; // user definable roots, this holds CObjs that should be considered "roots", lets the VM know you are holding a reference to a CObj in your code
@@ -49,6 +48,7 @@ typedef struct CState {
     CTable globals;
 
     CValue *top; // top of the stack
+    CObjObject *protoObjects[COBJ_MAX]; // proto object for each COBJ type [NULL = no default proto]
     CObjString *iStrings[ISTRING_MAX]; // strings used internally by the VM, eg. __init, __index & friends
     CCallFrame callFrame[FRAME_MAX]; // call frames
     CValue stack[STACK_MAX]; // stack

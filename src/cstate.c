@@ -32,7 +32,6 @@ CState *cosmoV_newState() {
     state->frameCount = 0;
     state->openUpvalues = NULL;
 
-    state->protoObj = NULL;
     state->error = NULL;
 
     cosmoT_initTable(state, &state->strings, 8); // init string table
@@ -62,6 +61,10 @@ CState *cosmoV_newState() {
     // set the IString flags
     for (int i = 0; i < ISTRING_MAX; i++)
         state->iStrings[i]->isIString = true;
+    
+    // set default proto objects
+    for (int i = 0; i < COBJ_MAX; i++)
+        state->protoObjects[i] = NULL;
 
     return state;
 }
