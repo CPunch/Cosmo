@@ -772,7 +772,7 @@ int cosmoV_execute(CState *state) {
                             cosmoT_get(&dict->tbl, constants[ident], &val);
 
                             // call closure/cfunction
-                            if (!callCValue(state, val, args, nres, -1))
+                            if (!callCValue(state, val, args, nres, 0))
                                 return -1;
                             break;
                         }
