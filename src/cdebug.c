@@ -123,8 +123,8 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
         }
         case OP_CLOSE:
             return simpleInstruction("OP_CLOSE", offset);
-        case OP_NEWDICT:
-            return u16OperandInstruction("OP_NEWDICT", chunk, offset);
+        case OP_NEWTABLE:
+            return u16OperandInstruction("OP_NEWTABLE", chunk, offset);
         case OP_INDEX:
             return simpleInstruction("OP_INDEX", offset);
         case OP_NEWINDEX:

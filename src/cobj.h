@@ -6,7 +6,7 @@
 typedef enum {
     COBJ_STRING,
     COBJ_OBJECT,
-    COBJ_DICT, // dictionary
+    COBJ_TABLE,
     COBJ_FUNCTION,
     COBJ_CFUNCTION,
     COBJ_ERROR,
@@ -67,10 +67,10 @@ typedef struct CObjObject {
     };
 } CObjObject;
 
-typedef struct CObjDict { // dictionary, a wrapper for CTable
+typedef struct CObjTable { // table, a wrapper for CTable
     CommonHeader; // "is a" CObj
     CTable tbl;
-} CObjDict;
+} CObjTable;
 
 typedef struct CObjFunction {
     CommonHeader; // "is a" CObj
@@ -111,7 +111,7 @@ typedef struct CObjUpval {
 
 #define IS_STRING(x)    isObjType(x, COBJ_STRING)
 #define IS_OBJECT(x)    isObjType(x, COBJ_OBJECT)
-#define IS_DICT(x)      isObjType(x, COBJ_DICT)
+#define IS_TABLE(x)      isObjType(x, COBJ_TABLE)
 #define IS_FUNCTION(x)  isObjType(x, COBJ_FUNCTION)
 #define IS_CFUNCTION(x) isObjType(x, COBJ_CFUNCTION)
 #define IS_METHOD(x)    isObjType(x, COBJ_METHOD)
@@ -139,7 +139,7 @@ void cosmoO_free(CState *state, CObj* obj);
 bool cosmoO_equal(CObj* obj1, CObj* obj2);
 
 CObjObject *cosmoO_newObject(CState *state);
-CObjDict *cosmoO_newDictionary(CState *state);
+CObjTable *cosmoO_newTable(CState *state);
 CObjFunction *cosmoO_newFunction(CState *state);
 CObjCFunction *cosmoO_newCFunction(CState *state, CosmoCFunction func);
 CObjError *cosmoO_newError(CState *state, CValue err);

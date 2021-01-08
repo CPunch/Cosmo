@@ -16,7 +16,7 @@ typedef enum {
 COSMO_API COSMOVMRESULT cosmoV_call(CState *state, int args, int nresults);
 COSMO_API COSMOVMRESULT cosmoV_pcall(CState *state, int args, int nresults);
 COSMO_API void cosmoV_makeObject(CState *state, int pairs);
-COSMO_API void cosmoV_makeDictionary(CState *state, int pairs);
+COSMO_API void cosmoV_makeTable(CState *state, int pairs);
 COSMO_API void cosmoV_concat(CState *state, int vals);
 COSMO_API void cosmoV_pushFString(CState *state, const char *format, ...);
 COSMO_API void cosmoV_printError(CState *state, CObjError *err);

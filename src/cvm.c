@@ -225,7 +225,7 @@ static bool callCFunction(CState *state, CosmoCFunction cfunc, int args, int nre
 static bool rawCall(CState *state, CObjClosure *closure, int args, int nresults, int offset) {
     CObjFunction *func = closure->function;
 
-    // if the function is variadic and theres more args than parameters, push the args into a dictionary
+    // if the function is variadic and theres more args than parameters, push the args into a table
     if (func->variadic && args >= func->args) {
         int extraArgs = args - func->args;
         StkPtr variStart = cosmoV_getTop(state, extraArgs-1);
@@ -236,8 +236,8 @@ static bool rawCall(CState *state, CObjClosure *closure, int args, int nresults,
             cosmoV_pushValue(state, *(variStart + i));
         }
 
-        cosmoV_makeDictionary(state, extraArgs);
-        *variStart = *cosmoV_getTop(state, 0); // move dict on the stack to the vari local
+        cosmoV_makeTable(state, extraArgs);
+        *variStart = *cosmoV_getTop(state, 0); // move table on the stack to the vari local
         state->top -= extraArgs;
 
         pushCallFrame(state, closure, func->args + 1);
@@ -390,10 +390,10 @@ COSMO_API void cosmoV_makeObject(CState *state, int pairs) {
     cosmoV_pushValue(state, cosmoV_newObj(newObj));
 }
 
-COSMO_API void cosmoV_makeDictionary(CState *state, int pairs) {
+COSMO_API void cosmoV_makeTable(CState *state, int pairs) {
     StkPtr key, val;
-    CObjDict *newObj = cosmoO_newDictionary(state);
-    cosmoV_pushValue(state, cosmoV_newObj(newObj)); // so our GC doesn't free our new dictionary
+    CObjTable *newObj = cosmoO_newTable(state);
+    cosmoV_pushValue(state, cosmoV_newObj(newObj)); // so our GC doesn't free our new table
 
     for (int i = 0; i < pairs; i++) {
         val = cosmoV_getTop(state, (i*2) + 1);
@@ -404,8 +404,8 @@ COSMO_API void cosmoV_makeDictionary(CState *state, int pairs) {
         *newVal = *val;
     }
 
-    // once done, pop everything off the stack + push new dictionary
-    cosmoV_setTop(state, (pairs * 2) + 1); // + 1 for our dictionary
+    // once done, pop everything off the stack + push new table
+    cosmoV_setTop(state, (pairs * 2) + 1); // + 1 for our table
     cosmoV_pushValue(state, cosmoV_newObj(newObj));
 }
 
@@ -449,7 +449,7 @@ COSMO_API bool cosmoV_set(CState *state, CObj *_obj, CValue key, CValue val) {
     return true;
 }
 
-int _dict__next(CState *state, int nargs, CValue *args) {
+int _tbl__next(CState *state, int nargs, CValue *args) {
     if (nargs != 1) {
         cosmoV_error(state, "Expected 1 parameter, %d received!", nargs);
         return 0;
@@ -466,17 +466,17 @@ int _dict__next(CState *state, int nargs, CValue *args) {
     
     cosmoO_getIString(state, obj, ISTRING_RESERVED, &val);
 
-    if (!IS_DICT(val)) {
+    if (!IS_TABLE(val)) {
         return 0; // someone set the __reserved member to something else. this will exit the iterator loop 
     }
 
-    CObjDict *dict = (CObjDict*)cosmoV_readObj(val);
+    CObjTable *table = (CObjTable*)cosmoV_readObj(val);
 
     // while the entry is invalid, go to the next entry
     CTableEntry *entry;
     do {
-        entry = &dict->tbl.table[index++];
-    } while (IS_NIL(entry->key) && index < dict->tbl.capacity);
+        entry = &table->tbl.table[index++];
+    } while (IS_NIL(entry->key) && index < table->tbl.capacity);
     cosmoO_setUserI(state, obj, index); // update the userdata
 
     if (!IS_NIL(entry->key)) { // if the entry is valid, return it's key and value pair
@@ -614,24 +614,24 @@ int cosmoV_execute(CState *state) {
                 cosmoV_pop(state);
                 break;
             }
-            case OP_NEWDICT: {
+            case OP_NEWTABLE: {
                 uint16_t pairs = READUINT();
-                cosmoV_makeDictionary(state, pairs);
+                cosmoV_makeTable(state, pairs);
                 break;
             }
             case OP_INDEX: {
                 StkPtr key = cosmoV_getTop(state, 0); // key should be the top of the stack
-                StkPtr temp = cosmoV_getTop(state, 1); // after that should be the dictionary
+                StkPtr temp = cosmoV_getTop(state, 1); // after that should be the table
 
                 // sanity check
                 if (IS_OBJ(*temp)) {
                     CValue val; // to hold our value
 
                     switch (cosmoV_readObj(*temp)->type) {
-                        case COBJ_DICT: {
-                            CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
+                        case COBJ_TABLE: {
+                            CObjTable *tbl = (CObjTable*)cosmoV_readObj(*temp);
 
-                            cosmoT_get(&dict->tbl, *key, &val);
+                            cosmoT_get(&tbl->tbl, *key, &val);
                             break;
                         }
                         default: { // check for __index metamethod
@@ -665,9 +665,9 @@ int cosmoV_execute(CState *state) {
                 // sanity check
                 if (IS_OBJ(*temp)) {
                     switch (cosmoV_readObj(*temp)->type) {
-                        case COBJ_DICT: { // index and set table
-                            CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
-                            CValue *newVal = cosmoT_insert(state, &dict->tbl, *key);
+                        case COBJ_TABLE: { // index and set table
+                            CObjTable *tbl = (CObjTable*)cosmoV_readObj(*temp);
+                            CValue *newVal = cosmoT_insert(state, &tbl->tbl, *key);
 
                             *newVal = *value; // set the index
                             break;
@@ -709,10 +709,10 @@ int cosmoV_execute(CState *state) {
                 // sanity check
                 if (IS_OBJ(*temp)) {
                     switch (cosmoV_readObj(*temp)->type) {
-                        case COBJ_DICT: { // syntax sugar, makes "namespaces" possible
-                            CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
+                        case COBJ_TABLE: { // syntax sugar, makes "namespaces" possible
+                            CObjTable *tbl = (CObjTable*)cosmoV_readObj(*temp);
 
-                            cosmoT_get(&dict->tbl, constants[ident], &val);
+                            cosmoT_get(&tbl->tbl, constants[ident], &val);
                             break;
                         }
                         default:
@@ -736,9 +736,9 @@ int cosmoV_execute(CState *state) {
                 // sanity check
                 if (IS_OBJ(*temp)) {
                     switch (cosmoV_readObj(*temp)->type) {
-                        case COBJ_DICT: { // index and set the table
-                            CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
-                            CValue *newVal = cosmoT_insert(state, &dict->tbl, constants[ident]);
+                        case COBJ_TABLE: { // index and set the table
+                            CObjTable *tbl = (CObjTable*)cosmoV_readObj(*temp);
+                            CValue *newVal = cosmoT_insert(state, &tbl->tbl, constants[ident]);
 
                             *newVal = *value; // set the index
                             break;
@@ -757,19 +757,19 @@ int cosmoV_execute(CState *state) {
                 break;
             }
             case OP_INVOKE: { // this is an optimization made by the parser, instead of allocating a CObjMethod every time we want to invoke a method, we shrink it down into one minimal instruction!
-                CValue val; // to hold our value
                 uint8_t args = READBYTE();
                 uint8_t nres = READBYTE();
                 uint16_t ident = READUINT();
                 StkPtr temp = cosmoV_getTop(state, args); // grabs object from stack
+                CValue val; // to hold our value
 
                 // sanity check
                 if (IS_OBJ(*temp)) {
                     switch (cosmoV_readObj(*temp)->type) {
-                        case COBJ_DICT: { // again, syntax sugar ("""""namespaces""""")
-                            CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
+                        case COBJ_TABLE: { // again, syntax sugar ("""""namespaces""""")
+                            CObjTable *tbl = (CObjTable*)cosmoV_readObj(*temp);
 
-                            cosmoT_get(&dict->tbl, constants[ident], &val);
+                            cosmoT_get(&tbl->tbl, constants[ident], &val);
 
                             // call closure/cfunction
                             if (!callCValue(state, val, args, nres, 0))
@@ -799,7 +799,7 @@ int cosmoV_execute(CState *state) {
                 break;
             }
             case OP_ITER: {
-                StkPtr temp = cosmoV_getTop(state, 0); // should be the object/dictionary
+                StkPtr temp = cosmoV_getTop(state, 0); // should be the object/table
 
                 if (!IS_OBJ(*temp)) {
                     cosmoV_error(state, "Couldn't iterate over non-iterator type %s!", cosmoV_typeStr(*temp));
@@ -808,15 +808,15 @@ int cosmoV_execute(CState *state) {
 
                 CObj *obj = cosmoV_readObj(*temp);
                 switch (obj->type) {
-                    case COBJ_DICT: {
-                        CObjDict *dict = (CObjDict*)obj;
+                    case COBJ_TABLE: {
+                        CObjTable *tbl = (CObjTable*)obj;
 
                         cosmoV_pushValue(state, cosmoV_newObj(state->iStrings[ISTRING_RESERVED])); // key
-                        cosmoV_pushValue(state, cosmoV_newObj(dict)); // value
+                        cosmoV_pushValue(state, cosmoV_newObj(tbl)); // value
 
                         cosmoV_pushString(state, "__next"); // key
-                        CObjCFunction *dict_next = cosmoO_newCFunction(state, _dict__next);
-                        cosmoV_pushValue(state, cosmoV_newObj(dict_next)); // value
+                        CObjCFunction *tbl_next = cosmoO_newCFunction(state, _tbl__next);
+                        cosmoV_pushValue(state, cosmoV_newObj(tbl_next)); // value
 
                         cosmoV_makeObject(state, 2); // pushes the new object to the stack
 
@@ -824,9 +824,9 @@ int cosmoV_execute(CState *state) {
                         cosmoO_setUserI(state, obj, 0); // increment for iterator
 
                         // make our CObjMethod for OP_NEXT to call
-                        CObjMethod *method = cosmoO_newMethod(state, cosmoV_newObj(dict_next), (CObj*)obj);
+                        CObjMethod *method = cosmoO_newMethod(state, cosmoV_newObj(tbl_next), (CObj*)obj);
 
-                        cosmoV_setTop(state, 2); // pops the object & the dict
+                        cosmoV_setTop(state, 2); // pops the object & the tbl
                         cosmoV_pushValue(state, cosmoV_newObj(method)); // pushes the method for OP_NEXT
                         break;
                     }
@@ -930,17 +930,17 @@ int cosmoV_execute(CState *state) {
                 }
                 break;
             }
-            case OP_COUNT: { // pop 1 value off the stack & if it's a dictionary return the amount of active entries it has
+            case OP_COUNT: { // pop 1 value off the stack & if it's a table return the amount of active entries it has
                 StkPtr temp = cosmoV_getTop(state, 0);
 
-                if (!IS_OBJ(*temp) || cosmoV_readObj(*temp)->type != COBJ_DICT) {
+                if (!IS_OBJ(*temp) || cosmoV_readObj(*temp)->type != COBJ_TABLE) {
                     cosmoV_error(state, "Expected object, got %s!", cosmoV_typeStr(*temp));
                     return -1;
                 }
 
-                CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
+                CObjTable *tbl = (CObjTable*)cosmoV_readObj(*temp);
                 cosmoV_pop(state);
-                cosmoV_pushNumber(state, cosmoT_count(&dict->tbl)); // pushes the count onto the stack
+                cosmoV_pushNumber(state, cosmoT_count(&tbl->tbl)); // pushes the count onto the stack
                 break;
             }
             case OP_CONCAT: {
@@ -1004,11 +1004,11 @@ int cosmoV_execute(CState *state) {
 
                  if (IS_OBJ(*temp)) {
                     switch (cosmoV_readObj(*temp)->type) {
-                        case COBJ_DICT: {
-                            CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
-                            CValue *val = cosmoT_insert(state, &dict->tbl, *key);
+                        case COBJ_TABLE: {
+                            CObjTable *tbl = (CObjTable*)cosmoV_readObj(*temp);
+                            CValue *val = cosmoT_insert(state, &tbl->tbl, *key);
 
-                            // pops dict & key from stack
+                            // pops tbl & key from stack
                             cosmoV_setTop(state, 2);
 
                             if (IS_NUMBER(*val)) { 
@@ -1063,11 +1063,11 @@ int cosmoV_execute(CState *state) {
                 // sanity check
                 if (IS_OBJ(*temp)) {
                     switch (cosmoV_readObj(*temp)->type) {
-                        case COBJ_DICT: {
-                            CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
-                            CValue *val = cosmoT_insert(state, &dict->tbl, ident);
+                        case COBJ_TABLE: {
+                            CObjTable *tbl = (CObjTable*)cosmoV_readObj(*temp);
+                            CValue *val = cosmoT_insert(state, &tbl->tbl, ident);
 
-                            // pops dict from stack
+                            // pops tbl from stack
                             cosmoV_pop(state);
 
                             if (IS_NUMBER(*val)) { 

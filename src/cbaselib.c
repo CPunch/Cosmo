@@ -126,7 +126,7 @@ void cosmoB_loadLibrary(CState *state) {
     cosmoV_pushString(state, "sub");
     cosmoV_pushCFunction(state, cosmoB_sSub);
     
-    cosmoV_makeDictionary(state, 1);
+    cosmoV_makeTable(state, 1);
     // string.
 
     // register these all to the global table
@@ -177,7 +177,7 @@ void cosmoB_loadDebug(CState *state) {
     cosmoV_pushString(state, "__proto"); // key
     cosmoV_pushCFunction(state, cosmoB_dgetProto); // value
 
-    cosmoV_makeDictionary(state, 1);
+    cosmoV_makeTable(state, 1);
 
     // make __setter object
     cosmoV_pushString(state, "__setter");
@@ -185,7 +185,7 @@ void cosmoB_loadDebug(CState *state) {
     cosmoV_pushString(state, "__proto");
     cosmoV_pushCFunction(state, cosmoB_dsetProto);
 
-    cosmoV_makeDictionary(state, 1);
+    cosmoV_makeTable(state, 1);
 
     // we call makeObject leting it know there are 2 sets of key & value pairs on the stack
     cosmoV_makeObject(state, 2);

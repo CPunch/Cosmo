@@ -621,6 +621,34 @@ static void call_(CParseState *pstate, bool canAssign, Precedence prec) {
     valuePushed(pstate, returnNum);
 }
 
+static void table(CParseState *pstate, bool canAssign, Precedence prec) {
+    // enter having already consumed '['
+    int entries = 0;
+    int tblType = 0; // 0 = we don't know yet / 1 = array-like table / 2 = dictionary-like table
+
+    if (!match(pstate, TOKEN_RIGHT_BRACKET)) {
+        do {
+            // grab value/key
+            expression(pstate, 1, true);
+
+            // they want to make a table with key:value
+            if (match(pstate, TOKEN_COLON) && tblType != 1) {
+                tblType = 2; // dictionary-like
+
+                // grab value
+                expression(pstate, 1, true);
+            } else if ((check(pstate, TOKEN_COMMA) || check(pstate, TOKEN_RIGHT_BRACKET)) && tblType != 2) {
+                tblType = 1; // array-like
+            } else {
+                error(pstate, "Can't change table description type mid-definition!");
+                return;
+            }
+
+            entries++;
+        } while (match(pstate, TOKEN_COMMA));
+    }
+}
+
 static void object(CParseState *pstate, bool canAssign, Precedence prec) {
     // already consumed the beginning '{'
     int entries = 0;
@@ -628,22 +656,25 @@ static void object(CParseState *pstate, bool canAssign, Precedence prec) {
     if (!match(pstate, TOKEN_RIGHT_BRACE)) {
         do {
             // parse the key first
-            expression(pstate, 1, true); // should parse until ':'
+            consume(pstate, TOKEN_IDENTIFIER, "Expected property identifier before '='!");
+            uint16_t ident = identifierConstant(pstate, &pstate->previous);
+            writeu8(pstate, OP_LOADCONST);
+            writeu16(pstate, ident);
 
-            consume(pstate, TOKEN_COLON, "Expected ':' to mark end of key and start of value!");
+            consume(pstate, TOKEN_EQUAL, "Expected '=' to mark the start of value!");
 
             // now, parse the value (until comma)
             expression(pstate, 1, true);
             
-            // "pop" the 2 values
-            valuePopped(pstate, 2);
+            // "pop" the 1 value
+            valuePopped(pstate, 1);
             entries++;
         } while (match(pstate, TOKEN_COMMA) && !pstate->hadError);
 
         consume(pstate, TOKEN_RIGHT_BRACE, "Expected '}' to end object definition.");
     }
 
-    writeu8(pstate, OP_NEWDICT); // creates a dictionary with u16 entries
+    writeu8(pstate, OP_NEWOBJECT); // creates a object with u16 entries
     writeu16(pstate, entries);
     valuePushed(pstate, 1);
 }
@@ -725,7 +756,7 @@ static void walkIndexes(CParseState *pstate, int lastIndexType, uint16_t lastIde
                 break;
             case 1: // []
                 writeu8(pstate, OP_INDEX); // so, that was a normal index, perform that
-                valuePopped(pstate, 1); // pops the key & dict off the stack, but pushes the value
+                valuePopped(pstate, 1); // pops the key & table off the stack, but pushes the value
                 break;
             default: // no previous index
                 break;
@@ -750,7 +781,7 @@ static void walkIndexes(CParseState *pstate, int lastIndexType, uint16_t lastIde
         case 1: // []
             writeu8(pstate, OP_INCINDEX);
             writeu8(pstate, 128 + val);
-            valuePopped(pstate, 2); // popped the dictionary & the key off the stack, but pushes the previous value
+            valuePopped(pstate, 2); // popped the table & the key off the stack, but pushes the previous value
             break;
         default: // no previous index
                 break;
@@ -766,8 +797,8 @@ static void increment(CParseState *pstate, int val) {
 
         // walk the indexes
         walkIndexes(pstate, 0, ident, val);
-    } else if (match(pstate, TOKEN_LEFT_BRACKET)) { // dictionary?
-        namedVariable(pstate, name, false, false, 0); // just get the dictionary
+    } else if (match(pstate, TOKEN_LEFT_BRACKET)) { // table?
+        namedVariable(pstate, name, false, false, 0); // just get the table
 
         // grab key
         expression(pstate, 1, true);
@@ -1174,8 +1205,8 @@ static void function(CParseState *pstate, FunctionType type) {
         } while (match(pstate, TOKEN_COMMA));
     }
 
-    if (match(pstate, TOKEN_DOT_DOT_DOT)) { // marks a function as variadic, now we expect an identifer for the populated variadic dictionary
-        uint16_t vari = parseVariable(pstate, "Expected identifier for variadic dictionary!", true);
+    if (match(pstate, TOKEN_DOT_DOT_DOT)) { // marks a function as variadic, now we expect an identifer for the populated variadic table
+        uint16_t vari = parseVariable(pstate, "Expected identifier for variadic table!", true);
         defineVariable(pstate, vari, true);
         valuePushed(pstate, 1);
         compiler.function->variadic = true;
@@ -1271,7 +1302,7 @@ static void forEachLoop(CParseState *pstate) {
         return;
     }
 
-    // after we consume the values, get the dictionary/object/whatever on the stack
+    // after we consume the values, get the table/object/whatever on the stack
     consume(pstate, TOKEN_IN, "Expected 'in' before iterator!");
     expression(pstate, 1, true);
 

@@ -53,10 +53,10 @@ void cosmoO_free(CState *state, CObj* obj) {
             cosmoM_free(state, CObjObject, objTbl);
             break;
         }
-        case COBJ_DICT: {
-            CObjDict *dict = (CObjDict*)obj;
-            cosmoT_clearTable(state, &dict->tbl);
-            cosmoM_free(state, CObjDict, dict);
+        case COBJ_TABLE: {
+            CObjTable *tbl = (CObjTable*)obj;
+            cosmoT_clearTable(state, &tbl->tbl);
+            cosmoM_free(state, CObjTable, tbl);
             break;
         }
         case COBJ_UPVALUE: {
@@ -121,8 +121,8 @@ CObjObject *cosmoO_newObject(CState *state) {
     return obj;
 }
 
-CObjDict *cosmoO_newDictionary(CState *state) {
-    CObjDict *obj = (CObjDict*)cosmoO_allocateBase(state, sizeof(CObjDict), COBJ_DICT);
+CObjTable *cosmoO_newTable(CState *state) {
+    CObjTable *obj = (CObjTable*)cosmoO_allocateBase(state, sizeof(CObjTable), COBJ_TABLE);
 
     // init the table (might cause a GC event)
     cosmoV_pushValue(state, cosmoV_newObj(obj)); // so our GC can keep track of obj
@@ -448,9 +448,9 @@ CObjString *cosmoO_toString(CState *state, CObj *obj) {
             CObjError *err = (CObjError*)obj;
             return cosmoV_toString(state, err->err);
         }
-        case COBJ_DICT: {
+        case COBJ_TABLE: {
             char buf[64];
-            int sz = sprintf(buf, "<dict> %p", (void*)obj) + 1; // +1 for the null character
+            int sz = sprintf(buf, "<tbl> %p", (void*)obj) + 1; // +1 for the null character
             return cosmoO_copyString(state, buf, sz);
         }
         default:
@@ -469,9 +469,9 @@ void printObject(CObj *o) {
             printf("<obj> %p", (void*)o);
             break;
         }
-        case COBJ_DICT: {
-            CObjDict *dict = (CObjDict*)o;
-            printf("<dict> %p", (void*)dict);
+        case COBJ_TABLE: {
+            CObjTable *tbl = (CObjTable*)o;
+            printf("<tbl> %p", (void*)tbl);
             break;
         }
         case COBJ_UPVALUE: {
@@ -513,7 +513,7 @@ const char *cosmoO_typeStr(CObj* obj) {
     switch (obj->type) {
         case COBJ_STRING:       return "<string>";
         case COBJ_OBJECT:       return "<object>";
-        case COBJ_DICT:         return "<dictionary>";
+        case COBJ_TABLE:        return "<table>";
         case COBJ_FUNCTION:     return "<function>";
         case COBJ_CFUNCTION:    return "<c function>";
         case COBJ_METHOD:       return "<method>";
