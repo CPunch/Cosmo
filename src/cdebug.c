@@ -32,6 +32,11 @@ int u8u16OperandInstruction(const char *name, CChunk *chunk, int offset) {
     return offset + 4; // op + u8 + u16
 }
 
+int u8u8u16OperandInstruction(const char *name, CChunk *chunk, int offset) {
+    printf("%-16s [%03d] [%03d] [%05d]", name, readu8Chunk(chunk, offset + 1), readu8Chunk(chunk, offset + 2), readu16Chunk(chunk, offset + 3));
+    return offset + 5; // op + u8 + u8 + u16
+}
+
 int constInstruction(const char *name, CChunk *chunk, int offset) {
     int index = readu16Chunk(chunk, offset + 1);
     printf("%-16s [%05d] - ", name, index);
@@ -131,7 +136,7 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
         case OP_SETOBJECT:
             return constInstruction("OP_SETOBJECT", chunk, offset);
         case OP_INVOKE:
-            return u8u8OperandInstruction("OP_INVOKE", chunk, offset);
+            return u8u8u16OperandInstruction("OP_INVOKE", chunk, offset);
         case OP_ITER:
             return simpleInstruction("OP_ITER", offset);
         case OP_NEXT:

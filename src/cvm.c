@@ -760,8 +760,8 @@ int cosmoV_execute(CState *state) {
                 CValue val; // to hold our value
                 uint8_t args = READBYTE();
                 uint8_t nres = READBYTE();
-                StkPtr key = cosmoV_getTop(state, args); // grabs key from stack
-                StkPtr temp = cosmoV_getTop(state, args+1); // grabs object from stack
+                uint16_t ident = READUINT();
+                StkPtr temp = cosmoV_getTop(state, args); // grabs object from stack
 
                 // sanity check
                 if (IS_OBJ(*temp)) {
@@ -769,7 +769,7 @@ int cosmoV_execute(CState *state) {
                         case COBJ_DICT: { // again, syntax sugar ("""""namespaces""""")
                             CObjDict *dict = (CObjDict*)cosmoV_readObj(*temp);
 
-                            cosmoT_get(&dict->tbl, *key, &val);
+                            cosmoT_get(&dict->tbl, constants[ident], &val);
 
                             // call closure/cfunction
                             if (!callCValue(state, val, args, nres, -1))
@@ -784,10 +784,10 @@ int cosmoV_execute(CState *state) {
                                 return -1;
                             }
 
-                            cosmoO_getRawObject(state, object, *key, &val); // we use cosmoO_getRawObject instead of the wrapper so we get the raw value from the object instead of the CObjMethod wrapper
+                            cosmoO_getRawObject(state, object, constants[ident], &val); // we use cosmoO_getRawObject instead of the wrapper so we get the raw value from the object instead of the CObjMethod wrapper
 
                             // now invoke the method!
-                            invokeMethod(state, cosmoV_readObj(*temp), val, args, nres, 0);
+                            invokeMethod(state, cosmoV_readObj(*temp), val, args, nres, 1);
                             break;
                         }
                     }

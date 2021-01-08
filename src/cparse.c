@@ -667,12 +667,11 @@ static void dot(CParseState *pstate, bool canAssign, Precedence prec) {
         writeu8(pstate, 128 - 1);
         writeu16(pstate, name);
     } else if (match(pstate, TOKEN_LEFT_PAREN)) { // it's an invoked call
-        writeu8(pstate, OP_LOADCONST);
-        writeu16(pstate, name);
         uint8_t args = parseArguments(pstate);
         writeu8(pstate, OP_INVOKE);
         writeu8(pstate, args);
         writeu8(pstate, pstate->compiler->expectedValues); 
+        writeu16(pstate, name);
         valuePopped(pstate, args+1); // args + function
         valuePushed(pstate, pstate->compiler->expectedValues);
     } else {
