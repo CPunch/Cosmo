@@ -1,6 +1,6 @@
 proto Vector
     function __init(self)
-        self.vector = {}
+        self.vector = []
         self.x = 0
     end
 
