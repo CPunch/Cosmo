@@ -4,7 +4,7 @@ Cosmo is a portable scripting language loosely based off of Lua. Cosmo easily al
 ```
 proto Vector
     function __init(self)
-        self.vector = {}
+        self.vector = []
         self.x = 0
     end
 
@@ -32,13 +32,12 @@ for (var i = 0; i < 4; i++) do
 end
 ```
 
-> 3 : 0
-
-> 2 : 1
-
-> 1 : 2
-
-> 0 : 3
+```
+3 : 0
+2 : 1
+1 : 2
+0 : 3
+```
 
 # C API
 The Cosmo C API is currently undocumented, however as soon as development has reached a stable state documentation on full language features and the C API will start.

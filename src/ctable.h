@@ -1,6 +1,8 @@
 #ifndef CTABLE_H
 #define CTABLE_H
 
+/* TODO: rewrite this table implementation. compared to other languages (including python!) this table is verrryyyy slow */
+
 #include "cosmo.h"
 #include "cvalue.h"
 
