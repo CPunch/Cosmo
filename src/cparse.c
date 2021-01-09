@@ -646,7 +646,28 @@ static void table(CParseState *pstate, bool canAssign, Precedence prec) {
 
             entries++;
         } while (match(pstate, TOKEN_COMMA));
+
+        consume(pstate, TOKEN_RIGHT_BRACKET, "Expected ']' to end table definition!");
     }
+
+    switch (tblType) {
+        case 1: // array-like
+            writeu8(pstate, OP_NEWARRAY);
+            writeu16(pstate, entries);
+            valuePopped(pstate, entries);
+            break;
+        case 2: // dictionary-like
+            writeu8(pstate, OP_NEWTABLE);
+            writeu16(pstate, entries);
+            valuePopped(pstate, entries * 2);
+            break;
+        default: // just make an empty table
+            writeu8(pstate, OP_NEWTABLE);
+            writeu16(pstate, 0);
+            break;
+    }
+
+    valuePushed(pstate, 1); // table is now on the stack
 }
 
 static void object(CParseState *pstate, bool canAssign, Precedence prec) {
@@ -855,7 +876,7 @@ ParseRule ruleTable[] = {
     [TOKEN_RIGHT_PAREN]     = {NULL, NULL, PREC_NONE},
     [TOKEN_LEFT_BRACE]      = {object, NULL, PREC_NONE},
     [TOKEN_RIGHT_BRACE]     = {NULL, NULL, PREC_NONE},
-    [TOKEN_LEFT_BRACKET]    = {NULL, _index, PREC_CALL},
+    [TOKEN_LEFT_BRACKET]    = {table, _index, PREC_CALL},
     [TOKEN_RIGHT_BRACKET]   = {NULL, NULL, PREC_NONE},
     [TOKEN_COMMA]           = {NULL, NULL, PREC_NONE},
     [TOKEN_COLON]           = {NULL, NULL, PREC_NONE},

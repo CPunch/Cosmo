@@ -619,6 +619,25 @@ int cosmoV_execute(CState *state) {
                 cosmoV_makeTable(state, pairs);
                 break;
             }
+            case OP_NEWARRAY: {
+                uint16_t pairs = READUINT();
+                StkPtr val;
+                CObjTable *newObj = cosmoO_newTable(state);
+                cosmoV_pushValue(state, cosmoV_newObj(newObj)); // so our GC doesn't free our new table
+
+                for (int i = 0; i < pairs; i++) {
+                    val = cosmoV_getTop(state, i + 1);
+
+                    // set key/value pair
+                    CValue *newVal = cosmoT_insert(state, &newObj->tbl, cosmoV_newNumber(i));
+                    *newVal = *val;
+                }
+
+                // once done, pop everything off the stack + push new table
+                cosmoV_setTop(state, pairs + 1); // + 1 for our table
+                cosmoV_pushValue(state, cosmoV_newObj(newObj));
+                break;
+            }
             case OP_INDEX: {
                 StkPtr key = cosmoV_getTop(state, 0); // key should be the top of the stack
                 StkPtr temp = cosmoV_getTop(state, 1); // after that should be the table

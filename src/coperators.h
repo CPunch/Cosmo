@@ -23,6 +23,7 @@ typedef enum {
     OP_CLOSURE, 
     OP_CLOSE,
     OP_NEWTABLE,
+    OP_NEWARRAY, // really just a table
     OP_INDEX,
     OP_NEWINDEX,
     OP_NEWOBJECT,

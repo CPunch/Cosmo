@@ -125,6 +125,8 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
             return simpleInstruction("OP_CLOSE", offset);
         case OP_NEWTABLE:
             return u16OperandInstruction("OP_NEWTABLE", chunk, offset);
+        case OP_NEWARRAY:
+            return u16OperandInstruction("OP_NEWARRAY", chunk, offset);
         case OP_INDEX:
             return simpleInstruction("OP_INDEX", offset);
         case OP_NEWINDEX:
@@ -189,7 +191,7 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
             return u8OperandInstruction("OP_RETURN", chunk, offset);
         default:
             printf("Unknown opcode! [%d]\n", i);
-            exit(0);
+            return 1;
     }
 
 
