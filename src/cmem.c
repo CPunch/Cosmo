@@ -55,7 +55,8 @@ void markTable(CState *state, CTable *tbl) {
     if (tbl->table == NULL) // table is still being initialized
         return;
     
-    for (int i = 0; i < tbl->capacity; i++) {
+    int cap = tbl->capacityMask + 1;
+    for (int i = 0; i < cap; i++) {
         CTableEntry *entry = &tbl->table[i];
         markValue(state, entry->key);
         markValue(state, entry->val);
@@ -67,7 +68,8 @@ void tableRemoveWhite(CState *state, CTable *tbl) {
     if (tbl->table == NULL) // table is still being initialized
         return;
     
-    for (int i = 0; i < tbl->capacity; i++) {
+    int cap = tbl->capacityMask + 1;
+    for (int i = 0; i < cap; i++) {
         CTableEntry *entry = &tbl->table[i];
         if (IS_OBJ(entry->key) && !(cosmoV_readObj(entry->key))->isMarked) { // if the key is a object and it's white (unmarked), remove it from the table
             cosmoT_remove(state, tbl, entry->key);

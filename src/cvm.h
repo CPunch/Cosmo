@@ -24,6 +24,15 @@ COSMO_API CObjError* cosmoV_throw(CState *state);
 COSMO_API void cosmoV_error(CState *state, const char *format, ...);
 COSMO_API void cosmo_insert(CState *state, int indx, CValue val);
 
+/*
+    compiles string into a <closure>, if successful, <closure> will be pushed onto the stack otherwise the <error> will be pushed.
+
+    returns:
+        false : <error> is at the top of the stack
+        true  : <closure> is at the top of the stack
+*/
+COSMO_API bool cosmoV_compileString(CState *state, const char *src, const char *name);
+
 COSMO_API bool cosmoV_get(CState *state, CObj *obj, CValue key, CValue *val);
 COSMO_API bool cosmoV_set(CState *state, CObj *obj, CValue key, CValue val);
 

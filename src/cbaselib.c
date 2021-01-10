@@ -57,6 +57,24 @@ int cosmoB_pcall(CState *state, int nargs, CValue *args) {
     return 2;
 }
 
+int cosmoB_loadstring(CState *state, int nargs, CValue *args) {
+    if (nargs < 1) {
+        cosmoV_error(state, "loadstring() expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_STRING(args[0])) {
+        cosmoV_typeError(state, "loadstring()", "<string>", "%s", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    CObjString *str = cosmoV_readString(args[0]);
+    bool res = cosmoV_compileString(state, str->str, "");
+
+    cosmo_insert(state, 0, cosmoV_newBoolean(res));
+    return 2; // <boolean>, <closure> or <error>
+}
+
 // ================================================================ [STRING.*] ================================================================
 
 // string.sub
@@ -103,23 +121,32 @@ int cosmoB_sSub(CState *state, int nargs, CValue *args) {
 }
 
 void cosmoB_loadLibrary(CState *state) {
-    // print
-    cosmoV_pushString(state, "print");
-    cosmoV_pushCFunction(state, cosmoB_print);
+    const char *identifiers[] = {
+        "print",
+        "assert",
+        "type",
+        "pcall",
+        "loadstring"
+    };
 
-    // assert (for unit testing)
-    cosmoV_pushString(state, "assert");
-    cosmoV_pushCFunction(state, cosmoB_assert);
+    CosmoCFunction baseLib[] = {
+        cosmoB_print,
+        cosmoB_assert,
+        cosmoB_type,
+        cosmoB_pcall,
+        cosmoB_loadstring
+    };
 
-    // type
-    cosmoV_pushString(state, "type");
-    cosmoV_pushCFunction(state, cosmoB_type);
+    int i;
+    for (i = 0; i < sizeof(identifiers)/sizeof(identifiers[0]); i++) {
+        cosmoV_pushString(state, identifiers[i]);
+        cosmoV_pushCFunction(state, baseLib[i]);
+    }
 
-    // pcall
-    cosmoV_pushString(state, "pcall");
-    cosmoV_pushCFunction(state, cosmoB_pcall);
+    // register all the pushed c functions and the strings as globals
+    cosmoV_register(state, i);
 
-    // string.
+    // string.*
     cosmoV_pushString(state, "string");
 
     // sub
@@ -127,19 +154,19 @@ void cosmoB_loadLibrary(CState *state) {
     cosmoV_pushCFunction(state, cosmoB_sSub);
     
     cosmoV_makeTable(state, 1);
-    // string.
+    // string.*
 
-    // register these all to the global table
-    cosmoV_register(state, 5);
+    // register "string" to that table
+    cosmoV_register(state, 1);
 
     // make string object for CObjStrings
-
     // sub
     cosmoV_pushString(state, "sub");
     cosmoV_pushCFunction(state, cosmoB_sSub);
     
     cosmoV_makeObject(state, 1);
 
+    // grab the object from the stack and set the base protoObject
     StkPtr obj = cosmoV_pop(state);
     state->protoObjects[COBJ_STRING] = cosmoV_readObject(*obj);
 }

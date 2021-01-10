@@ -33,13 +33,17 @@ CState *cosmoV_newState() {
     state->openUpvalues = NULL;
 
     state->error = NULL;
-
-    cosmoT_initTable(state, &state->strings, 8); // init string table
-    cosmoT_initTable(state, &state->globals, 8); // init global table
+    
+    // set default proto objects
+    for (int i = 0; i < COBJ_MAX; i++)
+        state->protoObjects[i] = NULL;
 
     // first, set all strings to NULL so our GC doesn't read garbage data
     for (int i = 0; i < ISTRING_MAX; i++)
         state->iStrings[i] = NULL;
+
+    cosmoT_initTable(state, &state->strings, 8); // init string table
+    cosmoT_initTable(state, &state->globals, 8); // init global table
 
     // setup all strings used by the VM
     state->iStrings[ISTRING_INIT] = cosmoO_copyString(state, "__init", 6);
@@ -61,10 +65,6 @@ CState *cosmoV_newState() {
     // set the IString flags
     for (int i = 0; i < ISTRING_MAX; i++)
         state->iStrings[i]->isIString = true;
-    
-    // set default proto objects
-    for (int i = 0; i < COBJ_MAX; i++)
-        state->protoObjects[i] = NULL;
 
     return state;
 }

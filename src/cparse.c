@@ -1587,20 +1587,19 @@ CObjFunction* cosmoP_compileString(CState *state, const char *source, const char
         endCompiler(&parser);
         freeParseState(&parser);
 
-        // the VM still expects a result on the stack
-        cosmoV_pushValue(state, cosmoV_newNil());
         cosmoM_unfreezeGC(state);
         return NULL;
     }
 
     CObjFunction* resFunc = compiler.function;
 
-    // VM expects the closure on the stack :P (we do this before ending the compiler so our GC doesn't free it)
-    cosmoV_pushValue(state, cosmoV_newObj((CObj*)cosmoO_newClosure(state, resFunc)));
-
     // finally free out parser states
     endCompiler(&parser);
     freeParseState(&parser);
+
+    // push the funciton onto the stack so if we cause an GC event, it won't be free'd
+    cosmoV_pushValue(state, cosmoV_newObj(resFunc));
     cosmoM_unfreezeGC(state);
+    cosmoV_pop(state);
     return resFunc;
 }

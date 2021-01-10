@@ -2,6 +2,7 @@
 #include "cstate.h"
 #include "cdebug.h"
 #include "cmem.h"
+#include "cparse.h"
 
 #include <stdarg.h>
 #include <string.h>
@@ -27,7 +28,26 @@ COSMO_API void cosmo_insert(CState *state, int indx, CValue val) {
     state->top++;
 }
 
-void cosmoV_printError(CState *state, CObjError *err) {
+COSMO_API bool cosmoV_compileString(CState *state, const char *src, const char *name) {
+    CObjFunction *func;
+
+    if ((func = cosmoP_compileString(state, src, name)) != NULL) {
+        // success
+        disasmChunk(&func->chunk, func->module->str, 0);
+        
+        // push function onto the stack so it doesn't it cleaned up by the GC, at the same stack location put our closure
+        cosmoV_pushValue(state, cosmoV_newObj(func));
+        *(cosmoV_getTop(state, 0)) = cosmoV_newObj(cosmoO_newClosure(state, func));
+        return true;
+    }
+
+    // fail
+    state->panic = false;
+    cosmoV_pushValue(state, cosmoV_newObj(state->error));
+    return false;
+}
+
+COSMO_API void cosmoV_printError(CState *state, CObjError *err) {
     // print stack trace
     for (int i = 0; i < err->frameCount; i++) {
         CCallFrame *frame = &err->frames[i];
@@ -473,10 +493,11 @@ int _tbl__next(CState *state, int nargs, CValue *args) {
     CObjTable *table = (CObjTable*)cosmoV_readObj(val);
 
     // while the entry is invalid, go to the next entry
+    int cap = table->tbl.capacityMask + 1;
     CTableEntry *entry;
     do {
         entry = &table->tbl.table[index++];
-    } while (IS_NIL(entry->key) && index < table->tbl.capacity);
+    } while (IS_NIL(entry->key) && index < cap);
     cosmoO_setUserI(state, obj, index); // update the userdata
 
     if (!IS_NIL(entry->key)) { // if the entry is valid, return it's key and value pair
