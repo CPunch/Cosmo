@@ -23,11 +23,7 @@ proto Vector
     end
 
     function __next(self)
-        if self.iterIndex > self.x then
-            return nil
-        end
-
-        return vector[self.iterIndex++]
+        return self.vector[self.iterIndex++]
     end
 end
 
