@@ -17,22 +17,23 @@ proto Vector
     end
 
     function __iter(self)
-        self.iterIndex = 0
-
-        return self
-    end
-
-    function __next(self)
-        return self.vector[self.iterIndex++]
+        // you don't *have* to make a new object, i just wanted to show off anonymous functions
+        return {__next = (function(self)             
+                return self.vector[self.iterIndex++]
+            end), 
+            iterIndex = 0,
+            vector = self.vector
+        }
     end
 end
 
 var vector = Vector()
 
 for (var i = 0; i < 100000; i++) do
-    vector.push(i)
+    vector:push(i)
 end
 
+local total = 0
 for i in vector do
     print(i)
 end

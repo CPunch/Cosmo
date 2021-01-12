@@ -1,6 +1,6 @@
 proto test
     function __init(self, x)
-        self.setArg(x)
+        self:setArg(x)
     end
 
     function __tostring(self)
@@ -22,7 +22,7 @@ var t = test(1)
 
 for (var x = 1; x < 1000; x = x + 1) do
     for (var i = 1; i < 100; i = i + 1) do
-        t.setArg(i)
+        t:setArg(i)
 
         print(t)
     end

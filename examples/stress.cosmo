@@ -11,5 +11,5 @@ end
 // stressing the GC
 for (var i = 0; ; i++) do
     var x = Test("Hello world " .. i)
-    x.print()
+    x:print()
 end
