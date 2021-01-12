@@ -631,8 +631,8 @@ static void table(CParseState *pstate, bool canAssign, Precedence prec) {
             // grab value/key
             expression(pstate, 1, true);
 
-            // they want to make a table with key:value
-            if (match(pstate, TOKEN_COLON) && tblType != 1) {
+            // they want to make a table with key = value
+            if (match(pstate, TOKEN_EQUAL) && tblType != 1) {
                 tblType = 2; // dictionary-like
 
                 // grab value
@@ -718,14 +718,6 @@ static void dot(CParseState *pstate, bool canAssign, Precedence prec) {
         writeu8(pstate, OP_INCOBJECT);
         writeu8(pstate, 128 - 1);
         writeu16(pstate, name);
-    } else if (match(pstate, TOKEN_LEFT_PAREN)) { // it's an invoked call
-        uint8_t args = parseArguments(pstate);
-        writeu8(pstate, OP_INVOKE);
-        writeu8(pstate, args);
-        writeu8(pstate, pstate->compiler->expectedValues); 
-        writeu16(pstate, name);
-        valuePopped(pstate, args+1); // args + function
-        valuePushed(pstate, pstate->compiler->expectedValues);
     } else {
         writeu8(pstate, OP_GETOBJECT);
         writeu16(pstate, name);
@@ -752,6 +744,31 @@ static void _index(CParseState *pstate, bool canAssign, Precedence prec) {
     }
     
     valuePopped(pstate, 1); // pops key & object but also pushes the value so total popped is 1
+}
+
+static void invoke(CParseState *pstate, bool canAssign, Precedence prec) {
+    int returnNum = pstate->compiler->expectedValues;
+    uint16_t name;
+    uint8_t args;
+
+    consume(pstate, TOKEN_IDENTIFIER, "Expected method name after ':'.");
+    name = identifierConstant(pstate, &pstate->previous);
+
+    consume(pstate, TOKEN_LEFT_PAREN, "Expected '(' after method identifier!");
+    args = parseArguments(pstate);
+
+    // if we're not the last token in this expression or we're expecting multiple values, we should return only 1 value!!
+    if (!isLast(pstate, prec) || (returnNum > 1 && check(pstate, TOKEN_COMMA)))
+        returnNum = 1;
+    
+    writeu8(pstate, OP_INVOKE);
+    writeu8(pstate, args);
+    writeu8(pstate, returnNum); 
+    writeu16(pstate, name);
+
+    valuePopped(pstate, args+1); // args + function
+    valuePushed(pstate, returnNum);
+
 }
 
 // ++test.field[1]
@@ -879,7 +896,7 @@ ParseRule ruleTable[] = {
     [TOKEN_LEFT_BRACKET]    = {table, _index, PREC_CALL},
     [TOKEN_RIGHT_BRACKET]   = {NULL, NULL, PREC_NONE},
     [TOKEN_COMMA]           = {NULL, NULL, PREC_NONE},
-    [TOKEN_COLON]           = {NULL, NULL, PREC_NONE},
+    [TOKEN_COLON]           = {NULL, invoke, PREC_CALL},
     [TOKEN_DOT]             = {NULL, dot, PREC_CALL},
     [TOKEN_DOT_DOT]         = {NULL, concat, PREC_CONCAT},
     [TOKEN_DOT_DOT_DOT]     = {NULL, NULL, PREC_NONE},

@@ -154,6 +154,7 @@ CObjError *cosmoO_newError(CState *state, CValue err) {
     CObjError *cerror = (CObjError*)cosmoO_allocateBase(state, sizeof(CObjError), COBJ_ERROR);
     cerror->err = err;
     cerror->frameCount = state->frameCount;
+    cerror->parserError = false;
 
     // allocate the callframe
     cerror->frames = cosmoM_xmalloc(state, sizeof(CCallFrame) * cerror->frameCount);
@@ -462,7 +463,7 @@ void printObject(CObj *o) {
     switch (o->type) {
         case COBJ_STRING: {
             CObjString *objStr = (CObjString*)o;
-            printf("\"%.*s\"", objStr->length, objStr->str);
+            printf("%.*s", objStr->length, objStr->str);
             break;
         }
         case COBJ_OBJECT: {
@@ -472,17 +473,6 @@ void printObject(CObj *o) {
         case COBJ_TABLE: {
             CObjTable *tbl = (CObjTable*)o;
             printf("<tbl> %p", (void*)tbl);
-            break;
-        }
-        case COBJ_UPVALUE: {
-            CObjUpval *upval = (CObjUpval*)o;
-            printf("<upvalue %p> -> ", (void*)upval->val);
-            printValue(*upval->val);
-            break;
-        }
-        case COBJ_CLOSURE: {
-            CObjClosure *closure = (CObjClosure*)o;
-            printObject((CObj*)closure->function); // just print the function
             break;
         }
         case COBJ_FUNCTION: {
@@ -498,10 +488,28 @@ void printObject(CObj *o) {
             printf("<c function> %p", (void*)objCFunc->cfunc);
             break;
         }
+        case COBJ_ERROR: {
+            CObjError *err = (CObjError*)o;
+            printf("<error> %p -> ", (void*)o);
+            printValue(err->err);
+            break;
+        }
         case COBJ_METHOD: {
             CObjMethod *method = (CObjMethod*)o;
-            printf("<method> %p : ", (void*)method->obj);
+            printf("<method> %p -> ", (void*)method);
             printValue(method->func);
+            break;
+        }
+        case COBJ_CLOSURE: {
+            CObjClosure *closure = (CObjClosure*)o;
+            printf("<closure> %p -> ", (void*)closure);
+            printObject((CObj*)closure->function); // just print the function
+            break;
+        }
+        case COBJ_UPVALUE: {
+            CObjUpval *upval = (CObjUpval*)o;
+            printf("<upvalue> %p -> ", (void*)upval->val);
+            printValue(*upval->val);
             break;
         }
         default:

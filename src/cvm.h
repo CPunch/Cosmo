@@ -35,6 +35,8 @@ COSMO_API bool cosmoV_compileString(CState *state, const char *src, const char *
 
 COSMO_API bool cosmoV_get(CState *state, CObj *obj, CValue key, CValue *val);
 COSMO_API bool cosmoV_set(CState *state, CObj *obj, CValue key, CValue val);
+// wraps the closure into a CObjMethod, so the function is called as an invoked method 
+COSMO_API bool cosmoV_getMethod(CState *state, CObj *obj, CValue key, CValue *val);
 
 // nice to have wrappers
 

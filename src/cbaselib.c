@@ -153,22 +153,15 @@ void cosmoB_loadLibrary(CState *state) {
     cosmoV_pushString(state, "sub");
     cosmoV_pushCFunction(state, cosmoB_sSub);
     
-    cosmoV_makeTable(state, 1);
+    cosmoV_makeObject(state, 1);
     // string.*
 
-    // register "string" to that table
-    cosmoV_register(state, 1);
-
-    // make string object for CObjStrings
-    // sub
-    cosmoV_pushString(state, "sub");
-    cosmoV_pushCFunction(state, cosmoB_sSub);
-    
-    cosmoV_makeObject(state, 1);
-
     // grab the object from the stack and set the base protoObject
-    StkPtr obj = cosmoV_pop(state);
+    StkPtr obj = cosmoV_getTop(state, 0);
     state->protoObjects[COBJ_STRING] = cosmoV_readObject(*obj);
+
+    // register "string" to the global table
+    cosmoV_register(state, 1);
 }
 
 // ================================================================ [DEBUG] ================================================================
