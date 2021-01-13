@@ -434,14 +434,15 @@ COSMO_API bool cosmoV_get(CState *state, CObj *_obj, CValue key, CValue *val) {
     
     // no proto to get from
     if (object == NULL) {
-        cosmoV_error(state, "No proto defined! Couldn't get from type %s", cosmoO_typeStr(_obj));
+        CObjString *field = cosmoV_toString(state, key);
+        cosmoV_error(state, "No proto defined! Couldn't get field '%s' from type %s", field->str, cosmoO_typeStr(_obj));
         *val = cosmoV_newNil();
         return false;
     }
 
     // push the object onto the stack so the GC can find it
     cosmoV_pushValue(state, cosmoV_newObj(object));
-    if (cosmoO_getRawObject(state, object, key, val)) {
+    if (cosmoO_getRawObject(state, object, key, val, _obj)) {
         // *val now equals the response, pop the object
         cosmoV_pop(state);
         return true;
@@ -456,11 +457,12 @@ COSMO_API bool cosmoV_set(CState *state, CObj *_obj, CValue key, CValue val) {
 
     // no proto to set to
     if (object == NULL) {
-        cosmoV_error(state, "No proto defined! Couldn't set to type %s", cosmoO_typeStr(_obj));
+        CObjString *field = cosmoV_toString(state, key);
+        cosmoV_error(state, "No proto defined! Couldn't set field '%s' to type %s", field->str, cosmoO_typeStr(_obj));
         return false;
     }
 
-    cosmoO_setRawObject(state, object, key, val);
+    cosmoO_setRawObject(state, object, key, val, _obj);
     return true;
 }
 

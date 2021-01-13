@@ -119,6 +119,7 @@ typedef struct CObjUpval {
 
 #define cosmoV_readString(x)    ((CObjString*)cosmoV_readObj(x))
 #define cosmoV_readObject(x)    ((CObjObject*)cosmoV_readObj(x))
+#define cosmoV_readTable(x)     ((CObjTable*)cosmoV_readObj(x))
 #define cosmoV_readFunction(x)  ((CObjFunction*)cosmoV_readObj(x))
 #define cosmoV_readCFunction(x) (((CObjCFunction*)cosmoV_readObj(x))->cfunc)
 #define cosmoV_readMethod(x)    ((CObjMethod*)cosmoV_readObj(x))
@@ -158,8 +159,8 @@ static inline CObjObject *cosmoO_grabProto(CObj *obj) {
     return object;
 }
 
-bool cosmoO_getRawObject(CState *state, CObjObject *object, CValue key, CValue *val);
-void cosmoO_setRawObject(CState *state, CObjObject *object, CValue key, CValue val);
+bool cosmoO_getRawObject(CState *state, CObjObject *proto, CValue key, CValue *val, CObj *obj);
+void cosmoO_setRawObject(CState *state, CObjObject *proto, CValue key, CValue val, CObj *obj);
 bool cosmoO_indexObject(CState *state, CObjObject *object, CValue key, CValue *val);
 bool cosmoO_newIndexObject(CState *state, CObjObject *object, CValue key, CValue val);
 

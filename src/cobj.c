@@ -288,34 +288,36 @@ CObjString *cosmoO_pushVFString(CState *state, const char *format, va_list args)
     return cosmoV_readString(*start); // start should be state->top - 1
 }
 
-bool cosmoO_getRawObject(CState *state, CObjObject *object, CValue key, CValue *val) {
-    if (!cosmoT_get(&object->tbl, key, val)) { // if the field doesn't exist in the object, check the proto
-        if (cosmoO_getIString(state, object, ISTRING_GETTER, val) && IS_OBJECT(*val) && cosmoO_getRawObject(state, cosmoV_readObject(*val), key, val)) {
+
+// returns false if error thrown
+bool cosmoO_getRawObject(CState *state, CObjObject *proto, CValue key, CValue *val, CObj *obj) {
+    if (!cosmoT_get(&proto->tbl, key, val)) { // if the field doesn't exist in the object, check the proto
+        if (cosmoO_getIString(state, proto, ISTRING_GETTER, val) && IS_TABLE(*val) && cosmoT_get(&cosmoV_readTable(*val)->tbl, key, val)) {
             cosmoV_pushValue(state, *val); // push function
-            cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
+            cosmoV_pushValue(state, cosmoV_newObj(obj)); // push object
             if (cosmoV_call(state, 1, 1) != COSMOVM_OK) // call the function with the 1 argument
                 return false;
             *val = *cosmoV_pop(state); // set value to the return value of __index
             return true;
         }
         
-        if (object->_obj.proto != NULL && cosmoO_getRawObject(state, object->_obj.proto, key, val))
+        if (proto->_obj.proto != NULL && cosmoO_getRawObject(state, proto->_obj.proto, key, val, obj))
             return true;
         
         *val = cosmoV_newNil();
-        return false; // no protoobject to check against / key not found
+        return true; // no protoobject to check against / key not found
     }
 
     return true;
 }
 
-void cosmoO_setRawObject(CState *state, CObjObject *object, CValue key, CValue val) {
+void cosmoO_setRawObject(CState *state, CObjObject *proto, CValue key, CValue val, CObj *obj) {
     CValue ret;
 
     // first check for __setters
-    if (cosmoO_getIString(state, object, ISTRING_SETTER, &ret) && IS_OBJECT(ret) && cosmoO_getRawObject(state, cosmoV_readObject(ret), key, &ret)) {
+    if (cosmoO_getIString(state, proto, ISTRING_SETTER, &ret) && IS_TABLE(ret) && cosmoT_get(&cosmoV_readTable(ret)->tbl, key, &ret)) {
         cosmoV_pushValue(state, ret); // push function
-        cosmoV_pushValue(state, cosmoV_newObj(object)); // push object
+        cosmoV_pushValue(state, cosmoV_newObj(obj)); // push object
         cosmoV_pushValue(state, val); // push new value
         cosmoV_call(state, 2, 0);
         return;
@@ -323,12 +325,12 @@ void cosmoO_setRawObject(CState *state, CObjObject *object, CValue key, CValue v
 
     // if the key is an IString, we need to reset the cache
     if (IS_STRING(key) && cosmoV_readString(key)->isIString)
-        object->istringFlags = 0; // reset cache
+        proto->istringFlags = 0; // reset cache
 
     if (IS_NIL(val)) { // if we're setting an index to nil, we can safely mark that as a tombstone
-        cosmoT_remove(state, &object->tbl, key);
+        cosmoT_remove(state, &proto->tbl, key);
     } else {
-        CValue *newVal = cosmoT_insert(state, &object->tbl, key);
+        CValue *newVal = cosmoT_insert(state, &proto->tbl, key);
         *newVal = val;
     }
 }

@@ -1,0 +1,20 @@
+var object = {
+    __setter = [
+        "field1" = function(self, val)
+            print("setter for field1 called!")
+            self.x = val
+        end
+    ],
+
+    __getter = [
+        "field1" = function(self)
+            print("getter for field1 called!")
+
+            return self.x + 1
+        end
+    ]
+}
+
+object.field1 = 1337
+
+print("got field: " .. object.field1)
