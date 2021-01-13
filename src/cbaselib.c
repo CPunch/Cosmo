@@ -57,6 +57,26 @@ int cosmoB_pcall(CState *state, int nargs, CValue *args) {
     return 2;
 }
 
+int cosmoB_tonumber(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "tonumber() expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    cosmoV_pushNumber(state, cosmoV_toNumber(state, args[0]));
+    return 1;
+}
+
+int cosmoB_tostring(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "tostring() expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    cosmoV_pushValue(state, cosmoV_newObj(cosmoV_toString(state, args[0])));
+    return 1;
+}
+
 int cosmoB_loadstring(CState *state, int nargs, CValue *args) {
     if (nargs < 1) {
         cosmoV_error(state, "loadstring() expected 1 argument, got %d!", nargs);
@@ -126,6 +146,8 @@ void cosmoB_loadLibrary(CState *state) {
         "assert",
         "type",
         "pcall",
+        "tonumber",
+        "tostring"
         "loadstring"
     };
 
@@ -134,6 +156,8 @@ void cosmoB_loadLibrary(CState *state) {
         cosmoB_assert,
         cosmoB_type,
         cosmoB_pcall,
+        cosmoB_tonumber,
+        cosmoB_tostring,
         cosmoB_loadstring
     };
 
