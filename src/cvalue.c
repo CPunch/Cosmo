@@ -55,6 +55,23 @@ CObjString *cosmoV_toString(CState *state, CValue val) {
     }
 }
 
+cosmo_Number cosmoV_toNumber(CState *state, CValue val) {
+    switch(GET_TYPE(val)) {
+        case COSMO_TNUMBER: {
+            return cosmoV_readNumber(val);
+        }
+        case COSMO_TBOOLEAN: {
+            return cosmoV_readBoolean(val) ? 1 : 0;
+        }
+        case COSMO_TOBJ: {
+            return cosmoO_toNumber(state, cosmoV_readObj(val));
+        }
+        case COSMO_TNIL: // fall through
+        default:
+            return 0;
+    }
+}
+
 const char *cosmoV_typeStr(CValue val) {
     switch (GET_TYPE(val)) {
         case COSMO_TNIL:        return "<nil>";

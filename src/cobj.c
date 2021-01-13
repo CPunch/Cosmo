@@ -461,6 +461,17 @@ CObjString *cosmoO_toString(CState *state, CObj *obj) {
     }
 }
 
+cosmo_Number cosmoO_toNumber(CState *state, CObj *obj) {
+    switch (obj->type) {
+        case COBJ_STRING: {
+            CObjString *str = (CObjString*)obj;
+            return strtod(str->str, NULL);
+        }
+        default: // maybe in the future throw an error?
+            return 0;
+    }
+}
+
 void printObject(CObj *o) {
     switch (o->type) {
         case COBJ_STRING: {

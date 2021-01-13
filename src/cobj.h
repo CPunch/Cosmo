@@ -146,7 +146,6 @@ CObjCFunction *cosmoO_newCFunction(CState *state, CosmoCFunction func);
 CObjError *cosmoO_newError(CState *state, CValue err);
 CObjMethod *cosmoO_newMethod(CState *state, CValue func, CObj *obj);
 CObjClosure *cosmoO_newClosure(CState *state, CObjFunction *func);
-CObjString *cosmoO_toString(CState *state, CObj *val);
 CObjUpval *cosmoO_newUpvalue(CState *state, CValue *val);
 
 // grabs the base proto of the CObj* (if CObj is a CObjObject, that is returned)
@@ -193,5 +192,8 @@ COSMO_API void printObject(CObj *o);
 const char *cosmoO_typeStr(CObj* obj);
 
 #define cosmoO_readCString(x)    ((CObjString*)x)->str
+
+CObjString *cosmoO_toString(CState *state, CObj *obj);
+cosmo_Number cosmoO_toNumber(CState *state, CObj *obj);
 
 #endif
