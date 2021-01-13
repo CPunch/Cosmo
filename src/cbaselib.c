@@ -75,6 +75,38 @@ int cosmoB_loadstring(CState *state, int nargs, CValue *args) {
     return 2; // <boolean>, <closure> or <error>
 }
 
+int cosmoB_tostring(CState *state, int nargs, CValue *args) {
+    if (nargs > 1) {
+        cosmoV_error(state, "tostring() expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    cosmoV_pushString(state, cosmoV_toString(state, args[0])->str);
+
+    return 1;
+}
+
+int cosmoB_tonumber(CState *state, int nargs, CValue *args) {
+    if (nargs > 1) {
+        cosmoV_error(state, "tonumber() expected 1 argument, got %d", nargs);
+        return 0;
+    }
+
+    CValue arg = args[0];
+    switch(GET_TYPE(arg)) {
+        case COSMO_TNUMBER:
+            cosmoV_pushNumber(state, cosmoV_readNumber(arg));
+        case COSMO_TBOOLEAN:
+            cosmoV_pushNumber(state, cosmoV_readBoolean(arg) ? 1 : 0);
+        case COSMO_TOBJ:
+            cosmoV_pushNumber(state, 0); // pending __tonumber or similar
+        case COSMO_TNIL:
+            cosmoV_pushNumber(state, 0);
+    }
+
+    return 1;
+}
+
 // ================================================================ [STRING.*] ================================================================
 
 // string.sub
@@ -126,7 +158,9 @@ void cosmoB_loadLibrary(CState *state) {
         "assert",
         "type",
         "pcall",
-        "loadstring"
+        "loadstring",
+        "tostring",
+        "tonumber"
     };
 
     CosmoCFunction baseLib[] = {
@@ -134,7 +168,9 @@ void cosmoB_loadLibrary(CState *state) {
         cosmoB_assert,
         cosmoB_type,
         cosmoB_pcall,
-        cosmoB_loadstring
+        cosmoB_loadstring,
+        cosmoB_tostring,
+        cosmoB_tonumber
     };
 
     int i;
