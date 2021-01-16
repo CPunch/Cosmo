@@ -6,6 +6,8 @@
 #include "cosmo.h"
 #include "cstate.h"
 
+//#define VM_DEBUG
+
 typedef enum {
     COSMOVM_OK,
     COSMOVM_RUNTIME_ERR,

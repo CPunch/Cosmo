@@ -4,6 +4,8 @@
 #include "cobj.h"
 #include "cmem.h"
 
+// ================================================================ [BASELIB] ================================================================
+
 int cosmoB_print(CState *state, int nargs, CValue *args) {
     for (int i = 0; i < nargs; i++) {
         CObjString *str = cosmoV_toString(state, args[i]);

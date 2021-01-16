@@ -29,6 +29,7 @@ typedef enum {
     OP_NEWOBJECT,
     OP_SETOBJECT,
     OP_GETOBJECT,
+    OP_GETMETHOD,
     OP_INVOKE,
     OP_ITER,
     OP_NEXT,

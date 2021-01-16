@@ -31,7 +31,7 @@ typedef struct {
 
 typedef enum {
     FTYPE_FUNCTION,
-    FTYPE_METHOD, // a function bounded to an object (can use "this" identifer to access the current object :pog:)
+    FTYPE_METHOD,
     FTYPE_SCRIPT
 } FunctionType;
 
@@ -52,7 +52,7 @@ typedef struct CCompilerState {
 typedef struct {
     CLexState *lex;
     CCompilerState *compiler;
-    CObjString *module; // name of the module (can be NULL)
+    CObjString *module; // name of the module
     CState *state;
     CToken current;
     CToken previous; // token right after the current token
@@ -747,28 +747,30 @@ static void _index(CParseState *pstate, bool canAssign, Precedence prec) {
 }
 
 static void invoke(CParseState *pstate, bool canAssign, Precedence prec) {
-    int returnNum = pstate->compiler->expectedValues;
     uint16_t name;
-    uint8_t args;
 
     consume(pstate, TOKEN_IDENTIFIER, "Expected method name after ':'.");
     name = identifierConstant(pstate, &pstate->previous);
 
-    consume(pstate, TOKEN_LEFT_PAREN, "Expected '(' after method identifier!");
-    args = parseArguments(pstate);
+    if (match(pstate, TOKEN_LEFT_PAREN)) { // invoke
+        int returnNum = pstate->compiler->expectedValues;
+        uint8_t args = parseArguments(pstate);
 
-    // if we're not the last token in this expression or we're expecting multiple values, we should return only 1 value!!
-    if (!isLast(pstate, prec) || (returnNum > 1 && check(pstate, TOKEN_COMMA)))
-        returnNum = 1;
-    
-    writeu8(pstate, OP_INVOKE);
-    writeu8(pstate, args);
-    writeu8(pstate, returnNum); 
-    writeu16(pstate, name);
+        // if we're not the last token in this expression or we're expecting multiple values, we should return only 1 value!!
+        if (!isLast(pstate, prec) || (returnNum > 1 && check(pstate, TOKEN_COMMA)))
+            returnNum = 1;
+        
+        writeu8(pstate, OP_INVOKE);
+        writeu8(pstate, args);
+        writeu8(pstate, returnNum); 
+        writeu16(pstate, name);
 
-    valuePopped(pstate, args+1); // args + function
-    valuePushed(pstate, returnNum);
-
+        valuePopped(pstate, args+1); // args + function
+        valuePushed(pstate, returnNum);
+    } else { // just get the method
+        writeu8(pstate, OP_GETMETHOD);
+        writeu16(pstate, name);
+    }
 }
 
 // ++test.field[1]
@@ -1570,10 +1572,9 @@ static void declaration(CParseState *pstate) {
 }
 
 static CObjFunction *endCompiler(CParseState *pstate) {
-    popLocals(pstate, pstate->compiler->scopeDepth); // remove the locals from other scopes
-    writeu8(pstate, OP_NIL);
+    popLocals(pstate, pstate->compiler->scopeDepth + 1); // remove the locals from other scopes
     writeu8(pstate, OP_RETURN);
-    writeu8(pstate, 1);
+    writeu8(pstate, 0);
 
     // update pstate to next compiler state
     CCompilerState *cachedCCState = pstate->compiler;

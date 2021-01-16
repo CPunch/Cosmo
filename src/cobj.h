@@ -111,7 +111,7 @@ typedef struct CObjUpval {
 
 #define IS_STRING(x)    isObjType(x, COBJ_STRING)
 #define IS_OBJECT(x)    isObjType(x, COBJ_OBJECT)
-#define IS_TABLE(x)      isObjType(x, COBJ_TABLE)
+#define IS_TABLE(x)     isObjType(x, COBJ_TABLE)
 #define IS_FUNCTION(x)  isObjType(x, COBJ_FUNCTION)
 #define IS_CFUNCTION(x) isObjType(x, COBJ_CFUNCTION)
 #define IS_METHOD(x)    isObjType(x, COBJ_METHOD)
@@ -124,6 +124,8 @@ typedef struct CObjUpval {
 #define cosmoV_readCFunction(x) (((CObjCFunction*)cosmoV_readObj(x))->cfunc)
 #define cosmoV_readMethod(x)    ((CObjMethod*)cosmoV_readObj(x))
 #define cosmoV_readClosure(x)   ((CObjClosure*)cosmoV_readObj(x))
+
+#define cosmoO_readCString(x)    ((CObjString*)x)->str
 
 static inline bool isObjType(CValue val, CObjType type) {
     return IS_OBJ(val) && cosmoV_readObj(val)->type == type;
@@ -181,7 +183,7 @@ CObjString *cosmoO_allocateString(CState *state, const char *str, size_t sz, uin
 /*
     formats strings to push onto the VM stack, formatting supported:
 
-    '%d' - decimal numbers  [int]
+    '%d' - integers         [int]
     '%f' - floating point   [double]
     '%s' - strings          [const char*]
     '%t' - cosmo tokens     [CToken *]
@@ -190,8 +192,6 @@ CObjString *cosmoO_pushVFString(CState *state, const char *format, va_list args)
 
 COSMO_API void printObject(CObj *o);
 const char *cosmoO_typeStr(CObj* obj);
-
-#define cosmoO_readCString(x)    ((CObjString*)x)->str
 
 CObjString *cosmoO_toString(CState *state, CObj *obj);
 cosmo_Number cosmoO_toNumber(CState *state, CObj *obj);

@@ -22,6 +22,12 @@ int u16OperandInstruction(const char *name, CChunk *chunk, int offset) {
     return offset + 1 + (sizeof(uint16_t) / sizeof(INSTRUCTION));
 }
 
+int JumpInstruction(const char *name, CChunk *chunk, int offset, int dir) {
+    int jmp = ((int)readu16Chunk(chunk, offset + 1)) * dir;
+    printf("%-16s [%05d] - jumps to %04d", name, jmp, offset + 3 + jmp);
+    return offset + 1 + (sizeof(uint16_t) / sizeof(INSTRUCTION));
+}
+
 int u8u8OperandInstruction(const char *name, CChunk *chunk, int offset) {
     printf("%-16s [%03d] [%03d]", name, readu8Chunk(chunk, offset + 1), readu8Chunk(chunk, offset + 2));
     return offset + 3; // op + u8 + u8
@@ -51,7 +57,7 @@ int constInstruction(const char *name, CChunk *chunk, int offset) {
 
 void disasmChunk(CChunk *chunk, const char *name, int indent) {
     printIndent(indent);
-    printf("===[[ %s ]]===\n", name);
+    printf("===[[ disasm for %s ]]===\n", name);
 
     for (size_t offset = 0; offset < chunk->count;) {
         offset = disasmInstr(chunk, offset, indent);
@@ -88,13 +94,13 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
         case OP_GETUPVAL:
             return u8OperandInstruction("OP_GETUPVAL", chunk, offset);
         case OP_PEJMP:
-            return u16OperandInstruction("OP_PEJMP", chunk, offset);
+            return JumpInstruction("OP_PEJMP", chunk, offset, 1);
         case OP_EJMP:
-            return u16OperandInstruction("OP_EJMP", chunk, offset);
+            return JumpInstruction("OP_EJMP", chunk, offset, 1);
         case OP_JMP:
-            return u16OperandInstruction("OP_JMP", chunk, offset);
+            return JumpInstruction("OP_JMP", chunk, offset, 1);
         case OP_JMPBACK:
-            return u16OperandInstruction("OP_JMPBACK", chunk, offset);
+            return JumpInstruction("OP_JMPBACK", chunk, offset, -1);
         case OP_POP:
             return u8OperandInstruction("OP_POP", chunk, offset);
         case OP_CALL:
@@ -133,10 +139,12 @@ int disasmInstr(CChunk *chunk, int offset, int indent) {
             return simpleInstruction("OP_NEWINDEX", offset);
         case OP_NEWOBJECT:
             return u16OperandInstruction("OP_NEWOBJECT", chunk, offset);
-        case OP_GETOBJECT:
-            return constInstruction("OP_GETOBJECT", chunk, offset);
         case OP_SETOBJECT:
             return constInstruction("OP_SETOBJECT", chunk, offset);
+        case OP_GETOBJECT:
+            return constInstruction("OP_GETOBJECT", chunk, offset);
+        case OP_GETMETHOD:
+            return constInstruction("OP_GETMETHOD", chunk, offset);
         case OP_INVOKE:
             return u8u8u16OperandInstruction("OP_INVOKE", chunk, offset);
         case OP_ITER:
