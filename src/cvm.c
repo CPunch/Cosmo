@@ -281,7 +281,7 @@ static bool rawCall(CState *state, CObjClosure *closure, int args, int nresults,
 
     // pop the callframe and return results :)
     popCallFrame(state, offset);
-    
+
     if (state->panic) // panic state
         return false;
 
@@ -320,9 +320,12 @@ bool callCValue(CState *state, CValue func, int args, int nresults, int offset) 
         }
         case COBJ_OBJECT: { // object is being instantiated, making another object
             CObjObject *protoObj = (CObjObject*)cosmoV_readObj(func);
+            CValue ret;
+
+            cosmoV_pushValue(state, cosmoV_newObj(protoObj)); // push proto to stack for GC to find
             CObjObject *newObj = cosmoO_newObject(state);
             newObj->_obj.proto = protoObj;
-            CValue ret;
+            cosmoV_pop(state); // pop proto
 
             // check if they defined an initializer (we accept 0 return values)
             if (cosmoO_getIString(state, protoObj, ISTRING_INIT, &ret)) {
@@ -577,6 +580,7 @@ int cosmoV_execute(CState *state) {
             }
             case OP_SETLOCAL: {
                 uint8_t indx = READBYTE();
+                // set base to top of stack & pop
                 frame->base[indx] = *cosmoV_pop(state);
                 continue;
             }
@@ -978,8 +982,8 @@ int cosmoV_execute(CState *state) {
             case OP_COUNT: { // pop 1 value off the stack & if it's a table return the amount of active entries it has
                 StkPtr temp = cosmoV_getTop(state, 0);
 
-                if (!IS_OBJ(*temp) || cosmoV_readObj(*temp)->type != COBJ_TABLE) {
-                    cosmoV_error(state, "Expected object, got %s!", cosmoV_typeStr(*temp));
+                if (!IS_TABLE(*temp)) {
+                    cosmoV_error(state, "Expected table, got %s!", cosmoV_typeStr(*temp));
                     return -1;
                 }
 

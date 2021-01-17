@@ -142,6 +142,85 @@ int cosmoB_sSub(CState *state, int nargs, CValue *args) {
     return 1;
 }
 
+// string.find
+int cosmoB_sFind(CState *state, int nargs, CValue *args) {
+    if (nargs == 2) {
+        if (!IS_STRING(args[0]) || !IS_STRING(args[1])) {
+            cosmoV_typeError(state, "string.find()", "<string>, <string>", "%s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
+            return 0;
+        }
+
+        CObjString *str = cosmoV_readString(args[0]);
+        CObjString *ptrn = cosmoV_readString(args[1]);
+
+        char *indx = strstr(str->str, ptrn->str);
+
+        // failed, we have nothing to return
+        if (indx == NULL)
+            return 0;
+
+        // success! push the index
+        cosmoV_pushNumber(state, indx - str->str);
+    } else if (nargs == 3) {
+        if (!IS_STRING(args[0]) || !IS_STRING(args[1]) || !IS_NUMBER(args[2])) {
+            cosmoV_typeError(state, "string.find()", "<string>, <string>, <number>", "%s, %s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]), cosmoV_typeStr(args[2]));
+            return 0;
+        }
+
+        CObjString *str = cosmoV_readString(args[0]);
+        CObjString *ptrn = cosmoV_readString(args[1]);
+        int startIndx = (int)cosmoV_readNumber(args[2]);
+
+        char *indx = strstr(str->str + startIndx, ptrn->str);
+
+        // failed, we have nothing to return
+        if (indx == NULL)
+            return 0;
+
+        // success! push the index
+        cosmoV_pushNumber(state, indx - str->str);
+    } else {
+        cosmoV_error(state, "Expected 2 or 3 arguments, got %d!", nargs);
+        return 0;
+    }
+
+    return 1;
+}
+
+// string.split
+int cosmoB_sSplit(CState *state, int nargs, CValue *args) {
+    if (nargs != 2) {
+        cosmoV_error(state, "Expected 2 arguments, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_STRING(args[0]) || !IS_STRING(args[1])) {
+        cosmoV_typeError(state, "string.split()", "<string>, <string>", "%s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
+        return 0;
+    }
+
+    CObjString *str = cosmoV_readString(args[0]);
+    CObjString *ptrn = cosmoV_readString(args[1]);
+
+    int nEntries = 0;
+    char *indx = str->str;
+    char *nIndx;
+
+    // while there are still patterns to match in the string, push the split strings onto the stack
+    do {
+        nIndx = strstr(indx, ptrn->str);
+
+        cosmoV_pushNumber(state, nEntries++);
+        cosmoV_pushLString(state, indx, nIndx == NULL ? strlen(indx) : nIndx - indx);
+
+        indx = nIndx + ptrn->length;
+    } while (nIndx != NULL);
+
+    // finally, make a table out of the pushed entries
+    cosmoV_makeTable(state, nEntries);
+    return 1;
+}
+
 void cosmoB_loadLibrary(CState *state) {
     const char *identifiers[] = {
         "print",
@@ -178,8 +257,16 @@ void cosmoB_loadLibrary(CState *state) {
     // sub
     cosmoV_pushString(state, "sub");
     cosmoV_pushCFunction(state, cosmoB_sSub);
+
+    // find
+    cosmoV_pushString(state, "find");
+    cosmoV_pushCFunction(state, cosmoB_sFind);
+
+    // split
+    cosmoV_pushString(state, "split");
+    cosmoV_pushCFunction(state, cosmoB_sSplit);
     
-    cosmoV_makeObject(state, 1);
+    cosmoV_makeObject(state, 3);
     // string.*
 
     // grab the object from the stack and set the base protoObject
