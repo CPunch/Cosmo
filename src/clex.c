@@ -151,6 +151,10 @@ char next(CLexState *state) {
     return state->currentChar[-1];
 }
 
+bool isHex(char c) {
+    return isNumerical(c) || ('A' <= c && 'F' >= c) || ('a' <= c && 'f' >= c);
+}
+
 CTokenType identifierType(CLexState *state) {
     int length = state->currentChar - state->startChar;
 
@@ -206,6 +210,48 @@ CToken parseString(CLexState *state) {
                     case 't': appendBuffer(state, '\t'); break;
                     case '\\': appendBuffer(state, '\\'); break;
                     case '"': appendBuffer(state, '"'); break;
+                    case 'x': // hexadecimal character encoding
+                        next(state); // skip 'x'
+
+                        if (isHex(peek(state))) {
+                            char *numStart = state->currentChar;
+
+                            // consume the hexnum
+                            while (isHex(peek(state)))
+                                next(state);
+                            state->currentChar--; // since next() is called after
+                            
+                            unsigned int num = (unsigned int)strtoul(numStart, NULL, 16);
+
+                            if (num > 255) // sanity check
+                                return makeError(state, "Character out of range! > 255!");
+
+                            appendBuffer(state, num);
+                            break;
+                        }
+                        
+                        return makeError(state, "Unknown hexadecimal character encoding!");
+                    case 'b': // binary character encoding
+                        next(state); // skip 'b'
+
+                        if (peek(state) == '0' || peek(state) == '1') {
+                            char *numStart = state->currentChar;
+
+                            // consume the bin
+                            while (peek(state) == '0' || peek(state) == '1')
+                                next(state);
+                            state->currentChar--; // since next() is called after
+                            
+                            unsigned int num = (unsigned int)strtoul(numStart, NULL, 2);
+
+                            if (num > 255) // sanity check
+                                return makeError(state, "Character out of range! > 255!");
+
+                            appendBuffer(state, num);
+                            break;
+                        }
+
+                        return makeError(state, "Unknown binary character encoding!");
                     default: {
                         if (isNumerical(peek(state))) {
                             char *numStart = state->currentChar;
@@ -215,7 +261,7 @@ CToken parseString(CLexState *state) {
                                 next(state);
                             state->currentChar--; // since next() is called after
                             
-                            int num = (int)strtol(numStart, NULL, 10);
+                            unsigned int num = (unsigned int)strtoul(numStart, NULL, 10);
 
                             if (num > 255) // sanity check
                                 return makeError(state, "Character out of range! > 255!");
@@ -243,10 +289,6 @@ CToken parseString(CLexState *state) {
     
     next(state); // consume closing quote
     return makeToken(state, TOKEN_STRING);
-}
-
-bool isHex(char c) {
-    return isNumerical(c) || ('A' <= c && 'F' >= c) || ('a' <= c && 'f' >= c);
 }
 
 CToken parseNumber(CLexState *state) {    
