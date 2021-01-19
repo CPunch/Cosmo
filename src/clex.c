@@ -265,9 +265,9 @@ CToken parseNumber(CLexState *state) {
                 next(state);
 
             return makeToken(state, TOKEN_BINNUMBER);
-        default:
+        default: // it's a one digit number!!!!!
             if (!isNumerical(peek(state)))
-                return makeError(state, "Unrecognized number encoding!");
+                return makeToken(state, TOKEN_NUMBER);
             // if it is a number, fall through and parse normally
     }
 
