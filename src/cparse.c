@@ -407,6 +407,16 @@ static void number(CParseState *pstate, bool canAssign, Precedence prec) {
     writeConstant(pstate, cosmoV_newNumber(num));
 }
 
+static void hexnumber(CParseState *pstate, bool canAssign, Precedence prec) {
+    cosmo_Number num = strtol(pstate->previous.start + 2, NULL, 16); // +2 to skip the '0x'
+    writeConstant(pstate, cosmoV_newNumber(num));
+}
+
+static void binnumber(CParseState *pstate, bool canAssign, Precedence prec) {
+    cosmo_Number num = strtol(pstate->previous.start + 2, NULL, 2); // +2 to skip the '0b'
+    writeConstant(pstate, cosmoV_newNumber(num));
+}
+
 static void string(CParseState *pstate, bool canAssign, Precedence prec) {
     CObjString *strObj = cosmoO_takeString(pstate->state, pstate->previous.start, pstate->previous.length);
     writeConstant(pstate, cosmoV_newObj((CObj*)strObj));
@@ -922,6 +932,8 @@ ParseRule ruleTable[] = {
     [TOKEN_IDENTIFIER]      = {variable, NULL, PREC_NONE},
     [TOKEN_STRING]          = {string, NULL, PREC_NONE},
     [TOKEN_NUMBER]          = {number, NULL, PREC_NONE},
+    [TOKEN_HEXNUMBER]       = {hexnumber, NULL, PREC_NONE},
+    [TOKEN_BINNUMBER]       = {binnumber, NULL, PREC_NONE},
     [TOKEN_NIL]             = {literal, NULL, PREC_NONE},
     [TOKEN_TRUE]            = {literal, NULL, PREC_NONE},
     [TOKEN_FALSE]           = {literal, NULL, PREC_NONE},

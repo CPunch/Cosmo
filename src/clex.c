@@ -245,10 +245,37 @@ CToken parseString(CLexState *state) {
     return makeToken(state, TOKEN_STRING);
 }
 
-CToken parseNumber(CLexState *state) {
+bool isHex(char c) {
+    return isNumerical(c) || ('A' <= c && 'F' >= c) || ('a' <= c && 'f' >= c);
+}
+
+CToken parseNumber(CLexState *state) {    
+    switch (peek(state)) {
+        case 'x': // hexadecimal number
+            next(state);
+
+            while (isHex(peek(state)))
+                next(state);
+
+            return makeToken(state, TOKEN_HEXNUMBER);
+        case 'b': // binary number
+            next(state);
+
+            while (peek(state) == '0' || peek(state) == '1')
+                next(state);
+
+            return makeToken(state, TOKEN_BINNUMBER);
+        default:
+            if (!isNumerical(peek(state)))
+                return makeError(state, "Unrecognized number encoding!");
+            // if it is a number, fall through and parse normally
+    }
+
+
     // consume number
-    while (isNumerical(peek(state)))
+    while (isNumerical(peek(state))) {
         next(state);
+    }
     
     if (peek(state) == '.' && isNumerical(peekNext(state))) {
         next(state); // consume '.'
