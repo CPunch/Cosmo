@@ -245,7 +245,7 @@ int cosmoB_sSplit(CState *state, int nargs, CValue *args) {
         nIndx = strstr(indx, ptrn->str);
 
         cosmoV_pushNumber(state, nEntries++);
-        cosmoV_pushLString(state, indx, nIndx == NULL ? (indx - str->str) - str->length : nIndx - indx);
+        cosmoV_pushLString(state, indx, nIndx == NULL ? str->length - (indx - str->str) : nIndx - indx);
 
         indx = nIndx + ptrn->length;
     } while (nIndx != NULL);
