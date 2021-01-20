@@ -97,6 +97,40 @@ int cosmoB_loadstring(CState *state, int nargs, CValue *args) {
     return 2; // <boolean>, <closure> or <error>
 }
 
+void cosmoB_loadLibrary(CState *state) {
+    const char *identifiers[] = {
+        "print",
+        "assert",
+        "type",
+        "pcall",
+        "tonumber",
+        "tostring"
+        "loadstring"
+    };
+
+    CosmoCFunction baseLib[] = {
+        cosmoB_print,
+        cosmoB_assert,
+        cosmoB_type,
+        cosmoB_pcall,
+        cosmoB_tonumber,
+        cosmoB_tostring,
+        cosmoB_loadstring
+    };
+
+    int i;
+    for (i = 0; i < sizeof(identifiers)/sizeof(identifiers[0]); i++) {
+        cosmoV_pushString(state, identifiers[i]);
+        cosmoV_pushCFunction(state, baseLib[i]);
+    }
+
+    // register all the pushed c functions and the strings as globals
+    cosmoV_register(state, i);
+
+    // load object libraries
+    cosmoB_loadStrLib(state);
+}
+
 // ================================================================ [STRING.*] ================================================================
 
 // string.sub
@@ -112,7 +146,7 @@ int cosmoB_sSub(CState *state, int nargs, CValue *args) {
 
         // make sure we stay within memory
         if (indx < 0 || indx >= str->length) {
-            cosmoV_error(state, "string.sub() expected index to be 0-%d, got %d!", str->length, indx);
+            cosmoV_error(state, "string.sub() expected index to be 0-%d, got %d!", str->length - 1, indx);
             return 0;
         }
 
@@ -135,7 +169,7 @@ int cosmoB_sSub(CState *state, int nargs, CValue *args) {
 
         cosmoV_pushLString(state, str->str + ((int)indx), ((int)length));
     } else {
-        cosmoV_error(state, "Expected 2 or 3 arguments, got %d!", nargs);
+        cosmoV_error(state, "string.sub() expected 2 or 3 arguments, got %d!", nargs);
         return 0;
     }
 
@@ -180,7 +214,7 @@ int cosmoB_sFind(CState *state, int nargs, CValue *args) {
         // success! push the index
         cosmoV_pushNumber(state, indx - str->str);
     } else {
-        cosmoV_error(state, "Expected 2 or 3 arguments, got %d!", nargs);
+        cosmoV_error(state, "string.find() expected 2 or 3 arguments, got %d!", nargs);
         return 0;
     }
 
@@ -190,7 +224,7 @@ int cosmoB_sFind(CState *state, int nargs, CValue *args) {
 // string.split
 int cosmoB_sSplit(CState *state, int nargs, CValue *args) {
     if (nargs != 2) {
-        cosmoV_error(state, "Expected 2 arguments, got %d!", nargs);
+        cosmoV_error(state, "string.split() expected 2 arguments, got %d!", nargs);
         return 0;
     }
 
@@ -211,7 +245,7 @@ int cosmoB_sSplit(CState *state, int nargs, CValue *args) {
         nIndx = strstr(indx, ptrn->str);
 
         cosmoV_pushNumber(state, nEntries++);
-        cosmoV_pushLString(state, indx, nIndx == NULL ? strlen(indx) : nIndx - indx);
+        cosmoV_pushLString(state, indx, nIndx == NULL ? (indx - str->str) - str->length : nIndx - indx);
 
         indx = nIndx + ptrn->length;
     } while (nIndx != NULL);
@@ -221,53 +255,55 @@ int cosmoB_sSplit(CState *state, int nargs, CValue *args) {
     return 1;
 }
 
-void cosmoB_loadLibrary(CState *state) {
+// string.charAt
+int cosmoB_sCharAt(CState *state, int nargs, CValue *args) {
+    if (nargs != 2) {
+        cosmoV_error(state, "string.charAt() expected 2 arguments, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_STRING(args[0]) || !IS_NUMBER(args[1])) {
+        cosmoV_typeError(state, "string.charAt", "<string>, <number>", "%s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
+        return 0;
+    }
+
+    CObjString *str = cosmoV_readString(args[0]);
+    int indx = (int)cosmoV_readNumber(args[1]);
+
+    if (indx >= str->length || indx < 0) {
+        cosmoV_error(state, "string.charAt() expected index to be 0-%d, got %d!", str->length - 1, indx);
+        return 0;
+    }
+
+    // returns character number
+    cosmoV_pushNumber(state, (int)str->str[indx]);
+    return 1;
+}
+
+void cosmoB_loadStrLib(CState *state) {
     const char *identifiers[] = {
-        "print",
-        "assert",
-        "type",
-        "pcall",
-        "tonumber",
-        "tostring"
-        "loadstring"
+        "sub",
+        "find",
+        "split",
+        "charAt"
     };
 
-    CosmoCFunction baseLib[] = {
-        cosmoB_print,
-        cosmoB_assert,
-        cosmoB_type,
-        cosmoB_pcall,
-        cosmoB_tonumber,
-        cosmoB_tostring,
-        cosmoB_loadstring
+    CosmoCFunction strLib[] = {
+        cosmoB_sSub,
+        cosmoB_sFind,
+        cosmoB_sSplit,
+        cosmoB_sCharAt
     };
 
+
+    // make string library object
+    cosmoV_pushString(state, "string");
     int i;
     for (i = 0; i < sizeof(identifiers)/sizeof(identifiers[0]); i++) {
         cosmoV_pushString(state, identifiers[i]);
-        cosmoV_pushCFunction(state, baseLib[i]);
+        cosmoV_pushCFunction(state, strLib[i]);
     }
-
-    // register all the pushed c functions and the strings as globals
-    cosmoV_register(state, i);
-
-    // string.*
-    cosmoV_pushString(state, "string");
-
-    // sub
-    cosmoV_pushString(state, "sub");
-    cosmoV_pushCFunction(state, cosmoB_sSub);
-
-    // find
-    cosmoV_pushString(state, "find");
-    cosmoV_pushCFunction(state, cosmoB_sFind);
-
-    // split
-    cosmoV_pushString(state, "split");
-    cosmoV_pushCFunction(state, cosmoB_sSplit);
-    
-    cosmoV_makeObject(state, 3);
-    // string.*
+    cosmoV_makeObject(state, i);
 
     // grab the object from the stack and set the base protoObject
     StkPtr obj = cosmoV_getTop(state, 0);
