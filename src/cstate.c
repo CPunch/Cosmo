@@ -50,6 +50,7 @@ CState *cosmoV_newState() {
     state->iStrings[ISTRING_TOSTRING] = cosmoO_copyString(state, "__tostring", 10);
     state->iStrings[ISTRING_INDEX] = cosmoO_copyString(state, "__index", 7);
     state->iStrings[ISTRING_NEWINDEX] = cosmoO_copyString(state, "__newindex", 10);
+    state->iStrings[ISTRING_COUNT] = cosmoO_copyString(state, "__count", 7);
 
     // getters/setters
     state->iStrings[ISTRING_GETTER] = cosmoO_copyString(state, "__getter", 8);

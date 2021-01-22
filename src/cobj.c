@@ -472,6 +472,42 @@ cosmo_Number cosmoO_toNumber(CState *state, CObj *obj) {
     }
 }
 
+int cosmoO_count(CState *state, CObj *obj) {
+    CObjObject *proto = cosmoO_grabProto(obj);
+    CValue res;
+
+    if (proto != NULL && cosmoO_getIString(state, proto, ISTRING_COUNT, &res)) {
+        cosmoV_pushValue(state, res);
+        cosmoV_pushValue(state, cosmoV_newObj(obj));
+        if (!cosmoV_call(state, 1, 1) != COSMOVM_OK) // call ret, we expect 1 return value of type <number>
+            return 0;
+
+        StkPtr ret = cosmoV_getTop(state, 0);
+        if (!IS_NUMBER(*ret)) {
+            cosmoV_error(state, "__count expected to return <number>, got %s!", cosmoV_typeStr(*ret));
+            return 0;
+        }
+
+        // return number
+        cosmoV_pop(state);
+        return (int)cosmoV_readNumber(*ret);
+    }
+
+    switch (obj->type) {
+        case COBJ_TABLE: { // returns the # of entries in the hash table
+            CObjTable *tbl = (CObjTable*)obj;
+            return cosmoT_count(&tbl->tbl);
+        }
+        case COBJ_STRING: { // returns the length of the string
+            CObjString *str = (CObjString*)obj;
+            return str->length;
+        }
+        default:
+            cosmoV_error(state, "Couldn't get # (count) of %s!", cosmoO_typeStr(obj));
+            return 0;
+    }
+}
+
 void printObject(CObj *o) {
     switch (o->type) {
         case COBJ_STRING: {

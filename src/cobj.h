@@ -195,5 +195,6 @@ const char *cosmoO_typeStr(CObj* obj);
 
 CObjString *cosmoO_toString(CState *state, CObj *obj);
 cosmo_Number cosmoO_toNumber(CState *state, CObj *obj);
+int cosmoO_count(CState *state, CObj *obj);
 
 #endif

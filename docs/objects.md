@@ -1,4 +1,4 @@
-# Prototype Objects
+# Objects & Protos
 
 Cosmo supports an eccentric form of Object-Oriented Programming through the use of Objects and Proto-Objects. Under the hood, these are the same datatype, however they can be chained to describe behaviors in relation to other Objects, operators, and provide stateful functions.
 
@@ -64,7 +64,8 @@ Objects have two main ways of being declared, first was just shown in the above 
 ```
 proto Test
     function __init(self)
-        // __init is required for an object to be instantiated, the 'self' passed is the newly allocated object with it's proto already set to 
+        // __init is required for an object to be instantiated, the 'self' passed is the
+        // newly allocated object with it's proto already set
     end
 
     function print(self)
@@ -74,7 +75,8 @@ end
 
 var objTest = Test()
 
-// the ':' operator is used to invoke a method. if the '.' operator is used instead, the raw closure will be given meaning the 'self' parameter won't be populated
+// the ':' operator is used to invoke a method. if the '.' operator is used instead, the
+// raw closure will be given meaning the 'self' parameter won't be populated
 objTest:print()
 
 objTest.print(objTest) // equivalent to invoking with ':'
@@ -93,6 +95,7 @@ that are called on special operators.
 | __newindex   | `(<object>, key, newValue)`                      | Called on new index using the '[] = ' operator              |
 | __index      | `(<object>, key)` -> `value`                     | Called on index using the '[]' operator                     |
 | __tostring   | `(<object>)` -> `<string>`                       | Called when tostring() is called on an object               |
+| __count      | `(<object>)` -> `<number>`                       | Called when object is used with the '#' count operator      |
 | __iter       | `(<object>)` -> `<object>`                       | Called when used in a for-each loop with the 'in' operator  |
 | __next       | `(<object>)` -> `...`                            | Called on each iteration in a for-each loop, return values are passed as parameters in the loop |
 | __getter     | `[<string> fieldName : <function> getterMethod]` | Indexed & called on field get using the '.' operator        |

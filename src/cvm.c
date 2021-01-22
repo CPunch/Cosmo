@@ -979,17 +979,18 @@ int cosmoV_execute(CState *state) {
                 }
                 continue;
             }
-            case OP_COUNT: { // pop 1 value off the stack & if it's a table return the amount of active entries it has
+            case OP_COUNT: { 
                 StkPtr temp = cosmoV_getTop(state, 0);
 
-                if (!IS_TABLE(*temp)) {
-                    cosmoV_error(state, "Expected table, got %s!", cosmoV_typeStr(*temp));
+                if (!IS_OBJ(*temp)) {
+                    cosmoV_error(state, "Expected non-primitive, got %s!", cosmoV_typeStr(*temp));
                     return -1;
                 }
 
-                CObjTable *tbl = (CObjTable*)cosmoV_readObj(*temp);
+                int count = cosmoO_count(state, cosmoV_readObj(*temp));
                 cosmoV_pop(state);
-                cosmoV_pushNumber(state, cosmoT_count(&tbl->tbl)); // pushes the count onto the stack
+                
+                cosmoV_pushNumber(state, count); // pushes the count onto the stack
                 continue;
             }
             case OP_CONCAT: {
