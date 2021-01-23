@@ -16,7 +16,7 @@ CState *cosmoV_newState() {
     }
 
     state->panic = false;
-    state->freezeGC = false;
+    state->freezeGC = 1; // we start frozen
 
     // GC
     state->objects = NULL;
@@ -38,7 +38,6 @@ CState *cosmoV_newState() {
     for (int i = 0; i < COBJ_MAX; i++)
         state->protoObjects[i] = NULL;
 
-    // first, set all strings to NULL so our GC doesn't read garbage data
     for (int i = 0; i < ISTRING_MAX; i++)
         state->iStrings[i] = NULL;
 
@@ -68,13 +67,16 @@ CState *cosmoV_newState() {
     for (int i = 0; i < ISTRING_MAX; i++)
         state->iStrings[i]->isIString = true;
 
+    state->freezeGC = 0; // unfreeze the state
     return state;
 }
 
 void cosmoV_freeState(CState *state) {
 #ifdef GC_DEBUG
-    printf("state %p is being freed!\n", state);
+    printf("state %p is being free'd!\n", state);
 #endif
+    cosmoM_freezeGC(state);
+
     // frees all the objects
     CObj *objs = state->objects;
     while (objs != NULL) {
@@ -92,7 +94,15 @@ void cosmoV_freeState(CState *state) {
     cosmoT_clearTable(state, &state->globals);
     
     // free our gray stack & finally free the state structure
-    free(state->grayStack.array);
+    cosmoM_freearray(state, CObj*, state->grayStack.array, state->grayStack.capacity);
+
+    // TODO: yeah idk, it looks like im missing 520 bytes somewhere? i'll look into it later
+/*#ifdef GC_DEBUG
+    if (state->allocatedBytes != sizeof(CState)) {
+        printf("state->allocatedBytes doesn't match expected value (%lu), got %lu!", sizeof(CState), state->allocatedBytes);
+        exit(0);
+    }
+#endif*/
     free(state);
 }
 

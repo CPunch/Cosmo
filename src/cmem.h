@@ -7,13 +7,19 @@
 
 //#define GC_STRESS
 //#define GC_DEBUG
-// arrays will grow by a factor of 2
+// arrays *must* grow by a factor of 2
 #define GROW_FACTOR 2
 #define HEAP_GROW_FACTOR 2
 #define ARRAY_START 8
 
+#ifdef GC_DEBUG
 #define cosmoM_freearray(state, type, buf, capacity) \
-    cosmoM_reallocate(state, buf, sizeof(type)  *capacity, 0)
+    printf("freeing array %p [size %lu] at %s:%d\n", buf, sizeof(type) * capacity, __FILE__, __LINE__); \
+    cosmoM_reallocate(state, buf, sizeof(type) * capacity, 0)
+#else
+#define cosmoM_freearray(state, type, buf, capacity) \
+    cosmoM_reallocate(state, buf, sizeof(type) * capacity, 0)
+#endif
 
 #define cosmoM_growarray(state, type, buf, count, capacity) \
     if (count >= capacity || buf == NULL) { \
@@ -22,8 +28,14 @@
         buf = (type*)cosmoM_reallocate(state, buf, sizeof(type)  *old, sizeof(type)  *capacity); \
     }
 
+#ifdef GC_DEBUG
+#define cosmoM_free(state, type, x) \
+    printf("freeing %p [size %lu] at %s:%d\n", x, sizeof(type), __FILE__, __LINE__); \
+    cosmoM_reallocate(state, x, sizeof(type), 0)
+#else
 #define cosmoM_free(state, type, x) \
     cosmoM_reallocate(state, x, sizeof(type), 0)
+#endif
 
 #define cosmoM_isFrozen(state) \
     (state->freezeGC > 0)
