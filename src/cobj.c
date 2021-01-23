@@ -462,6 +462,26 @@ CObjString *cosmoO_toString(CState *state, CObj *obj) {
 }
 
 cosmo_Number cosmoO_toNumber(CState *state, CObj *obj) {
+    CObjObject *proto = cosmoO_grabProto(obj);
+    CValue res;
+
+    if (proto != NULL && cosmoO_getIString(state, proto, ISTRING_TONUMBER, &res)) {
+        cosmoV_pushValue(state, res);
+        cosmoV_pushValue(state, cosmoV_newObj(obj));
+        if (cosmoV_call(state, 1, 1) != COSMOVM_OK) // call res, expect 1 return val of <number>
+            return 0;
+        
+        StkPtr temp = cosmoV_getTop(state, 0);
+        if (!IS_NUMBER(*temp)) {
+            cosmoV_error(state, "__tonumber expected to return <number>, got %s!", cosmoV_typeStr(*temp));
+            return 0;
+        }
+
+        // return number
+        cosmoV_pop(state);
+        return cosmoV_readNumber(*temp);
+    }
+
     switch (obj->type) {
         case COBJ_STRING: {
             CObjString *str = (CObjString*)obj;
@@ -479,7 +499,7 @@ int cosmoO_count(CState *state, CObj *obj) {
     if (proto != NULL && cosmoO_getIString(state, proto, ISTRING_COUNT, &res)) {
         cosmoV_pushValue(state, res);
         cosmoV_pushValue(state, cosmoV_newObj(obj));
-        if (!cosmoV_call(state, 1, 1) != COSMOVM_OK) // call ret, we expect 1 return value of type <number>
+        if (cosmoV_call(state, 1, 1) != COSMOVM_OK) // call res, we expect 1 return value of type <number>
             return 0;
 
         StkPtr ret = cosmoV_getTop(state, 0);

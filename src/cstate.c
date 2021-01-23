@@ -24,7 +24,7 @@ CState *cosmoV_newState() {
     state->grayStack.count = 0;
     state->grayStack.capacity = 2;
     state->grayStack.array = NULL;
-    state->allocatedBytes = 0;
+    state->allocatedBytes = sizeof(CState);
     state->nextGC = 1024 * 8; // threshhold starts at 8kb
 
     // init stack
@@ -42,12 +42,13 @@ CState *cosmoV_newState() {
     for (int i = 0; i < ISTRING_MAX; i++)
         state->iStrings[i] = NULL;
 
-    cosmoT_initTable(state, &state->strings, 8); // init string table
+    cosmoT_initTable(state, &state->strings, 16); // init string table
     cosmoT_initTable(state, &state->globals, 8); // init global table
 
     // setup all strings used by the VM
     state->iStrings[ISTRING_INIT] = cosmoO_copyString(state, "__init", 6);
     state->iStrings[ISTRING_TOSTRING] = cosmoO_copyString(state, "__tostring", 10);
+    state->iStrings[ISTRING_TONUMBER] = cosmoO_copyString(state, "__tonumber", 10);
     state->iStrings[ISTRING_INDEX] = cosmoO_copyString(state, "__index", 7);
     state->iStrings[ISTRING_NEWINDEX] = cosmoO_copyString(state, "__newindex", 10);
     state->iStrings[ISTRING_COUNT] = cosmoO_copyString(state, "__count", 7);

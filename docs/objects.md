@@ -95,6 +95,7 @@ that are called on special operators.
 | __newindex   | `(<object>, key, newValue)`                      | Called on new index using the '[] = ' operator              |
 | __index      | `(<object>, key)` -> `value`                     | Called on index using the '[]' operator                     |
 | __tostring   | `(<object>)` -> `<string>`                       | Called when tostring() is called on an object               |
+| __tonumber   | `(<object>)` -> `<number>`                       | Called when tonumber() is called on an object               |
 | __count      | `(<object>)` -> `<number>`                       | Called when object is used with the '#' count operator      |
 | __iter       | `(<object>)` -> `<object>`                       | Called when used in a for-each loop with the 'in' operator  |
 | __next       | `(<object>)` -> `...`                            | Called on each iteration in a for-each loop, return values are passed as parameters in the loop |
