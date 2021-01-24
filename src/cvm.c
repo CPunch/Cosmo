@@ -286,7 +286,9 @@ static bool rawCall(CState *state, CObjClosure *closure, int args, int nresults,
         return false;
 
     // push the return values back onto the stack
-    memmove(state->top, results, sizeof(CValue) * nres); // copies the return values to the top of the stack
+    for (int i = 0; i < nres; i++) {
+        state->top[i] = results[i];
+    }
     state->top += nres; // and make sure to move state->top to match
 
     // now, if the caller function expected more return values, push nils onto the stack
@@ -304,7 +306,7 @@ bool callCValue(CState *state, CValue func, int args, int nresults, int offset) 
     printf("()\n");
 #endif
 
-    if (GET_TYPE(func) != COSMO_TOBJ) {
+    if (!IS_OBJ(func)) {
         cosmoV_error(state, "Cannot call non-function type %s!", cosmoV_typeStr(func));
         return false;
     }
@@ -348,7 +350,7 @@ bool callCValue(CState *state, CValue func, int args, int nresults, int offset) 
             break;
         }
         default: 
-            cosmoV_error(state, "Cannot call non-function value %s!", cosmoV_typeStr(func));
+            cosmoV_error(state, "Cannot call non-function type %s!", cosmoV_typeStr(func));
             return false;
     }
 

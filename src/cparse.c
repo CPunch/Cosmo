@@ -573,6 +573,7 @@ static void and_(CParseState *pstate, bool canAssign, Precedence prec) {
     int jump = writeJmp(pstate, OP_EJMP); // conditional jump without popping
 
     writePop(pstate, 1);
+    valuePopped(pstate, 1);
     expressionPrecedence(pstate, 1, PREC_AND, true);
 
     patchJmp(pstate, jump);
@@ -584,6 +585,7 @@ static void or_(CParseState *pstate, bool canAssign, Precedence prec) {
 
     patchJmp(pstate, elseJump);
     writePop(pstate, 1);
+    valuePopped(pstate, 1);
 
     expressionPrecedence(pstate, 1, PREC_OR, true);
     

@@ -9,8 +9,8 @@ typedef enum {
     COBJ_TABLE,
     COBJ_FUNCTION,
     COBJ_CFUNCTION,
-    COBJ_ERROR,
     // internal use
+    COBJ_ERROR,
     COBJ_METHOD,
     COBJ_CLOSURE,
     COBJ_UPVALUE,
@@ -152,12 +152,7 @@ CObjUpval *cosmoO_newUpvalue(CState *state, CValue *val);
 
 // grabs the base proto of the CObj* (if CObj is a CObjObject, that is returned)
 static inline CObjObject *cosmoO_grabProto(CObj *obj) {
-    CObjObject *object = obj->proto;
-
-    if (obj->type == COBJ_OBJECT)
-        object = (CObjObject*)obj;
-    
-    return object;
+    return obj->type == COBJ_OBJECT ? (CObjObject*)obj : obj->proto;
 }
 
 bool cosmoO_getRawObject(CState *state, CObjObject *proto, CValue key, CValue *val, CObj *obj);
