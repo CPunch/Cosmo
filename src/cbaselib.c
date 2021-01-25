@@ -338,14 +338,41 @@ int cosmoB_dgetProto(CState *state, int nargs, CValue *args) {
     return 1; // 1 result
 }
 
+
+// ================================================================ [VM.*] ================================================================
+
+int cosmoB_vgetGlobal(CState *state, int nargs, CValue *args) {
+    // this function doesn't need to check anything, just return the global table
+    cosmoV_pushObj(state, (CObj*)state->globals);
+    return 1;
+}
+
+// hmmm i guess i could allow this?? no idea how the VM will react to the global table being suddenly being yoinked
+int cosmoB_vsetGlobal(CState *state, int nargs, CValue *args) {
+    if (nargs != 2) {
+        cosmoV_error(state, "Expected 2 argumenst, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_TABLE(args[1])) {
+        cosmoV_typeError(state, "vm.__getter.globals", "<object>, <table>", "%s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
+        return 0;
+    }
+
+    // this makes me very nervous ngl
+    CObjTable *tbl = (CObjTable*)cosmoV_readObj(args[1]);
+    state->globals = tbl;
+    return 0;
+}
+
 int cosmoB_vindexBProto(CState *state, int nargs, CValue *args) {
     if (nargs != 2) {
-        cosmoV_error(state, "Expected 2 argument, got %d!", nargs);
+        cosmoV_error(state, "Expected 2 arguments, got %d!", nargs);
         return 0;
     }
 
     if (!IS_NUMBER(args[1])) {
-        cosmoV_typeError(state, "baseProtos.__index", "<number>", "%s", cosmoV_typeStr(args[0]));
+        cosmoV_typeError(state, "baseProtos.__index", "<object>, <number>", "%s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
         return 0;
     }
 
@@ -410,6 +437,7 @@ void cosmoB_loadDebug(CState *state) {
 
     // set debug protos to the debug object
     cosmoV_registerProtoObject(state, COBJ_OBJECT, obj);
+    cosmoV_pop(state); // pops the debug object
 
     // make vm.* object
     cosmoV_pushString(state, "vm");
@@ -424,10 +452,27 @@ void cosmoB_loadDebug(CState *state) {
     cosmoV_pushCFunction(state, cosmoB_vnewindexBProto);
 
     cosmoV_makeObject(state, 2); // makes the baseProtos object
-    cosmoV_makeObject(state, 1); // makes the vm object
+
+    // make __getter table for vm object
+    cosmoV_pushString(state, "__getter");
+
+    cosmoV_pushString(state, "globals");
+    cosmoV_pushCFunction(state, cosmoB_vgetGlobal);
+
+    cosmoV_makeTable(state, 1);
+
+    // make __setter table for vm object
+    cosmoV_pushString(state, "__setter");
+
+    cosmoV_pushString(state, "globals");
+    cosmoV_pushCFunction(state, cosmoB_vsetGlobal);
+
+    cosmoV_makeTable(state, 1);
+
+    cosmoV_makeObject(state, 3); // makes the vm object
 
     // register "vm" to the global table
     cosmoV_register(state, 1);
 
-    printf("[WARNING] the debug library has been loaded!");
+    printf("[WARNING] the debug library has been loaded!\n");
 }

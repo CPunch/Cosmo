@@ -442,6 +442,12 @@ CObjString *cosmoO_toString(CState *state, CObj *obj) {
             CObjFunction *func = (CObjFunction*)obj;
             return func->name != NULL ? func->name : cosmoO_copyString(state, UNNAMEDCHUNK, strlen(UNNAMEDCHUNK)); 
         }
+        case COBJ_CFUNCTION: {
+            CObjCFunction *cfunc = (CObjCFunction*)obj;
+            char buf[64];
+            int sz = sprintf(buf, "<c function> %p", (void*)cfunc->cfunc) + 1; // +1 for the null character
+            return cosmoO_copyString(state, buf, sz);
+        }
         case COBJ_OBJECT: {
             char buf[64];
             int sz = sprintf(buf, "<obj> %p", (void*)obj) + 1; // +1 for the null character
@@ -456,8 +462,11 @@ CObjString *cosmoO_toString(CState *state, CObj *obj) {
             int sz = sprintf(buf, "<tbl> %p", (void*)obj) + 1; // +1 for the null character
             return cosmoO_copyString(state, buf, sz);
         }
-        default:
-            return cosmoO_copyString(state, "<unkn obj>", 10);
+        default: {
+            char buf[64];
+            int sz = sprintf(buf, "<unkn obj> %p", (void*)obj) + 1; // +1 for the null character
+            return cosmoO_copyString(state, buf, sz);
+        }
     }
 }
 

@@ -303,7 +303,7 @@ bool callCValue(CState *state, CValue func, int args, int nresults, int offset) 
     printf("\n");
     printIndent(state->frameCount - 1);
     printValue(func);
-    printf("()\n");
+    printf("(%d args)\n", args);
 #endif
 
     if (!IS_OBJ(func)) {
@@ -533,7 +533,7 @@ int _tbl__next(CState *state, int nargs, CValue *args) {
     } while (IS_NIL(entry->key) && index < cap);
     cosmoO_setUserI(state, obj, index); // update the userdata
 
-    if (!IS_NIL(entry->key)) { // if the entry is valid, return it's key and value pair
+    if (index < cap && !IS_NIL(entry->key)) { // if the entry is valid, return it's key and value pair
         cosmoV_pushValue(state, entry->key);
         cosmoV_pushValue(state, entry->val);
         return 2; // we pushed 2 values onto the stack for the return values
@@ -563,6 +563,7 @@ int cosmoV_execute(CState *state) {
 
     while (!state->panic) {
 #ifdef VM_DEBUG
+        cosmoV_printStack(state);
         disasmInstr(&frame->closure->function->chunk, frame->pc - frame->closure->function->chunk.buf, state->frameCount - 1);
         printf("\n");
 #endif
@@ -575,7 +576,7 @@ int cosmoV_execute(CState *state) {
             case OP_SETGLOBAL: {
                 uint16_t indx = READUINT();
                 CValue ident = constants[indx]; // grabs identifier
-                CValue *val = cosmoT_insert(state, &state->globals, ident);
+                CValue *val = cosmoT_insert(state, &state->globals->tbl, ident);
                 *val = *cosmoV_pop(state); // sets the value in the hash table
                 continue;
             }
@@ -583,7 +584,7 @@ int cosmoV_execute(CState *state) {
                 uint16_t indx = READUINT();
                 CValue ident = constants[indx]; // grabs identifier
                 CValue val; // to hold our value
-                cosmoT_get(&state->globals, ident, &val);
+                cosmoT_get(&state->globals->tbl, ident, &val);
                 cosmoV_pushValue(state, val); // pushes the value to the stack
                 continue;
             }
@@ -1003,7 +1004,7 @@ int cosmoV_execute(CState *state) {
                 int8_t inc = READBYTE() - 128; // amount we're incrementing by
                 uint16_t indx = READUINT();
                 CValue ident = constants[indx]; // grabs identifier
-                CValue *val = cosmoT_insert(state, &state->globals, ident);
+                CValue *val = cosmoT_insert(state, &state->globals->tbl, ident);
 
                 // check that it's a number value
                if (IS_NUMBER(*val)) { 

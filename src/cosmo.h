@@ -38,6 +38,7 @@ typedef struct CObjCFunction CObjCFunction;
 typedef struct CObjMethod CObjMethod;
 typedef struct CObjError CObjError;
 typedef struct CObjObject CObjObject;
+typedef struct CObjTable CObjTable;
 typedef struct CObjClosure CObjClosure;
 
 typedef uint8_t INSTRUCTION;

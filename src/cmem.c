@@ -235,7 +235,7 @@ void markRoots(CState *state) {
         markObject(state, (CObj*)upvalue);
     }
 
-    markTable(state, &state->globals);
+    markObject(state, (CObj*)state->globals);
 
     // mark all internal strings
     for (int i = 0; i < ISTRING_MAX; i++)

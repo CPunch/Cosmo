@@ -47,7 +47,7 @@ typedef struct CState {
 
     CObjUpval *openUpvalues; // tracks all of our still open (meaning still on the stack) upvalues
     CTable strings;
-    CTable globals;
+    CObjTable *globals;
 
     CValue *top; // top of the stack
     CObjObject *protoObjects[COBJ_MAX]; // proto object for each COBJ type [NULL = no default proto]

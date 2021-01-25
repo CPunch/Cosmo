@@ -42,7 +42,8 @@ CState *cosmoV_newState() {
         state->iStrings[i] = NULL;
 
     cosmoT_initTable(state, &state->strings, 16); // init string table
-    cosmoT_initTable(state, &state->globals, 8); // init global table
+
+    state->globals = cosmoO_newTable(state); // init global table
 
     // setup all strings used by the VM
     state->iStrings[ISTRING_INIT] = cosmoO_copyString(state, "__init", 6);
@@ -89,9 +90,8 @@ void cosmoV_freeState(CState *state) {
     for (int i = 0; i < ISTRING_MAX; i++)
         state->iStrings[i] = NULL;
 
-    // free our string & global table (the string table includes the internal VM strings)
+    // free our string table (the string table includes the internal VM strings)
     cosmoT_clearTable(state, &state->strings);
-    cosmoT_clearTable(state, &state->globals);
     
     // free our gray stack & finally free the state structure
     cosmoM_freearray(state, CObj*, state->grayStack.array, state->grayStack.capacity);
@@ -112,7 +112,7 @@ void cosmoV_register(CState *state, int pairs) {
         StkPtr key = cosmoV_getTop(state, 1);
         StkPtr val = cosmoV_getTop(state, 0);
 
-        CValue *oldVal = cosmoT_insert(state, &state->globals, *key);
+        CValue *oldVal = cosmoT_insert(state, &state->globals->tbl, *key);
         *oldVal = *val;
         
         cosmoV_setTop(state, 2); // pops the 2 values off the stack
