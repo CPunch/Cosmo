@@ -1,6 +1,6 @@
 # Types
 
-There are two main types of datatypes in Cosmo, primitives and references. Primitives exist directly in variables and tables. References are references to objects in memory, such as objects, tables, and functions. 
+There are two main types of datatypes in Cosmo, primitives and references. Primitives exist directly in variables and tables. References are references to objects in memory, such as objects, tables, and functions. Objects are cleaned up and free'd by the garbage collector as soon as no references to the objects exist. 
 
 ## Primitives
 

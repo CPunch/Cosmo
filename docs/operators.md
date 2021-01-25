@@ -17,6 +17,9 @@
 | -------- | ---------------------------- | -------------------------------------- |
 | `!`      | "Not" logical operator, flips the logical polarity. | `print(!true)` -> `false` |
 | `#`      | "Count" calls '__count' metamethod on objects or gives the count of entries in tables | `print(#[1,2,3])` -> `3`, `print(#{__count = function(self) return self.x end, x = 1337})` -> `1337` | 
+| `++`     | Increment operator.          | `var i = 0 print(++i .. ", " .. i++ .. ", " .. i)` -> `1, 1, 2` |
+| `--`     | Decrement operator.          | `var i = 0 print(--i .. ", " .. i-- .. ", " .. i)` -> `-1, -1, -2` |
+| `( ... )` | Call operator. Arguments should be separated using `,`. | `print("Hello", " ", "world!")` -> `Hello world!` |
 > -> means 'outputs'
 
 ## Logical
