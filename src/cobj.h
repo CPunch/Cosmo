@@ -3,7 +3,7 @@
 
 #include "cosmo.h"
 
-typedef enum {
+typedef enum CObjType {
     COBJ_STRING,
     COBJ_OBJECT,
     COBJ_TABLE,

@@ -1630,7 +1630,7 @@ CObjFunction* cosmoP_compileString(CState *state, const char *source, const char
     freeParseState(&parser);
 
     // push the funciton onto the stack so if we cause an GC event, it won't be free'd
-    cosmoV_pushValue(state, cosmoV_newObj(resFunc));
+    cosmoV_pushObj(state, (CObj*)resFunc);
     cosmoM_unfreezeGC(state);
     cosmoV_pop(state);
     return resFunc;

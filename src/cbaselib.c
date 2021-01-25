@@ -75,7 +75,7 @@ int cosmoB_tostring(CState *state, int nargs, CValue *args) {
         return 0;
     }
 
-    cosmoV_pushValue(state, cosmoV_newObj(cosmoV_toString(state, args[0])));
+    cosmoV_pushObj(state, (CObj*)cosmoV_toString(state, args[0]));
     return 1;
 }
 
@@ -303,11 +303,10 @@ void cosmoB_loadStrLib(CState *state) {
         cosmoV_pushString(state, identifiers[i]);
         cosmoV_pushCFunction(state, strLib[i]);
     }
-    cosmoV_makeObject(state, i);
 
-    // grab the object from the stack and set the base protoObject
-    StkPtr obj = cosmoV_getTop(state, 0);
-    state->protoObjects[COBJ_STRING] = cosmoV_readObject(*obj);
+    // make the object and set the protoobject for all strings
+    CObjObject *obj = cosmoV_makeObject(state, i);
+    cosmoV_registerProtoObject(state, COBJ_STRING, obj);
 
     // register "string" to the global table
     cosmoV_register(state, 1);
@@ -322,7 +321,7 @@ int cosmoB_dsetProto(CState *state, int nargs, CValue *args) {
 
         obj->proto = proto; // boom done
     } else {
-        cosmoV_error(state, "Expected 2 parameters, got %d!", nargs);
+        cosmoV_error(state, "Expected 2 arguments, got %d!", nargs);
     }
 
     return 0; // nothing
@@ -331,11 +330,61 @@ int cosmoB_dsetProto(CState *state, int nargs, CValue *args) {
 int cosmoB_dgetProto(CState *state, int nargs, CValue *args) {
     if (nargs != 1) {
         cosmoV_error(state, "Expected 1 argument, got %d!", nargs);
+        return 0;
     }
 
-    cosmoV_pushValue(state, cosmoV_newObj(cosmoV_readObject(args[0])->_obj.proto)); // just return the proto
+    cosmoV_pushObj(state, (CObj*)cosmoV_readObject(args[0])->_obj.proto); // just return the proto
 
     return 1; // 1 result
+}
+
+int cosmoB_vindexBProto(CState *state, int nargs, CValue *args) {
+    if (nargs != 2) {
+        cosmoV_error(state, "Expected 2 argument, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_NUMBER(args[1])) {
+        cosmoV_typeError(state, "baseProtos.__index", "<number>", "%s", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    int indx = (int)cosmoV_readNumber(args[1]);
+
+    if (indx >= COBJ_MAX || indx < 0) {
+        cosmoV_error(state, "index out of range! expected 0 - %d, got %d!", COBJ_MAX - 1, indx);
+        return 0;
+    }
+
+    if (state->protoObjects[indx] != NULL)
+        cosmoV_pushObj(state, (CObj*)state->protoObjects[indx]);
+    else
+        cosmoV_pushNil(state);
+    
+    return 1; // 1 value pushed, 1 value returned
+}
+
+int cosmoB_vnewindexBProto(CState *state, int nargs, CValue *args) {
+    if (nargs != 3) {
+        cosmoV_error(state, "Expected 3 arguments, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_NUMBER(args[1]) || !IS_OBJECT(args[2])) {
+        cosmoV_typeError(state, "baseProtos.__newindex", "<object>, <number>, <object>", "%s, %s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]), cosmoV_typeStr(args[2]));
+        return 0;
+    }
+
+    int indx = (int)cosmoV_readNumber(args[1]);
+    CObjObject *proto = cosmoV_readObject(args[2]);
+
+    if (indx >= COBJ_MAX || indx < 0) {
+        cosmoV_error(state, "index out of range! expected 0 - %d, got %d!", COBJ_MAX, indx);
+        return 0;
+    }
+
+    cosmoV_registerProtoObject(state, indx, proto);
+    return 0; // we don't return anything
 }
 
 void cosmoB_loadDebug(CState *state) {
@@ -357,8 +406,28 @@ void cosmoB_loadDebug(CState *state) {
     cosmoV_makeTable(state, 1);
 
     // we call makeObject leting it know there are 2 sets of key & value pairs on the stack
-    cosmoV_makeObject(state, 2);
+    CObjObject *obj = cosmoV_makeObject(state, 2);
 
     // set debug protos to the debug object
-    state->protoObjects[COBJ_OBJECT] = cosmoV_readObject(*cosmoV_pop(state));
+    cosmoV_registerProtoObject(state, COBJ_OBJECT, obj);
+
+    // make vm.* object
+    cosmoV_pushString(state, "vm");
+
+    // make vm.baseProtos object
+    cosmoV_pushString(state, "baseProtos");
+
+    cosmoV_pushString(state, "__index");
+    cosmoV_pushCFunction(state, cosmoB_vindexBProto);
+
+    cosmoV_pushString(state, "__newindex");
+    cosmoV_pushCFunction(state, cosmoB_vnewindexBProto);
+
+    cosmoV_makeObject(state, 2); // makes the baseProtos object
+    cosmoV_makeObject(state, 1); // makes the vm object
+
+    // register "vm" to the global table
+    cosmoV_register(state, 1);
+
+    printf("[WARNING] the debug library has been loaded!");
 }

@@ -17,7 +17,9 @@ typedef enum {
 // args = # of pass parameters, nresults = # of expected results
 COSMO_API COSMOVMRESULT cosmoV_call(CState *state, int args, int nresults);
 COSMO_API COSMOVMRESULT cosmoV_pcall(CState *state, int args, int nresults);
-COSMO_API void cosmoV_makeObject(CState *state, int pairs);
+
+// pushes new object onto the stack & returns a pointer to the new object
+COSMO_API CObjObject* cosmoV_makeObject(CState *state, int pairs);
 COSMO_API void cosmoV_makeTable(CState *state, int pairs);
 COSMO_API void cosmoV_concat(CState *state, int vals);
 COSMO_API void cosmoV_pushFString(CState *state, const char *format, ...);
@@ -25,6 +27,9 @@ COSMO_API void cosmoV_printError(CState *state, CObjError *err);
 COSMO_API CObjError* cosmoV_throw(CState *state);
 COSMO_API void cosmoV_error(CState *state, const char *format, ...);
 COSMO_API void cosmo_insert(CState *state, int indx, CValue val);
+
+// returns true if replacing a previously registered proto object for this type
+COSMO_API bool cosmoV_registerProtoObject(CState *state, CObjType objType, CObjObject *obj);
 
 /*
     compiles string into a <closure>, if successful, <closure> will be pushed onto the stack otherwise the <error> will be pushed.
@@ -90,18 +95,26 @@ static inline void cosmoV_pushBoolean(CState *state, bool b) {
     cosmoV_pushValue(state, cosmoV_newBoolean(b));
 }
 
+static inline void cosmoV_pushObj(CState *state, CObj *obj) {
+    cosmoV_pushValue(state, cosmoV_newObj(obj));
+}
+
 // pushes a C Function to the stack
 static inline void cosmoV_pushCFunction(CState *state, CosmoCFunction func) {
-    cosmoV_pushValue(state, cosmoV_newObj(cosmoO_newCFunction(state, func)));
+    cosmoV_pushObj(state, (CObj*)cosmoO_newCFunction(state, func));
 }
 
 static inline void cosmoV_pushLString(CState *state, const char *str, size_t len) {
-    cosmoV_pushValue(state, cosmoV_newObj(cosmoO_copyString(state, str, len)));
+    cosmoV_pushObj(state, (CObj*)cosmoO_copyString(state, str, len));
 }
 
 // accepts a null terminated string and copys the buffer to the VM heap
 static inline void cosmoV_pushString(CState *state, const char *str) {
     cosmoV_pushLString(state, str, strlen(str));
+}
+
+static inline void cosmoV_pushNil(CState *state) {
+    cosmoV_pushValue(state, cosmoV_newNil());
 }
 
 #endif

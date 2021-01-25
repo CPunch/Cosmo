@@ -26,7 +26,7 @@ int cosmoB_input(CState *state, int nargs, CValue *args) {
     char line[1024];
     fgets(line, sizeof(line), stdin);
 
-    cosmoV_pushValue(state, cosmoV_newObj(cosmoO_copyString(state, line, strlen(line)-1))); // -1 for the \n
+    cosmoV_pushObj(state, (CObj*)cosmoO_copyString(state, line, strlen(line)-1)); // -1 for the \n
 
     return 1; // 1 return value
 }
