@@ -679,7 +679,7 @@ int cosmoV_execute(CState *state) {
                     val = cosmoV_getTop(state, i + 1);
 
                     // set key/value pair
-                    CValue *newVal = cosmoT_insert(state, &newObj->tbl, cosmoV_newNumber(i));
+                    CValue *newVal = cosmoT_insert(state, &newObj->tbl, cosmoV_newNumber(pairs - i - 1));
                     *newVal = *val;
                 }
 
