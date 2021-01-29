@@ -5,7 +5,8 @@
 
 /* loads all of the base library, including:
     - base library ("print", "assert", "type", "pcall", "loadstring", etc.)
-    - string library ("string.sub", "string.find", "string.split", "string.charAt")
+    - string library
+    - math library
 */
 COSMO_API void cosmoB_loadLibrary(CState *state);
 
@@ -20,11 +21,20 @@ COSMO_API void cosmoB_loadLibrary(CState *state);
 */
 COSMO_API void cosmoB_loadStrLib(CState *state);
 
+/* loads the base math library, including:
+    - math.abs
+    - math.floor
+    - math.ceil
+*/
+COSMO_API void cosmoB_loadMathLib(CState *state);
+
 /* sets the base proto of all objects to the debug proto which allows for
     - manipulation of the ProtoObject of objects through the '__proto' field
 
     additionally, the vm.* library is loaded, including:
     - manually setting/grabbing base protos of any object (vm.baseProtos)
+    - manually setting/grabbing the global table (vm.globals)
+    - manually invoking a garbage collection event (vm.collect())
 
     for this reason, it is recommended to NOT load this library in production
 */

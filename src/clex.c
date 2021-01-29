@@ -308,7 +308,7 @@ CToken parseNumber(CLexState *state) {
 
             return makeToken(state, TOKEN_BINNUMBER);
         default: // it's a one digit number!!!!!
-            if (!isNumerical(peek(state)))
+            if (!isNumerical(peek(state)) && !(peek(state) == '.'))
                 return makeToken(state, TOKEN_NUMBER);
             // if it is a number, fall through and parse normally
     }
@@ -318,7 +318,7 @@ CToken parseNumber(CLexState *state) {
     while (isNumerical(peek(state))) {
         next(state);
     }
-    
+
     if (peek(state) == '.' && isNumerical(peekNext(state))) {
         next(state); // consume '.'
 

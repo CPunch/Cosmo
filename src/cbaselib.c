@@ -4,6 +4,8 @@
 #include "cobj.h"
 #include "cmem.h"
 
+#include <math.h>
+
 // ================================================================ [BASELIB] ================================================================
 
 int cosmoB_print(CState *state, int nargs, CValue *args) {
@@ -127,8 +129,9 @@ void cosmoB_loadLibrary(CState *state) {
     // register all the pushed c functions and the strings as globals
     cosmoV_register(state, i);
 
-    // load object libraries
+    // load other libraries
     cosmoB_loadStrLib(state);
+    cosmoB_loadMathLib(state);
 }
 
 // ================================================================ [STRING.*] ================================================================
@@ -295,7 +298,6 @@ void cosmoB_loadStrLib(CState *state) {
         cosmoB_sCharAt
     };
 
-
     // make string library object
     cosmoV_pushString(state, "string");
     int i;
@@ -309,6 +311,90 @@ void cosmoB_loadStrLib(CState *state) {
     cosmoV_registerProtoObject(state, COBJ_STRING, obj);
 
     // register "string" to the global table
+    cosmoV_register(state, 1);
+}
+
+// ================================================================ [MATH] ================================================================
+
+// math.abs
+int cosmoB_mAbs(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "math.abs() expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_NUMBER(args[0])) {
+        cosmoV_typeError(state, "math.abs", "<number>", "%s", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    cosmoV_pushNumber(state, fabs(cosmoV_readNumber(args[0])));
+    return 1;
+}
+
+// math.floor
+int cosmoB_mFloor(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "math.floor() expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_NUMBER(args[0])) {
+        cosmoV_typeError(state, "math.floor", "<number>", "%s", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    cosmoV_pushNumber(state, (int)cosmoV_readNumber(args[0]));
+    return 1;
+}
+
+// math.ceil
+int cosmoB_mCeil(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "math.ceil() expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_NUMBER(args[0])) {
+        cosmoV_typeError(state, "math.ceil", "<number>", "%s", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    int roundedDown = (int)cosmoV_readNumber(args[0]);
+
+    // number is already truncated
+    if ((double)roundedDown == cosmoV_readNumber(args[0])) {
+        cosmoV_pushValue(state, args[0]);
+    } else {
+        cosmoV_pushNumber(state, roundedDown + 1);
+    }
+
+    return 1;
+}
+
+void cosmoB_loadMathLib(CState *state) {
+    const char *identifiers[] = {
+        "abs",
+        "floor",
+        "ceil"
+    };
+
+    CosmoCFunction mathLib[] = {
+        cosmoB_mAbs,
+        cosmoB_mFloor,
+        cosmoB_mCeil
+    };
+
+    // make math library object
+    cosmoV_pushString(state, "math");
+    int i;
+    for (i = 0; i < sizeof(identifiers)/sizeof(identifiers[0]); i++) {
+        cosmoV_pushString(state, identifiers[i]);
+        cosmoV_pushCFunction(state, mathLib[i]);
+    }
+
+    // make the object and register it as a global to the state
+    cosmoV_makeObject(state, i);
     cosmoV_register(state, 1);
 }
 
@@ -338,16 +424,16 @@ int cosmoB_dgetProto(CState *state, int nargs, CValue *args) {
     return 1; // 1 result
 }
 
-
 // ================================================================ [VM.*] ================================================================
 
+// vm.__getter["globals"]
 int cosmoB_vgetGlobal(CState *state, int nargs, CValue *args) {
     // this function doesn't need to check anything, just return the global table
     cosmoV_pushObj(state, (CObj*)state->globals);
     return 1;
 }
 
-// hmmm i guess i could allow this?? no idea how the VM will react to the global table being suddenly being yoinked
+// vm.__setter["globals"]
 int cosmoB_vsetGlobal(CState *state, int nargs, CValue *args) {
     if (nargs != 2) {
         cosmoV_error(state, "Expected 2 argumenst, got %d!", nargs);
@@ -355,7 +441,7 @@ int cosmoB_vsetGlobal(CState *state, int nargs, CValue *args) {
     }
 
     if (!IS_TABLE(args[1])) {
-        cosmoV_typeError(state, "vm.__getter.globals", "<object>, <table>", "%s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
+        cosmoV_typeError(state, "vm.__setter[\"globals\"]", "<object>, <table>", "%s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
         return 0;
     }
 
@@ -414,6 +500,21 @@ int cosmoB_vnewindexBProto(CState *state, int nargs, CValue *args) {
     return 0; // we don't return anything
 }
 
+// vm.collect()
+int cosmoB_vcollect(CState *state, int nargs, CValue *args) {
+    // first, unfreeze the state (we start frozen on entry to any C Function)
+    cosmoM_unfreezeGC(state);
+    
+    // now force a garbage collection
+    cosmoM_collectGarbage(state);
+
+    // and re-freeze the state
+    cosmoM_freezeGC(state);
+
+    // the end!
+    return 0;
+}
+
 void cosmoB_loadDebug(CState *state) {
     // make __getter object for debug proto
     cosmoV_pushString(state, "__getter");
@@ -469,7 +570,10 @@ void cosmoB_loadDebug(CState *state) {
 
     cosmoV_makeTable(state, 1);
 
-    cosmoV_makeObject(state, 3); // makes the vm object
+    cosmoV_pushString(state, "collect");
+    cosmoV_pushCFunction(state, cosmoB_vcollect);
+
+    cosmoV_makeObject(state, 4); // makes the vm object
 
     // register "vm" to the global table
     cosmoV_register(state, 1);
