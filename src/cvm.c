@@ -307,7 +307,7 @@ bool callCValue(CState *state, CValue func, int args, int nresults, int offset) 
 #endif
 
     if (!IS_OBJ(func)) {
-        cosmoV_error(state, "Cannot call non-function type %s!", cosmoV_typeStr(func));
+        cosmoV_error(state, "Cannot call non-callable type %s!", cosmoV_typeStr(func));
         return false;
     }
 
@@ -350,7 +350,7 @@ bool callCValue(CState *state, CValue func, int args, int nresults, int offset) 
             break;
         }
         default: 
-            cosmoV_error(state, "Cannot call non-function type %s!", cosmoV_typeStr(func));
+            cosmoV_error(state, "Cannot call non-callable type %s!", cosmoV_typeStr(func));
             return false;
     }
 

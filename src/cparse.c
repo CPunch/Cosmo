@@ -1036,13 +1036,12 @@ static void defineVariable(CParseState *pstate, uint16_t global, bool forceLocal
 }
 
 static void _proto(CParseState *pstate) {
-    uint16_t var = parseVariable(pstate, "Expected identifer!", false);
     int entries = 0;
     
     while (!match(pstate, TOKEN_END) && !match(pstate, TOKEN_EOF) && !pstate->hadError) {
         if (match(pstate, TOKEN_FUNCTION)) {
             // define method
-            consume(pstate, TOKEN_IDENTIFIER, "Expected identifier!");
+            consume(pstate, TOKEN_IDENTIFIER, "Expected identifier for method!");
             uint16_t fieldIdent = identifierConstant(pstate, &pstate->previous);
 
             // OP_NEWOBJECT expects the key on the stack before the value
@@ -1051,6 +1050,8 @@ static void _proto(CParseState *pstate) {
 
             function(pstate, FTYPE_METHOD);
             valuePopped(pstate, 1);
+        } else {
+            errorAtCurrent(pstate, "Illegal syntax!");
         }
 
         entries++;
@@ -1059,7 +1060,25 @@ static void _proto(CParseState *pstate) {
     writeu8(pstate, OP_NEWOBJECT);
     writeu16(pstate, entries);
     valuePushed(pstate, 1);
+}
+
+static void protoDeclaration(CParseState *pstate) {
+    uint16_t var = parseVariable(pstate, "Expected identifer for proto!", false);
+
+    // parse proto definiton
+    _proto(pstate);
+
     defineVariable(pstate, var, false);
+}
+
+static void localProto(CParseState *pstate) {
+    // parses the variable, forcefully marking it as a local
+    uint16_t var = parseVariable(pstate, "Expected identifer for proto!", true);
+
+    // parse proto definiton
+    _proto(pstate);
+
+    defineVariable(pstate, var, true);
 }
 
 static void popLocals(CParseState *pstate, int toScope) {
@@ -1541,7 +1560,9 @@ static void expressionStatement(CParseState *pstate) {
     } else if (match(pstate, TOKEN_LOCAL)) {
         // force declare a local
         if (match(pstate, TOKEN_FUNCTION))
-            localFunction(pstate); // force local a function
+            localFunction(pstate); // force a local function declaration
+        else if (match(pstate, TOKEN_PROTO))
+            localProto(pstate); // force a local proto declaration
         else
             varDeclaration(pstate, true, 0); // force local a variable
     } else if (match(pstate, TOKEN_IF)) {
@@ -1557,7 +1578,7 @@ static void expressionStatement(CParseState *pstate) {
     } else if (match(pstate, TOKEN_FUNCTION)) {
         functionDeclaration(pstate);
     } else if (match(pstate, TOKEN_PROTO)) {
-        _proto(pstate);
+        protoDeclaration(pstate);
     } else if (match(pstate, TOKEN_BREAK)) {
         breakStatement(pstate);
     } else if (match(pstate, TOKEN_CONTINUE)) {
