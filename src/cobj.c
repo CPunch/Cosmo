@@ -213,7 +213,7 @@ CObjString *cosmoO_copyString(CState *state, const char *str, size_t length) {
     return cosmoO_allocateString(state, buf, length, hash);
 }
 
-// length shouldn't include the null terminator! (char array should also have been allocated using cosmoM_xmalloc!)
+// length shouldn't include the null terminator! str should be a null terminated string! (char array should also have been allocated using cosmoM_xmalloc!)
 CObjString *cosmoO_takeString(CState *state, char *str, size_t length) {
     uint32_t hash = hashString(str, length);
 

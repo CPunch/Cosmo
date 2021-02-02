@@ -14,7 +14,8 @@ COSMO_API void cosmoB_loadLibrary(CState *state);
     - string.sub
     - stirng.find
     - string.split
-    - string.charAt
+    - string.byte
+    - string.char
 
     The base proto object for strings is also set, allowing you to invoke the string.* api through string objects, eg.
         `"hello world":split(" ")` is equivalent to `string.split("hello world", " ")`

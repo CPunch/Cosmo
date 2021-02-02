@@ -44,7 +44,7 @@ typedef struct CObjString {
     CommonHeader; // "is a" CObj
     bool isIString;
     int length;
-    char *str;
+    char *str; // NULL termincated string
     uint32_t hash; // for hashtable lookup
 } CObjString;
 
@@ -168,12 +168,14 @@ int cosmoO_getUserI(CState *state, CObjObject *object);
 // internal string
 bool cosmoO_getIString(CState *state, CObjObject *object, int flag, CValue *val);
 
-// copies the *str buffer to the heap and returns a CObjString struct which is also on the heap
-CObjString *cosmoO_copyString(CState *state, const char *str, size_t sz);
-// pass an already allocated str buffer!
-CObjString *cosmoO_takeString(CState *state, char *str, size_t sz);
+// copies the *str buffer to the heap and returns a CObjString struct which is also on the heap (length should not include the null terminator)
+CObjString *cosmoO_copyString(CState *state, const char *str, size_t length);
+
+// length shouldn't include the null terminator! str should be a null terminated string! (char array should also have been allocated using cosmoM_xmalloc!)
+CObjString *cosmoO_takeString(CState *state, char *str, size_t length);
+
 // allocates a CObjStruct pointing directly to *str
-CObjString *cosmoO_allocateString(CState *state, const char *str, size_t sz, uint32_t hash);
+CObjString *cosmoO_allocateString(CState *state, const char *str, size_t length, uint32_t hash);
 
 /*
     formats strings to push onto the VM stack, formatting supported:

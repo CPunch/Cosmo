@@ -258,28 +258,54 @@ int cosmoB_sSplit(CState *state, int nargs, CValue *args) {
     return 1;
 }
 
-// string.charAt
-int cosmoB_sCharAt(CState *state, int nargs, CValue *args) {
-    if (nargs != 2) {
-        cosmoV_error(state, "string.charAt() expected 2 arguments, got %d!", nargs);
+// string.byte
+int cosmoB_sByte(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "string.byte() expected 1 argument, got %d!", nargs);
         return 0;
     }
 
-    if (!IS_STRING(args[0]) || !IS_NUMBER(args[1])) {
-        cosmoV_typeError(state, "string.charAt", "<string>, <number>", "%s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
+    if (!IS_STRING(args[0])) {
+        cosmoV_typeError(state, "string.byte", "<string>", "%s", cosmoV_typeStr(args[0]));
         return 0;
     }
-
+    
     CObjString *str = cosmoV_readString(args[0]);
-    int indx = (int)cosmoV_readNumber(args[1]);
 
-    if (indx >= str->length || indx < 0) {
-        cosmoV_error(state, "string.charAt() expected index to be 0-%d, got %d!", str->length - 1, indx);
+    if (str->length < 1) {
+        // the length of the string is less than 1, in the future I might throw an error for this, but 
+        // for now im going to copy lua and just return a nil
         return 0;
     }
 
-    // returns character number
-    cosmoV_pushNumber(state, (int)str->str[indx]);
+    // push the character byte and return
+    cosmoV_pushNumber(state, (int)str->str[0]);
+    return 1;
+}
+
+// string.char
+int cosmoB_sChar(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "string.char() expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_NUMBER(args[0])) {
+        cosmoV_typeError(state, "string.char", "<number>", "%s", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    // small side effect of truncating the number, but ignoring the decimal instead of throwing an error is the better option imo
+    int num = (int)cosmoV_readNumber(args[0]);
+    char c = num;
+
+    if (num > 255 || num < 0) {
+        cosmoV_error(state, "Character expected to be in range 0-255, got %d!", num);
+        return 0;
+    }
+
+    // basically, treat the c value on the stack as an """"array"""" with a length of 1
+    cosmoV_pushLString(state, &c, 1);
     return 1;
 }
 
@@ -288,14 +314,16 @@ void cosmoB_loadStrLib(CState *state) {
         "sub",
         "find",
         "split",
-        "charAt"
+        "byte",
+        "char"
     };
 
     CosmoCFunction strLib[] = {
         cosmoB_sSub,
         cosmoB_sFind,
         cosmoB_sSplit,
-        cosmoB_sCharAt
+        cosmoB_sByte,
+        cosmoB_sChar
     };
 
     // make string library object
