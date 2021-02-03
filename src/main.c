@@ -52,7 +52,7 @@ static void repl() {
 
     CState *state = cosmoV_newState();
     cosmoB_loadLibrary(state);
-    cosmoB_loadDebug(state);
+    cosmoB_loadVM(state);
 
     // add our custom REPL functions
     cosmoV_pushString(state, "quit");

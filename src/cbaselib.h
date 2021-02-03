@@ -5,17 +5,24 @@
 
 /* loads all of the base library, including:
     - base library ("print", "assert", "type", "pcall", "loadstring", etc.)
+    - object library
     - string library
     - math library
 */
 COSMO_API void cosmoB_loadLibrary(CState *state);
 
+/* loads the base object library, including:
+    - object.ischild or <obj>:ischild()
+
+*/
+COSMO_API void cosmoB_loadObjLib(CState *state);
+
 /* loads the base string library, including:
-    - string.sub
-    - stirng.find
-    - string.split
-    - string.byte
-    - string.char
+    - string.sub & <string>:sub()
+    - stirng.find & <string>:find()
+    - string.split & <string>:split()
+    - string.byte & <string>:byte()
+    - string.char & <string>:char()
 
     The base proto object for strings is also set, allowing you to invoke the string.* api through string objects, eg.
         `"hello world":split(" ")` is equivalent to `string.split("hello world", " ")`
@@ -29,17 +36,14 @@ COSMO_API void cosmoB_loadStrLib(CState *state);
 */
 COSMO_API void cosmoB_loadMathLib(CState *state);
 
-/* sets the base proto of all objects to the debug proto which allows for
-    - manipulation of the ProtoObject of objects through the '__proto' field
-
-    additionally, the vm.* library is loaded, including:
+/* loads the vm library, including:
     - manually setting/grabbing base protos of any object (vm.baseProtos)
     - manually setting/grabbing the global table (vm.globals)
     - manually invoking a garbage collection event (vm.collect())
 
     for this reason, it is recommended to NOT load this library in production
 */
-COSMO_API void cosmoB_loadDebug(CState *state);
+COSMO_API void cosmoB_loadVM(CState *state);
 
 #define cosmoV_typeError(state, name, expectedTypes, formatStr, ...) \
         cosmoV_error(state, name " expected (" expectedTypes "), got (" formatStr ")!", __VA_ARGS__);

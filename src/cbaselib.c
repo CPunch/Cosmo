@@ -136,8 +136,97 @@ void cosmoB_loadLibrary(CState *state) {
     cosmoV_register(state, i);
 
     // load other libraries
+    cosmoB_loadObjLib(state);
     cosmoB_loadStrLib(state);
     cosmoB_loadMathLib(state);
+}
+
+// ================================================================ [OBJECT.*] ================================================================
+
+int cosmoB_osetProto(CState *state, int nargs, CValue *args) {
+    if (nargs == 2) {
+        CObj *obj = cosmoV_readObj(args[0]); // object to set proto too
+        CObjObject *proto = cosmoV_readObject(args[1]);
+
+        obj->proto = proto; // boom done
+    } else {
+        cosmoV_error(state, "Expected 2 arguments, got %d!", nargs);
+    }
+
+    return 0; // nothing
+}
+
+int cosmoB_ogetProto(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "Expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    cosmoV_pushObj(state, (CObj*)cosmoV_readObject(args[0])->_obj.proto); // just return the proto
+
+    return 1; // 1 result
+}
+
+int cosmoB_oisChild(CState *state, int nargs, CValue *args) {
+    if (nargs != 2) {
+        cosmoV_error(state, "object.ischild() expected 2 arguments, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_OBJ(args[0]) || !IS_OBJECT(args[1])) {
+        cosmoV_typeError(state, "oject.ischild()", "<reference obj>, <object>", "%s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
+        return 0;
+    }
+
+    CObj *obj = cosmoV_readObj(args[0]);
+    CObjObject *proto = cosmoV_readObject(args[1]);
+
+    // push result
+    cosmoV_pushBoolean(state, cosmoO_isDescendant(obj, proto));
+    return 1;
+}
+
+COSMO_API void cosmoB_loadObjLib(CState *state) {
+     const char *identifiers[] = {
+        "ischild"
+    };
+
+    CosmoCFunction objLib[] = {
+        cosmoB_oisChild
+    };
+
+    // make object library object
+    cosmoV_pushString(state, "object");
+
+    // make __getter object for debug proto
+    cosmoV_pushString(state, "__getter");
+
+    // key & value pair
+    cosmoV_pushString(state, "__proto"); // key
+    cosmoV_pushCFunction(state, cosmoB_ogetProto); // value
+
+    cosmoV_makeTable(state, 1);
+
+    // make __setter table
+    cosmoV_pushString(state, "__setter");
+
+    cosmoV_pushString(state, "__proto");
+    cosmoV_pushCFunction(state, cosmoB_osetProto);
+
+    cosmoV_makeTable(state, 1);
+
+    int i;
+    for (i = 0; i < sizeof(identifiers)/sizeof(identifiers[0]); i++) {
+        cosmoV_pushString(state, identifiers[i]);
+        cosmoV_pushCFunction(state, objLib[i]);
+    }
+
+    // make the object and set the protoobject for all runtime-allocated objects
+    CObjObject *obj = cosmoV_makeObject(state, i + 2); // + 2 for the getter/setter tables
+    cosmoV_registerProtoObject(state, COBJ_OBJECT, obj);
+
+    // register "object" to the global table
+    cosmoV_register(state, 1);
 }
 
 // ================================================================ [STRING.*] ================================================================
@@ -432,32 +521,6 @@ void cosmoB_loadMathLib(CState *state) {
     cosmoV_register(state, 1);
 }
 
-// ================================================================ [DEBUG] ================================================================
-
-int cosmoB_dsetProto(CState *state, int nargs, CValue *args) {
-    if (nargs == 2) {
-        CObj *obj = cosmoV_readObj(args[0]); // object to set proto too
-        CObjObject *proto = cosmoV_readObject(args[1]);
-
-        obj->proto = proto; // boom done
-    } else {
-        cosmoV_error(state, "Expected 2 arguments, got %d!", nargs);
-    }
-
-    return 0; // nothing
-}
-
-int cosmoB_dgetProto(CState *state, int nargs, CValue *args) {
-    if (nargs != 1) {
-        cosmoV_error(state, "Expected 1 argument, got %d!", nargs);
-        return 0;
-    }
-
-    cosmoV_pushObj(state, (CObj*)cosmoV_readObject(args[0])->_obj.proto); // just return the proto
-
-    return 1; // 1 result
-}
-
 // ================================================================ [VM.*] ================================================================
 
 // vm.__getter["globals"]
@@ -549,31 +612,7 @@ int cosmoB_vcollect(CState *state, int nargs, CValue *args) {
     return 0;
 }
 
-void cosmoB_loadDebug(CState *state) {
-    // make __getter object for debug proto
-    cosmoV_pushString(state, "__getter");
-
-    // key & value pair
-    cosmoV_pushString(state, "__proto"); // key
-    cosmoV_pushCFunction(state, cosmoB_dgetProto); // value
-
-    cosmoV_makeTable(state, 1);
-
-    // make __setter object
-    cosmoV_pushString(state, "__setter");
-
-    cosmoV_pushString(state, "__proto");
-    cosmoV_pushCFunction(state, cosmoB_dsetProto);
-
-    cosmoV_makeTable(state, 1);
-
-    // we call makeObject leting it know there are 2 sets of key & value pairs on the stack
-    CObjObject *obj = cosmoV_makeObject(state, 2);
-
-    // set debug protos to the debug object
-    cosmoV_registerProtoObject(state, COBJ_OBJECT, obj);
-    cosmoV_pop(state); // pops the debug object
-
+void cosmoB_loadVM(CState *state) {
     // make vm.* object
     cosmoV_pushString(state, "vm");
 
@@ -612,5 +651,5 @@ void cosmoB_loadDebug(CState *state) {
     // register "vm" to the global table
     cosmoV_register(state, 1);
 
-    printf("[WARNING] the debug library has been loaded!\n");
+    printf("[WARNING] the vm.* library has been loaded!\n");
 }

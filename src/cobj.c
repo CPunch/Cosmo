@@ -288,6 +288,20 @@ CObjString *cosmoO_pushVFString(CState *state, const char *format, va_list args)
     return cosmoV_readString(*start); // start should be state->top - 1
 }
 
+// walks the protos of obj and checks for proto
+bool cosmoO_isDescendant(CObj *obj, CObjObject *proto) {
+    CObjObject *curr = obj->proto;
+
+    while (curr != NULL) {
+        if (curr == proto) 
+            return true; // found proto! return true
+
+        curr = ((CObj*)curr)->proto;
+    }
+
+    // we didn't find the proto
+    return false;
+}
 
 // returns false if error thrown
 bool cosmoO_getRawObject(CState *state, CObjObject *proto, CValue key, CValue *val, CObj *obj) {

@@ -155,6 +155,9 @@ static inline CObjObject *cosmoO_grabProto(CObj *obj) {
     return obj->type == COBJ_OBJECT ? (CObjObject*)obj : obj->proto;
 }
 
+// walks the protos of obj and checks for proto
+bool cosmoO_isDescendant(CObj *obj, CObjObject *proto);
+
 bool cosmoO_getRawObject(CState *state, CObjObject *proto, CValue key, CValue *val, CObj *obj);
 void cosmoO_setRawObject(CState *state, CObjObject *proto, CValue key, CValue val, CObj *obj);
 bool cosmoO_indexObject(CState *state, CObjObject *object, CValue key, CValue *val);

@@ -1433,7 +1433,7 @@ static void forLoop(CParseState *pstate) {
     // parse initializer
     if (!match(pstate, TOKEN_EOS)) {
         expressionStatement(pstate);
-        consume(pstate, TOKEN_EOS, "Expected ';' after initializer!");
+        consume(pstate, TOKEN_EOS, "Expected ';' after initializer");
     }
 
     // start loop scope
