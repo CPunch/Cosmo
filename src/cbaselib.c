@@ -53,11 +53,17 @@ int cosmoB_pcall(CState *state, int nargs, CValue *args) {
         return 0;
     }
 
+    // unfreeze the state GC before calling the function
+    cosmoM_unfreezeGC(state);
+
     // call the passed callable
     COSMOVMRESULT res = cosmoV_pcall(state, nargs-1, 1);
 
     // insert false before the result
     cosmo_insert(state, 0, cosmoV_newBoolean(res == COSMOVM_OK));
+
+    // refreeze the state GC so it can be properly unfrozen
+    cosmoM_freezeGC(state);
     return 2;
 }
 
