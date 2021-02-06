@@ -136,10 +136,11 @@ static inline bool IS_CALLABLE(CValue val) {
     return IS_CLOSURE(val) || IS_CFUNCTION(val) || IS_METHOD(val);
 }  
 
-CObj *cosmoO_allocateBase(CState *state, size_t sz, CObjType type);
 void cosmoO_free(CState *state, CObj* obj);
-
 bool cosmoO_equal(CObj* obj1, CObj* obj2);
+
+// walks the protos of obj and checks for proto
+bool cosmoO_isDescendant(CObj *obj, CObjObject *proto);
 
 CObjObject *cosmoO_newObject(CState *state);
 CObjTable *cosmoO_newTable(CState *state);
@@ -154,9 +155,6 @@ CObjUpval *cosmoO_newUpvalue(CState *state, CValue *val);
 static inline CObjObject *cosmoO_grabProto(CObj *obj) {
     return obj->type == COBJ_OBJECT ? (CObjObject*)obj : obj->proto;
 }
-
-// walks the protos of obj and checks for proto
-bool cosmoO_isDescendant(CObj *obj, CObjObject *proto);
 
 bool cosmoO_getRawObject(CState *state, CObjObject *proto, CValue key, CValue *val, CObj *obj);
 void cosmoO_setRawObject(CState *state, CObjObject *proto, CValue key, CValue val, CObj *obj);
@@ -181,12 +179,12 @@ CObjString *cosmoO_takeString(CState *state, char *str, size_t length);
 CObjString *cosmoO_allocateString(CState *state, const char *str, size_t length, uint32_t hash);
 
 /*
-    formats strings to push onto the VM stack, formatting supported:
+    limited format strings to push onto the VM stack, formatting supported:
 
     '%d' - integers         [int]
     '%f' - floating point   [double]
-    '%s' - strings          [const char*]
-    '%t' - cosmo tokens     [CToken *]
+    '%s' - strings          [char*]
+        '%s' also accepts '%*s' which looks for a length specifier before the char* array
 */
 CObjString *cosmoO_pushVFString(CState *state, const char *format, va_list args);
 

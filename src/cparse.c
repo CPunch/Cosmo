@@ -146,7 +146,7 @@ static void errorAt(CParseState *pstate, CToken *token, const char *format, va_l
     if (token->type == TOKEN_EOF) {
         cosmoV_pushString(pstate->state, "At end: ");
     } else if (!(token->type == TOKEN_ERROR)) {
-        cosmoV_pushFString(pstate->state, "At '%t': ", token); // this is why the '%t' exist in cosmoO_pushFString lol
+        cosmoV_pushFString(pstate->state, "At '%*s': ", token->length, token->start);
     } else {
         cosmoV_pushString(pstate->state, "Lexer error: ");
     }

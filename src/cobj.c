@@ -245,34 +245,38 @@ CObjString *cosmoO_allocateString(CState *state, const char *str, size_t sz, uin
 
 CObjString *cosmoO_pushVFString(CState *state, const char *format, va_list args) {
     StkPtr start = state->top;
+    const char *end;
+    char c;
+    int len;
 
     while (true) {
-        const char *end = strchr(format, '%'); // grab the next occurrence of '%'
+        end = strchr(format, '%'); // grab the next occurrence of '%'
+        len = -1; // -1 means no length specified
         if (end == NULL) // the end, no '%' found
             break;
 
         // push the string before '%'
         cosmoV_pushLString(state, format, (end - format));
-        char c = *(end+1); // the character right after '%'
 
+        reentry:
+        c = end[1]; // the character right after '%'
         switch (c) {
-            case 'd': { // int
+            case 'd': // int
                 cosmoV_pushNumber(state, va_arg(args, int));
                 break;
-            }
-            case 'f': { // double
+            case 'f': // double
                 cosmoV_pushNumber(state, va_arg(args, double));
                 break;
-            }
-            case 's': { // const char *
-                cosmoV_pushString(state, va_arg(args, char *));
+            case 's': // char *
+                if (len >= 0) // the length is specified
+                    cosmoV_pushLString(state, va_arg(args, char *), len);
+                else
+                    cosmoV_pushString(state, va_arg(args, char *));
                 break;
-            }
-            case 't': { // CToken *
-                CToken *token = va_arg(args, CToken *);
-                cosmoV_pushLString(state, token->start, token->length);
-                break;
-            }
+            case '*': // length specifier
+                len = va_arg(args, int);
+                end++; // skip '*'
+                goto reentry;
             default: {
                 char temp[2];
                 temp[0] = '%';
