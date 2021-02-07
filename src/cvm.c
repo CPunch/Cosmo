@@ -514,7 +514,7 @@ int _tbl__next(CState *state, int nargs, CValue *args) {
     }
 
     CObjObject *obj = cosmoV_readObject(args[0]);
-    int index = cosmoO_getUserI(state, obj); // we store the index in the userdata
+    int index = cosmoO_getUserI(obj); // we store the index in the userdata
     CValue val;
     
     cosmoO_getIString(state, obj, ISTRING_RESERVED, &val);
@@ -531,7 +531,7 @@ int _tbl__next(CState *state, int nargs, CValue *args) {
     do {
         entry = &table->tbl.table[index++];
     } while (IS_NIL(entry->key) && index < cap);
-    cosmoO_setUserI(state, obj, index); // update the userdata
+    cosmoO_setUserI(obj, index); // update the userdata
 
     if (index < cap && !IS_NIL(entry->key)) { // if the entry is valid, return it's key and value pair
         cosmoV_pushValue(state, entry->key);
@@ -887,7 +887,7 @@ int cosmoV_execute(CState *state) {
                     cosmoV_pushObj(state, (CObj*)tbl_next); // value
 
                     CObjObject *obj = cosmoV_makeObject(state, 2); // pushes the new object to the stack
-                    cosmoO_setUserI(state, obj, 0); // increment for iterator
+                    cosmoO_setUserI(obj, 0); // increment for iterator
 
                     // make our CObjMethod for OP_NEXT to call
                     CObjMethod *method = cosmoO_newMethod(state, cosmoV_newObj(tbl_next), (CObj*)obj);

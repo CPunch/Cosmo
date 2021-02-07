@@ -114,6 +114,8 @@ CObjObject *cosmoO_newObject(CState *state) {
     CObjObject *obj = (CObjObject*)cosmoO_allocateBase(state, sizeof(CObjObject), COBJ_OBJECT);
     obj->istringFlags = 0;
     obj->userP = NULL; // reserved for C API
+    obj->userT = 0;
+    obj->isLocked = false;
     cosmoV_pushObj(state, (CObj*)obj); // so our GC can keep track of it
     cosmoT_initTable(state, &obj->tbl, ARRAY_START);
     cosmoV_pop(state);
@@ -332,7 +334,13 @@ bool cosmoO_getRawObject(CState *state, CObjObject *proto, CValue key, CValue *v
 void cosmoO_setRawObject(CState *state, CObjObject *proto, CValue key, CValue val, CObj *obj) {
     CValue ret;
 
-    // first check for __setters
+    // if the object is locked, throw an error
+    if (proto->isLocked) {
+        cosmoV_error(state, "Couldn't set on a locked object!");
+        return;
+    }
+
+    // check for __setters
     if (cosmoO_getIString(state, proto, ISTRING_SETTER, &ret) && IS_TABLE(ret) && cosmoT_get(&cosmoV_readTable(ret)->tbl, key, &ret)) {
         cosmoV_pushValue(state, ret); // push function
         cosmoV_pushObj(state, (CObj*)obj); // push object
@@ -353,20 +361,36 @@ void cosmoO_setRawObject(CState *state, CObjObject *proto, CValue key, CValue va
     }
 }
 
-void cosmoO_setUserP(CState *state, CObjObject *object, void *p) {
+void cosmoO_setUserP(CObjObject *object, void *p) {
     object->userP = p;
 }
 
-void *cosmoO_getUserP(CState *state, CObjObject *object) {
+void *cosmoO_getUserP(CObjObject *object) {
     return object->userP;
 }
 
-void cosmoO_setUserI(CState *state, CObjObject *object, int i) {
+void cosmoO_setUserI(CObjObject *object, int i) {
     object->userI = i;
 }
 
-int cosmoO_getUserI(CState *state, CObjObject *object) {
+int cosmoO_getUserI(CObjObject *object) {
     return object->userI;
+}
+
+void cosmoO_setUserT(CObjObject *object, int t) {
+    object->userT = t;
+}
+
+int cosmoO_getUserT(CObjObject *object) {
+    return object->userT;
+}
+
+void cosmoO_lock(CObjObject *object) {
+    object->isLocked = true;
+}
+
+void cosmoO_unlock(CObjObject *object) {
+    object->isLocked = false;
 }
 
 bool rawgetIString(CState *state, CObjObject *object, int flag, CValue *val) {

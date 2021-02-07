@@ -223,6 +223,7 @@ COSMO_API void cosmoB_loadObjLib(CState *state) {
 
     // make the object and set the protoobject for all runtime-allocated objects
     CObjObject *obj = cosmoV_makeObject(state, i + 2); // + 2 for the getter/setter tables
+    cosmoO_lock(obj); // lock so pesky people don't mess with it (feel free to remove if debugging)
     cosmoV_registerProtoObject(state, COBJ_OBJECT, obj);
 
     // register "object" to the global table
@@ -431,6 +432,7 @@ void cosmoB_loadStrLib(CState *state) {
 
     // make the object and set the protoobject for all strings
     CObjObject *obj = cosmoV_makeObject(state, i);
+    cosmoO_lock(obj); // lock so pesky people don't mess with it (feel free to remove if debugging)
     cosmoV_registerProtoObject(state, COBJ_STRING, obj);
 
     // register "string" to the global table

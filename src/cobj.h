@@ -33,38 +33,40 @@ typedef uint32_t cosmo_Flag;
 typedef int (*CosmoCFunction)(CState *state, int argCount, CValue *args);
 
 typedef struct CObj {
-    CObjType type;
-    bool isMarked; // for the GC
     struct CObj *next;
     struct CObj *nextRoot; // for the root linked list
     struct CObjObject *proto; // protoobject, describes the behavior of the object
+    CObjType type;
+    bool isMarked; // for the GC
 } CObj;
 
 typedef struct CObjString {
     CommonHeader; // "is a" CObj
-    bool isIString;
-    int length;
     char *str; // NULL termincated string
     uint32_t hash; // for hashtable lookup
+    int length;
+    bool isIString;
 } CObjString;
 
 typedef struct CObjError {
     CommonHeader; // "is a" CObj
-    bool parserError; // if true, cosmoV_printError will format the error to the lexer
-    int frameCount;
-    int line; // reserved for parser errors
     CValue err; // error string
     CCallFrame *frames;
+    int frameCount;
+    int line; // reserved for parser errors
+    bool parserError; // if true, cosmoV_printError will format the error to the lexer
 } CObjError;
 
 typedef struct CObjObject {
     CommonHeader; // "is a" CObj
-    cosmo_Flag istringFlags; // enables us to have a much faster lookup for reserved IStrings (like __init, __index, etc.)
     CTable tbl;
+    cosmo_Flag istringFlags; // enables us to have a much faster lookup for reserved IStrings (like __init, __index, etc.)
     union { // userdata (NULL by default)
         void *userP;
         int userI;
     };
+    int userT; // user-defined type (for describing the userdata pointer/integer)
+    bool isLocked;
 } CObjObject;
 
 typedef struct CObjTable { // table, a wrapper for CTable
@@ -75,11 +77,11 @@ typedef struct CObjTable { // table, a wrapper for CTable
 typedef struct CObjFunction {
     CommonHeader; // "is a" CObj
     CChunk chunk;
+    CObjString *name;
+    CObjString *module; // name of the "module"
     int args;
     int upvals;
     bool variadic;
-    CObjString *name;
-    CObjString *module; // name of the "module"
 } CObjFunction;
 
 typedef struct CObjCFunction {
@@ -96,14 +98,14 @@ typedef struct CObjClosure {
 
 typedef struct CObjMethod {
     CommonHeader; // "is a " CObj
-    CObj *obj; // obj this method is bound too
     CValue func;
+    CObj *obj; // obj this method is bound too
 } CObjMethod;
 
 typedef struct CObjUpval {
     CommonHeader; // "is a" CObj
-    CValue *val;
     CValue closed;
+    CValue *val;
     struct CObjUpval *next;
 } CObjUpval;
 
@@ -161,10 +163,22 @@ void cosmoO_setRawObject(CState *state, CObjObject *proto, CValue key, CValue va
 bool cosmoO_indexObject(CState *state, CObjObject *object, CValue key, CValue *val);
 bool cosmoO_newIndexObject(CState *state, CObjObject *object, CValue key, CValue val);
 
-void cosmoO_setUserP(CState *state, CObjObject *object, void *p);
-void *cosmoO_getUserP(CState *state, CObjObject *object);
-void cosmoO_setUserI(CState *state, CObjObject *object, int i);
-int cosmoO_getUserI(CState *state, CObjObject *object);
+// sets the user-defined pointer, if a user-define integer is already defined it will be over written
+void cosmoO_setUserP(CObjObject *object, void *p);
+// gets the user-defined pointer
+void *cosmoO_getUserP(CObjObject *object);
+// sets the user-defined integer, if a user-define pointer is already defined it will be over written
+void cosmoO_setUserI(CObjObject *object, int i);
+// gets the user-defined integer
+int cosmoO_getUserI(CObjObject *object);
+// sets the user-defined type
+void cosmoO_setUserT(CObjObject *object, int t);
+// gets the user type
+int cosmoO_getUserT(CObjObject *object);
+// locks the object
+void cosmoO_lock(CObjObject *object);
+// unlocks the object
+void cosmoO_unlock(CObjObject *object);
 
 // internal string
 bool cosmoO_getIString(CState *state, CObjObject *object, int flag, CValue *val);
