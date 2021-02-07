@@ -27,7 +27,7 @@ bool cosmoV_equal(CValue valA, CValue valB) {
     switch (GET_TYPE(valA)) {
         case COSMO_TBOOLEAN: return cosmoV_readBoolean(valA) == cosmoV_readBoolean(valB);
         case COSMO_TNUMBER: return cosmoV_readNumber(valA) == cosmoV_readNumber(valB);
-        case COSMO_TOBJ: return cosmoO_equal(cosmoV_readRef(valA), cosmoV_readRef(valB));
+        case COSMO_TREF: return cosmoO_equal(cosmoV_readRef(valA), cosmoV_readRef(valB));
         case COSMO_TNIL: return true;
         default:
             return false;
@@ -44,7 +44,7 @@ CObjString *cosmoV_toString(CState *state, CValue val) {
         case COSMO_TBOOLEAN: {
             return cosmoV_readBoolean(val) ? cosmoO_copyString(state, "true", 4) : cosmoO_copyString(state, "false", 5);            
         }
-        case COSMO_TOBJ: {
+        case COSMO_TREF: {
             return cosmoO_toString(state, cosmoV_readRef(val));
         }
         case COSMO_TNIL: {
@@ -63,7 +63,7 @@ cosmo_Number cosmoV_toNumber(CState *state, CValue val) {
         case COSMO_TBOOLEAN: {
             return cosmoV_readBoolean(val) ? 1 : 0;
         }
-        case COSMO_TOBJ: {
+        case COSMO_TREF: {
             return cosmoO_toNumber(state, cosmoV_readRef(val));
         }
         case COSMO_TNIL: // fall through
@@ -77,7 +77,7 @@ const char *cosmoV_typeStr(CValue val) {
         case COSMO_TNIL:        return "<nil>";
         case COSMO_TBOOLEAN:    return "<bool>";
         case COSMO_TNUMBER:     return "<number>";
-        case COSMO_TOBJ:        return cosmoO_typeStr(cosmoV_readRef(val));
+        case COSMO_TREF:        return cosmoO_typeStr(cosmoV_readRef(val));
         
         default:
             return "<unkn val>";
@@ -92,7 +92,7 @@ void printValue(CValue val) {
         case COSMO_TBOOLEAN:
             printf(cosmoV_readBoolean(val) ? "true" : "false");
             break;
-        case COSMO_TOBJ: {
+        case COSMO_TREF: {
             printObject(cosmoV_readRef(val));
             break;
         }

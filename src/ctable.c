@@ -66,7 +66,7 @@ uint32_t getObjectHash(CObj *obj) {
 
 uint32_t getValueHash(CValue *val) {
     switch (GET_TYPE(*val)) {
-        case COSMO_TOBJ:
+        case COSMO_TREF:
             return getObjectHash(cosmoV_readRef(*val));
         case COSMO_TNUMBER: {
             uint32_t buf[sizeof(cosmo_Number)/sizeof(uint32_t)];

@@ -10,8 +10,12 @@
 
 int cosmoB_print(CState *state, int nargs, CValue *args) {
     for (int i = 0; i < nargs; i++) {
-        CObjString *str = cosmoV_toString(state, args[i]);
-        printf("%s", cosmoO_readCString(str));
+        if (IS_REF(args[i])) { // if its a CObj*, generate the CObjString
+            CObjString *str = cosmoV_toString(state, args[i]);
+            printf("%s", cosmoO_readCString(str));
+        } else { // else, thats pretty expensive for primitives, just print the raw value
+            printValue(args[i]);
+        }
     }
     printf("\n");
 
@@ -173,7 +177,7 @@ int cosmoB_oisChild(CState *state, int nargs, CValue *args) {
         return 0;
     }
 
-    if (!IS_OBJ(args[0]) || !IS_OBJECT(args[1])) {
+    if (!IS_REF(args[0]) || !IS_OBJECT(args[1])) {
         cosmoV_typeError(state, "object.ischild()", "<reference obj>, <object>", "%s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
         return 0;
     }

@@ -6,7 +6,7 @@
 typedef enum {
     COSMO_TNUMBER, // number has to be 0 because NaN box
     COSMO_TBOOLEAN,
-    COSMO_TOBJ,
+    COSMO_TREF,
     COSMO_TNIL,
 } CosmoType;
 
@@ -47,7 +47,7 @@ typedef union CValue {
 
 #define SIG_MASK    (MASK_QUIETNAN | MASK_TYPE)
 #define BOOL_SIG    (MASK_QUIETNAN | ((uint64_t)(COSMO_TBOOLEAN) << 48))
-#define OBJ_SIG     (MASK_QUIETNAN | ((uint64_t)(COSMO_TOBJ) << 48))
+#define OBJ_SIG     (MASK_QUIETNAN | ((uint64_t)(COSMO_TREF) << 48))
 #define NIL_SIG     (MASK_QUIETNAN | ((uint64_t)(COSMO_TNIL) << 48))
 
 #define cosmoV_newNumber(x)     ((CValue){.num = x})
@@ -62,7 +62,7 @@ typedef union CValue {
 #define IS_NUMBER(x)    (((x).data & MASK_QUIETNAN) != MASK_QUIETNAN)
 #define IS_BOOLEAN(x)   (((x).data & SIG_MASK) == BOOL_SIG)
 #define IS_NIL(x)       (((x).data & SIG_MASK) == NIL_SIG)
-#define IS_OBJ(x)       (((x).data & SIG_MASK) == OBJ_SIG)
+#define IS_REF(x)       (((x).data & SIG_MASK) == OBJ_SIG)
 
 #else
 /*
@@ -83,7 +83,7 @@ typedef struct CValue {
 
 #define cosmoV_newNumber(x)     ((CValue){COSMO_TNUMBER,    {.num = (x)}})
 #define cosmoV_newBoolean(x)    ((CValue){COSMO_TBOOLEAN,   {.b = (x)}})
-#define cosmoV_newRef(x)        ((CValue){COSMO_TOBJ,       {.obj = (CObj*)(x)}})
+#define cosmoV_newRef(x)        ((CValue){COSMO_TREF,       {.obj = (CObj*)(x)}})
 #define cosmoV_newNil()         ((CValue){COSMO_TNIL,       {.num = 0}})
 
 // read CValues
@@ -97,7 +97,7 @@ typedef struct CValue {
 #define IS_NUMBER(x)    (GET_TYPE(x) == COSMO_TNUMBER)
 #define IS_BOOLEAN(x)   (GET_TYPE(x) == COSMO_TBOOLEAN)
 #define IS_NIL(x)       (GET_TYPE(x) == COSMO_TNIL)
-#define IS_OBJ(x)       (GET_TYPE(x) == COSMO_TOBJ)
+#define IS_REF(x)       (GET_TYPE(x) == COSMO_TREF)
 
 #endif
 

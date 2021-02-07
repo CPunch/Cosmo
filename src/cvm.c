@@ -306,7 +306,7 @@ bool callCValue(CState *state, CValue func, int args, int nresults, int offset) 
     printf("(%d args)\n", args);
 #endif
 
-    if (!IS_OBJ(func)) {
+    if (!IS_REF(func)) {
         cosmoV_error(state, "Cannot call non-callable type %s!", cosmoV_typeStr(func));
         return false;
     }
@@ -449,7 +449,7 @@ COSMO_API void cosmoV_makeTable(CState *state, int pairs) {
     cosmoV_pushRef(state, (CObj*)newObj);
 }
 
-COSMO_API bool cosmoV_get(CState *state, CObj *_obj, CValue key, CValue *val) {
+bool cosmoV_rawget(CState *state, CObj *_obj, CValue key, CValue *val) {
     CObjObject *object = cosmoO_grabProto(_obj);
     
     // no proto to get from
@@ -472,7 +472,7 @@ COSMO_API bool cosmoV_get(CState *state, CObj *_obj, CValue key, CValue *val) {
     return false;
 }
 
-COSMO_API bool cosmoV_set(CState *state, CObj *_obj, CValue key, CValue val) {
+bool cosmoV_rawset(CState *state, CObj *_obj, CValue key, CValue val) {
     CObjObject *object = cosmoO_grabProto(_obj);
 
     // no proto to set to
@@ -486,8 +486,46 @@ COSMO_API bool cosmoV_set(CState *state, CObj *_obj, CValue key, CValue val) {
     return true;
 }
 
+COSMO_API bool cosmoV_get(CState *state) {
+    CValue val;
+    StkPtr obj = cosmoV_getTop(state, 1); // object was pushed first
+    StkPtr key = cosmoV_getTop(state, 0); // then the key
+
+    if (!IS_REF(*obj)) {
+        cosmoV_error(state, "Couldn't get field from type %s!", cosmoV_typeStr(*obj));
+        return false;
+    }
+
+    if (!cosmoV_rawget(state, cosmoV_readRef(*obj), *key, &val))
+        return false;
+
+    // pop the obj & key, push the value
+    cosmoV_setTop(state, 2);
+    cosmoV_pushValue(state, val);
+    return true;
+}
+
+// yes, this would technically make it possible to set fields of types other than <string>. go crazy 
+COSMO_API bool cosmoV_set(CState *state) {
+    StkPtr obj = cosmoV_getTop(state, 2); // object was pushed first
+    StkPtr key = cosmoV_getTop(state, 1); // then the key
+    StkPtr val = cosmoV_getTop(state, 0); // and finally the value
+
+    if (!IS_REF(*obj)) {
+        cosmoV_error(state, "Couldn't set field on type %s!", cosmoV_typeStr(*obj));
+        return false;
+    }
+
+    if (!cosmoV_rawset(state, cosmoV_readRef(*obj), *key, *val))
+        return false;
+    
+    // pop the obj, key & value
+    cosmoV_setTop(state, 3);
+    return true;
+}
+
 COSMO_API bool cosmoV_getMethod(CState *state, CObj *obj, CValue key, CValue *val) {
-    if (!cosmoV_get(state, obj, key, val))
+    if (!cosmoV_rawget(state, obj, key, val))
         return false;
     
     // if the result is callable, wrap it in an method
@@ -701,7 +739,7 @@ int cosmoV_execute(CState *state) {
                 StkPtr temp = cosmoV_getTop(state, 1); // after that should be the table
 
                 // sanity check
-                if (!IS_OBJ(*temp)) {
+                if (!IS_REF(*temp)) {
                     cosmoV_error(state, "Couldn't index type %s!", cosmoV_typeStr(*temp));
                     return -1;
                 }
@@ -733,7 +771,7 @@ int cosmoV_execute(CState *state) {
                 StkPtr temp = cosmoV_getTop(state, 2); // table is after the key
 
                 // sanity check
-                if (!IS_OBJ(*temp)) {
+                if (!IS_REF(*temp)) {
                     cosmoV_error(state, "Couldn't set index with type %s!", cosmoV_typeStr(*temp));
                     return -1;
                 }
@@ -769,8 +807,8 @@ int cosmoV_execute(CState *state) {
                 uint16_t ident = READUINT(); // use for the key
 
                 // sanity check
-                if (IS_OBJ(*temp)) {
-                    if (!cosmoV_set(state, cosmoV_readRef(*temp), constants[ident], *value))
+                if (IS_REF(*temp)) {
+                    if (!cosmoV_rawset(state, cosmoV_readRef(*temp), constants[ident], *value))
                         return -1;
                 } else {
                     CObjString *field = cosmoV_toString(state, constants[ident]);
@@ -788,8 +826,8 @@ int cosmoV_execute(CState *state) {
                 uint16_t ident = READUINT(); // use for the key
 
                 // sanity check
-                if (IS_OBJ(*temp)) {
-                    if (!cosmoV_get(state, cosmoV_readRef(*temp), constants[ident], &val))
+                if (IS_REF(*temp)) {
+                    if (!cosmoV_rawget(state, cosmoV_readRef(*temp), constants[ident], &val))
                         return -1;
                 } else {
                     CObjString *field = cosmoV_toString(state, constants[ident]);
@@ -807,7 +845,7 @@ int cosmoV_execute(CState *state) {
                 uint16_t ident = READUINT(); // use for the key
 
                 // this is almost identical to GETOBJECT, however cosmoV_getMethod is used instead of just cosmoV_get
-                if (IS_OBJ(*temp)) {
+                if (IS_REF(*temp)) {
                     if (!cosmoV_getMethod(state, cosmoV_readRef(*temp), constants[ident], &val))
                         return -1;
                 } else {
@@ -828,9 +866,9 @@ int cosmoV_execute(CState *state) {
                 CValue val; // to hold our value
 
                 // sanity check
-                if (IS_OBJ(*temp)) {
+                if (IS_REF(*temp)) {
                     // get the field from the object
-                    if (!cosmoV_get(state, cosmoV_readRef(*temp), constants[ident], &val))
+                    if (!cosmoV_rawget(state, cosmoV_readRef(*temp), constants[ident], &val))
                         return -1;
                     
                     // now invoke the method!
@@ -845,7 +883,7 @@ int cosmoV_execute(CState *state) {
             case OP_ITER: {
                 StkPtr temp = cosmoV_getTop(state, 0); // should be the object/table
 
-                if (!IS_OBJ(*temp)) {
+                if (!IS_REF(*temp)) {
                     cosmoV_error(state, "Couldn't iterate over non-iterator type %s!", cosmoV_typeStr(*temp));
                     return -1;
                 }
@@ -968,7 +1006,7 @@ int cosmoV_execute(CState *state) {
             case OP_COUNT: { 
                 StkPtr temp = cosmoV_getTop(state, 0);
 
-                if (!IS_OBJ(*temp)) {
+                if (!IS_REF(*temp)) {
                     cosmoV_error(state, "Expected non-primitive, got %s!", cosmoV_typeStr(*temp));
                     return -1;
                 }
@@ -1038,7 +1076,7 @@ int cosmoV_execute(CState *state) {
                 StkPtr temp = cosmoV_getTop(state, 1); // object should be above the key
                 StkPtr key = cosmoV_getTop(state, 0); // grabs key
 
-                if (!IS_OBJ(*temp)) {
+                if (!IS_REF(*temp)) {
                     cosmoV_error(state, "Couldn't index non-indexable type %s!", cosmoV_typeStr(*temp));
                     return -1;
                 }
@@ -1089,11 +1127,11 @@ int cosmoV_execute(CState *state) {
                 CValue ident = constants[indx]; // grabs identifier
 
                 // sanity check
-                if (IS_OBJ(*temp)) {
+                if (IS_REF(*temp)) {
                     CObj *obj = cosmoV_readRef(*temp);
                     CValue val;
                     
-                    if (!cosmoV_get(state, obj, ident, &val))
+                    if (!cosmoV_rawget(state, obj, ident, &val))
                         return -1;
 
                     // pop the object off the stack
@@ -1102,7 +1140,7 @@ int cosmoV_execute(CState *state) {
                     // check that it's a number value
                     if (IS_NUMBER(val)) { 
                         cosmoV_pushValue(state, val); // pushes old value onto the stack :)
-                        if (!cosmoV_set(state, obj, ident, cosmoV_newNumber(cosmoV_readNumber(val) + inc)))
+                        if (!cosmoV_rawset(state, obj, ident, cosmoV_newNumber(cosmoV_readNumber(val) + inc)))
                             return -1;
                     } else {
                         cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(val));

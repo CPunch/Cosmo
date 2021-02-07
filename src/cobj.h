@@ -130,7 +130,7 @@ typedef struct CObjUpval {
 #define cosmoO_readCString(x)    ((CObjString*)x)->str
 
 static inline bool isObjType(CValue val, CObjType type) {
-    return IS_OBJ(val) && cosmoV_readRef(val)->type == type;
+    return IS_REF(val) && cosmoV_readRef(val)->type == type;
 }
 
 // just protects against macro expansion

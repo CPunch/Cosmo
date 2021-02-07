@@ -40,8 +40,20 @@ COSMO_API bool cosmoV_registerProtoObject(CState *state, CObjType objType, CObjO
 */
 COSMO_API bool cosmoV_compileString(CState *state, const char *src, const char *name);
 
-COSMO_API bool cosmoV_get(CState *state, CObj *obj, CValue key, CValue *val);
-COSMO_API bool cosmoV_set(CState *state, CObj *obj, CValue key, CValue val);
+/*
+    expects object to be pushed, then the key. 
+    
+    if returns false an error was thrown, if returns true the value was pushed onto the stack and the object and key were popped
+*/
+COSMO_API bool cosmoV_get(CState *state);
+
+/*
+    expects object to be pushed, then the key, and finally the new value. 
+    
+    if returns false an error was thrown, if returns true the value was set and the object key, and value were popped
+*/
+COSMO_API bool cosmoV_set(CState *state);
+
 // wraps the closure into a CObjMethod, so the function is called as an invoked method 
 COSMO_API bool cosmoV_getMethod(CState *state, CObj *obj, CValue key, CValue *val);
 
