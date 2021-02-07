@@ -47,7 +47,7 @@ COSMO_API bool cosmoV_getMethod(CState *state, CObj *obj, CValue key, CValue *va
 
 // nice to have wrappers
 
-// pushes value to the stack
+// pushes raw CValue to the stack
 static inline void cosmoV_pushValue(CState *state, CValue val) {
 #ifdef SAFE_STACK
     ptrdiff_t stackSize = state->top - state->stack;
@@ -95,17 +95,18 @@ static inline void cosmoV_pushBoolean(CState *state, bool b) {
     cosmoV_pushValue(state, cosmoV_newBoolean(b));
 }
 
-static inline void cosmoV_pushObj(CState *state, CObj *obj) {
-    cosmoV_pushValue(state, cosmoV_newObj(obj));
+static inline void cosmoV_pushRef(CState *state, CObj *obj) {
+    cosmoV_pushValue(state, cosmoV_newRef(obj));
 }
 
 // pushes a C Function to the stack
 static inline void cosmoV_pushCFunction(CState *state, CosmoCFunction func) {
-    cosmoV_pushObj(state, (CObj*)cosmoO_newCFunction(state, func));
+    cosmoV_pushRef(state, (CObj*)cosmoO_newCFunction(state, func));
 }
 
+// len is the length of the string without the NULL terminator
 static inline void cosmoV_pushLString(CState *state, const char *str, size_t len) {
-    cosmoV_pushObj(state, (CObj*)cosmoO_copyString(state, str, len));
+    cosmoV_pushRef(state, (CObj*)cosmoO_copyString(state, str, len));
 }
 
 // accepts a null terminated string and copys the buffer to the VM heap

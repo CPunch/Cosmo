@@ -296,7 +296,7 @@ void patchJmp(CParseState *pstate, int index) {
 }
 
 static uint16_t identifierConstant(CParseState *pstate, CToken *name) {
-  return makeConstant(pstate, cosmoV_newObj((CObj*)cosmoO_copyString(pstate->state, name->start, name->length)));
+  return makeConstant(pstate, cosmoV_newRef((CObj*)cosmoO_copyString(pstate->state, name->start, name->length)));
 }
 
 static void addLocal(CParseState *pstate, CToken name) {
@@ -419,7 +419,7 @@ static void binnumber(CParseState *pstate, bool canAssign, Precedence prec) {
 
 static void string(CParseState *pstate, bool canAssign, Precedence prec) {
     CObjString *strObj = cosmoO_takeString(pstate->state, pstate->previous.start, pstate->previous.length);
-    writeConstant(pstate, cosmoV_newObj((CObj*)strObj));
+    writeConstant(pstate, cosmoV_newRef((CObj*)strObj));
 }
 
 static void literal(CParseState *pstate, bool canAssign, Precedence prec) {
@@ -1296,7 +1296,7 @@ static void function(CParseState *pstate, FunctionType type) {
 
     // push closure
     writeu8(pstate, OP_CLOSURE);
-    writeu16(pstate, makeConstant(pstate, cosmoV_newObj(objFunc)));
+    writeu16(pstate, makeConstant(pstate, cosmoV_newRef(objFunc)));
     valuePushed(pstate, 1);
 
     // tell the vm what locals/upvalues to pass to this closure
@@ -1651,7 +1651,7 @@ CObjFunction* cosmoP_compileString(CState *state, const char *source, const char
     freeParseState(&parser);
 
     // push the funciton onto the stack so if we cause an GC event, it won't be free'd
-    cosmoV_pushObj(state, (CObj*)resFunc);
+    cosmoV_pushRef(state, (CObj*)resFunc);
     cosmoM_unfreezeGC(state);
     cosmoV_pop(state);
     return resFunc;

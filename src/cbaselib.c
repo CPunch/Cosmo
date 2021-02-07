@@ -83,7 +83,7 @@ int cosmoB_tostring(CState *state, int nargs, CValue *args) {
         return 0;
     }
 
-    cosmoV_pushObj(state, (CObj*)cosmoV_toString(state, args[0]));
+    cosmoV_pushRef(state, (CObj*)cosmoV_toString(state, args[0]));
     return 1;
 }
 
@@ -162,7 +162,7 @@ int cosmoB_ogetProto(CState *state, int nargs, CValue *args) {
         return 0;
     }
 
-    cosmoV_pushObj(state, (CObj*)cosmoV_readObject(args[0])->_obj.proto); // just return the proto
+    cosmoV_pushRef(state, (CObj*)cosmoV_readObject(args[0])->_obj.proto); // just return the proto
 
     return 1; // 1 result
 }
@@ -528,7 +528,7 @@ void cosmoB_loadMathLib(CState *state) {
 // vm.__getter["globals"]
 int cosmoB_vgetGlobal(CState *state, int nargs, CValue *args) {
     // this function doesn't need to check anything, just return the global table
-    cosmoV_pushObj(state, (CObj*)state->globals);
+    cosmoV_pushRef(state, (CObj*)state->globals);
     return 1;
 }
 
@@ -569,7 +569,7 @@ int cosmoB_vindexBProto(CState *state, int nargs, CValue *args) {
     }
 
     if (state->protoObjects[indx] != NULL)
-        cosmoV_pushObj(state, (CObj*)state->protoObjects[indx]);
+        cosmoV_pushRef(state, (CObj*)state->protoObjects[indx]);
     else
         cosmoV_pushNil(state);
     

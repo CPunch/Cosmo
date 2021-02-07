@@ -52,7 +52,7 @@ typedef union CValue {
 
 #define cosmoV_newNumber(x)     ((CValue){.num = x})
 #define cosmoV_newBoolean(x)    ((CValue){.data = MAKE_PAYLOAD(x) | BOOL_SIG})
-#define cosmoV_newObj(x)        ((CValue){.data = MAKE_PAYLOAD((uintptr_t)x) | OBJ_SIG})
+#define cosmoV_newRef(x)        ((CValue){.data = MAKE_PAYLOAD((uintptr_t)x) | OBJ_SIG})
 #define cosmoV_newNil()         ((CValue){.data = NIL_SIG})
 
 #define cosmoV_readNumber(x)    ((x).num)
@@ -83,7 +83,7 @@ typedef struct CValue {
 
 #define cosmoV_newNumber(x)     ((CValue){COSMO_TNUMBER,    {.num = (x)}})
 #define cosmoV_newBoolean(x)    ((CValue){COSMO_TBOOLEAN,   {.b = (x)}})
-#define cosmoV_newObj(x)        ((CValue){COSMO_TOBJ,       {.obj = (CObj*)(x)}})
+#define cosmoV_newRef(x)        ((CValue){COSMO_TOBJ,       {.obj = (CObj*)(x)}})
 #define cosmoV_newNil()         ((CValue){COSMO_TNIL,       {.num = 0}})
 
 // read CValues

@@ -116,7 +116,7 @@ CObjObject *cosmoO_newObject(CState *state) {
     obj->userP = NULL; // reserved for C API
     obj->userT = 0;
     obj->isLocked = false;
-    cosmoV_pushObj(state, (CObj*)obj); // so our GC can keep track of it
+    cosmoV_pushRef(state, (CObj*)obj); // so our GC can keep track of it
     cosmoT_initTable(state, &obj->tbl, ARRAY_START);
     cosmoV_pop(state);
 
@@ -127,7 +127,7 @@ CObjTable *cosmoO_newTable(CState *state) {
     CObjTable *obj = (CObjTable*)cosmoO_allocateBase(state, sizeof(CObjTable), COBJ_TABLE);
 
     // init the table (might cause a GC event)
-    cosmoV_pushObj(state, (CObj*)obj); // so our GC can keep track of obj
+    cosmoV_pushRef(state, (CObj*)obj); // so our GC can keep track of obj
     cosmoT_initTable(state, &obj->tbl, ARRAY_START);
     cosmoV_pop(state);
 
@@ -238,8 +238,8 @@ CObjString *cosmoO_allocateString(CState *state, const char *str, size_t sz, uin
     strObj->hash = hash;
 
     // we push & pop the string so our GC can find it (we don't use freezeGC/unfreezeGC because we *want* a GC event to happen)
-    cosmoV_pushObj(state, (CObj*)strObj); 
-    cosmoT_insert(state, &state->strings, cosmoV_newObj((CObj*)strObj));
+    cosmoV_pushRef(state, (CObj*)strObj); 
+    cosmoT_insert(state, &state->strings, cosmoV_newRef((CObj*)strObj));
     cosmoV_pop(state);
 
     return strObj;
@@ -314,7 +314,7 @@ bool cosmoO_getRawObject(CState *state, CObjObject *proto, CValue key, CValue *v
     if (!cosmoT_get(&proto->tbl, key, val)) { // if the field doesn't exist in the object, check the proto
         if (cosmoO_getIString(state, proto, ISTRING_GETTER, val) && IS_TABLE(*val) && cosmoT_get(&cosmoV_readTable(*val)->tbl, key, val)) {
             cosmoV_pushValue(state, *val); // push function
-            cosmoV_pushObj(state, (CObj*)obj); // push object
+            cosmoV_pushRef(state, (CObj*)obj); // push object
             if (cosmoV_call(state, 1, 1) != COSMOVM_OK) // call the function with the 1 argument
                 return false;
             *val = *cosmoV_pop(state); // set value to the return value of __index
@@ -343,7 +343,7 @@ void cosmoO_setRawObject(CState *state, CObjObject *proto, CValue key, CValue va
     // check for __setters
     if (cosmoO_getIString(state, proto, ISTRING_SETTER, &ret) && IS_TABLE(ret) && cosmoT_get(&cosmoV_readTable(ret)->tbl, key, &ret)) {
         cosmoV_pushValue(state, ret); // push function
-        cosmoV_pushObj(state, (CObj*)obj); // push object
+        cosmoV_pushRef(state, (CObj*)obj); // push object
         cosmoV_pushValue(state, val); // push new value
         cosmoV_call(state, 2, 0);
         return;
@@ -397,7 +397,7 @@ bool rawgetIString(CState *state, CObjObject *object, int flag, CValue *val) {
     if (readFlag(object->istringFlags, flag))
         return false; // it's been cached as bad
 
-    if (!cosmoT_get(&object->tbl, cosmoV_newObj(state->iStrings[flag]), val)) {
+    if (!cosmoT_get(&object->tbl, cosmoV_newRef(state->iStrings[flag]), val)) {
         // mark it bad!
         setFlagOn(object->istringFlags, flag);
         return false;
@@ -420,7 +420,7 @@ bool cosmoO_getIString(CState *state, CObjObject *object, int flag, CValue *val)
 bool cosmoO_indexObject(CState *state, CObjObject *object, CValue key, CValue *val) {
     if (cosmoO_getIString(state, object, ISTRING_INDEX, val)) {
         cosmoV_pushValue(state, *val); // push function
-        cosmoV_pushObj(state, (CObj*)object); // push object
+        cosmoV_pushRef(state, (CObj*)object); // push object
         cosmoV_pushValue(state, key); // push key
         if (cosmoV_call(state, 2, 1) != COSMOVM_OK) // call the function with the 2 arguments
             return false;
@@ -438,7 +438,7 @@ bool cosmoO_newIndexObject(CState *state, CObjObject *object, CValue key, CValue
 
     if (cosmoO_getIString(state, object, ISTRING_NEWINDEX, &ret)) {
         cosmoV_pushValue(state, ret); // push function
-        cosmoV_pushObj(state, (CObj*)object); // push object
+        cosmoV_pushRef(state, (CObj*)object); // push object
         cosmoV_pushValue(state, key); // push key & value pair
         cosmoV_pushValue(state, val);
         return cosmoV_call(state, 3, 0) == COSMOVM_OK;
@@ -456,7 +456,7 @@ CObjString *cosmoO_toString(CState *state, CObj *obj) {
     // use user-defined __tostring
     if (protoObject != NULL && cosmoO_getIString(state, protoObject, ISTRING_TOSTRING, &res)) {
         cosmoV_pushValue(state, res);
-        cosmoV_pushObj(state, (CObj*)obj);
+        cosmoV_pushRef(state, (CObj*)obj);
         if (cosmoV_call(state, 1, 1) != COSMOVM_OK)
             return cosmoO_copyString(state, "<err>", 5);
 
@@ -518,7 +518,7 @@ cosmo_Number cosmoO_toNumber(CState *state, CObj *obj) {
 
     if (proto != NULL && cosmoO_getIString(state, proto, ISTRING_TONUMBER, &res)) {
         cosmoV_pushValue(state, res);
-        cosmoV_pushObj(state, (CObj*)obj);
+        cosmoV_pushRef(state, (CObj*)obj);
         if (cosmoV_call(state, 1, 1) != COSMOVM_OK) // call res, expect 1 return val of <number>
             return 0;
         
@@ -549,7 +549,7 @@ int cosmoO_count(CState *state, CObj *obj) {
 
     if (proto != NULL && cosmoO_getIString(state, proto, ISTRING_COUNT, &res)) {
         cosmoV_pushValue(state, res);
-        cosmoV_pushObj(state, (CObj*)obj);
+        cosmoV_pushRef(state, (CObj*)obj);
         if (cosmoV_call(state, 1, 1) != COSMOVM_OK) // call res, we expect 1 return value of type <number>
             return 0;
 

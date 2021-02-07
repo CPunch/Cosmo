@@ -37,14 +37,14 @@ COSMO_API bool cosmoV_compileString(CState *state, const char *src, const char *
         disasmChunk(&func->chunk, func->module->str, 0);
 #endif
         // push function onto the stack so it doesn't it cleaned up by the GC, at the same stack location put our closure
-        cosmoV_pushObj(state, (CObj*)func);
-        *(cosmoV_getTop(state, 0)) = cosmoV_newObj(cosmoO_newClosure(state, func));
+        cosmoV_pushRef(state, (CObj*)func);
+        *(cosmoV_getTop(state, 0)) = cosmoV_newRef(cosmoO_newClosure(state, func));
         return true;
     }
 
     // fail
     state->panic = false;
-    cosmoV_pushObj(state, (CObj*)state->error);
+    cosmoV_pushRef(state, (CObj*)state->error);
     return false;
 }
 
@@ -173,9 +173,9 @@ void cosmoV_concat(CState *state, int vals) {
 
     CObjString *result = cosmoV_toString(state, *start);
     for (StkPtr current = start + 1; current <= end; current++) {
-        cosmoV_pushObj(state, (CObj*)result); // so our GC can find our current result string
+        cosmoV_pushRef(state, (CObj*)result); // so our GC can find our current result string
         CObjString *otherStr = cosmoV_toString(state, *current);
-        cosmoV_pushObj(state, (CObj*)otherStr); // also so our GC won't free otherStr
+        cosmoV_pushRef(state, (CObj*)otherStr); // also so our GC won't free otherStr
 
         // concat the two strings together
         size_t sz = result->length + otherStr->length;
@@ -190,7 +190,7 @@ void cosmoV_concat(CState *state, int vals) {
     }
 
     state->top = start;
-    cosmoV_pushObj(state, (CObj*)result);
+    cosmoV_pushRef(state, (CObj*)result);
 }
 
 int cosmoV_execute(CState *state);
@@ -324,7 +324,7 @@ bool callCValue(CState *state, CValue func, int args, int nresults, int offset) 
             CObjObject *protoObj = (CObjObject*)cosmoV_readRef(func);
             CValue ret;
 
-            cosmoV_pushObj(state, (CObj*)protoObj); // push proto to stack for GC to find
+            cosmoV_pushRef(state, (CObj*)protoObj); // push proto to stack for GC to find
             CObjObject *newObj = cosmoO_newObject(state);
             newObj->_obj.proto = protoObj;
             cosmoV_pop(state); // pop proto
@@ -340,7 +340,7 @@ bool callCValue(CState *state, CValue func, int args, int nresults, int offset) 
             }
 
             if (nresults > 0) {
-                cosmoV_pushObj(state, (CObj*)newObj);
+                cosmoV_pushRef(state, (CObj*)newObj);
 
                 // push the nils to fill up the expected return values
                 for (int i = 0; i < nresults - 1; i++) { // -1 since the we already pushed the important value
@@ -360,7 +360,7 @@ bool callCValue(CState *state, CValue func, int args, int nresults, int offset) 
 bool invokeMethod(CState* state, CObj *obj, CValue func, int args, int nresults, int offset) {
     // first, set the first argument to the object
     StkPtr temp = cosmoV_getTop(state, args);
-    *temp = cosmoV_newObj(obj);
+    *temp = cosmoV_newRef(obj);
 
     return callCValue(state, func, args+1, nresults, offset);
 }
@@ -374,7 +374,7 @@ COSMOVMRESULT cosmoV_pcall(CState *state, int args, int nresults) {
         state->panic = false;
 
         if (nresults > 0) {
-            cosmoV_pushObj(state, (CObj*)state->error);
+            cosmoV_pushRef(state, (CObj*)state->error);
             
             // push other expected results onto the stack
             for (int i = 0; i < nresults-1; i++)
@@ -407,7 +407,7 @@ static inline bool isFalsey(StkPtr val) {
 COSMO_API CObjObject* cosmoV_makeObject(CState *state, int pairs) {
     StkPtr key, val;
     CObjObject *newObj = cosmoO_newObject(state);
-    cosmoV_pushObj(state, (CObj*)newObj); // so our GC doesn't free our new object
+    cosmoV_pushRef(state, (CObj*)newObj); // so our GC doesn't free our new object
 
     for (int i = 0; i < pairs; i++) {
         val = cosmoV_getTop(state, (i*2) + 1);
@@ -420,7 +420,7 @@ COSMO_API CObjObject* cosmoV_makeObject(CState *state, int pairs) {
 
     // once done, pop everything off the stack + push new object
     cosmoV_setTop(state, (pairs * 2) + 1); // + 1 for our object
-    cosmoV_pushObj(state, (CObj*)newObj);
+    cosmoV_pushRef(state, (CObj*)newObj);
     return newObj;
 }
 
@@ -433,7 +433,7 @@ COSMO_API bool cosmoV_registerProtoObject(CState *state, CObjType objType, CObjO
 COSMO_API void cosmoV_makeTable(CState *state, int pairs) {
     StkPtr key, val;
     CObjTable *newObj = cosmoO_newTable(state);
-    cosmoV_pushObj(state, (CObj*)newObj); // so our GC doesn't free our new table
+    cosmoV_pushRef(state, (CObj*)newObj); // so our GC doesn't free our new table
 
     for (int i = 0; i < pairs; i++) {
         val = cosmoV_getTop(state, (i*2) + 1);
@@ -446,7 +446,7 @@ COSMO_API void cosmoV_makeTable(CState *state, int pairs) {
 
     // once done, pop everything off the stack + push new table
     cosmoV_setTop(state, (pairs * 2) + 1); // + 1 for our table
-    cosmoV_pushObj(state, (CObj*)newObj);
+    cosmoV_pushRef(state, (CObj*)newObj);
 }
 
 COSMO_API bool cosmoV_get(CState *state, CObj *_obj, CValue key, CValue *val) {
@@ -461,7 +461,7 @@ COSMO_API bool cosmoV_get(CState *state, CObj *_obj, CValue key, CValue *val) {
     }
 
     // push the object onto the stack so the GC can find it
-    cosmoV_pushObj(state, (CObj*)object);
+    cosmoV_pushRef(state, (CObj*)object);
     if (cosmoO_getRawObject(state, object, key, val, _obj)) {
         // *val now equals the response, pop the object
         cosmoV_pop(state);
@@ -493,10 +493,10 @@ COSMO_API bool cosmoV_getMethod(CState *state, CObj *obj, CValue key, CValue *va
     // if the result is callable, wrap it in an method
     if (IS_CALLABLE(*val)) {
         // push object to stack so the GC can find it
-        cosmoV_pushObj(state, (CObj*)obj);
+        cosmoV_pushRef(state, (CObj*)obj);
         CObjMethod *method = cosmoO_newMethod(state, *val, obj);
         cosmoV_pop(state); // pop the object
-        *val = cosmoV_newObj(method);
+        *val = cosmoV_newRef(method);
     }
 
     return true;
@@ -651,7 +651,7 @@ int cosmoV_execute(CState *state) {
                 uint16_t index = READUINT();
                 CObjFunction *func = cosmoV_readFunction(constants[index]);
                 CObjClosure *closure = cosmoO_newClosure(state, func);
-                cosmoV_pushObj(state, (CObj*)closure);
+                cosmoV_pushRef(state, (CObj*)closure);
 
                 for (int i = 0; i < closure->upvalueCount; i++) {
                     uint8_t encoding = READBYTE();
@@ -681,7 +681,7 @@ int cosmoV_execute(CState *state) {
                 uint16_t pairs = READUINT();
                 StkPtr val;
                 CObjTable *newObj = cosmoO_newTable(state);
-                cosmoV_pushObj(state, (CObj*)newObj); // so our GC doesn't free our new table
+                cosmoV_pushRef(state, (CObj*)newObj); // so our GC doesn't free our new table
 
                 for (int i = 0; i < pairs; i++) {
                     val = cosmoV_getTop(state, i + 1);
@@ -693,7 +693,7 @@ int cosmoV_execute(CState *state) {
 
                 // once done, pop everything off the stack + push new table
                 cosmoV_setTop(state, pairs + 1); // + 1 for our table
-                cosmoV_pushObj(state, (CObj*)newObj);
+                cosmoV_pushRef(state, (CObj*)newObj);
                 continue;
             }
             case OP_INDEX: {
@@ -859,7 +859,7 @@ int cosmoV_execute(CState *state) {
                     if (cosmoO_getIString(state, proto, ISTRING_ITER, &val)) {
                         cosmoV_pop(state); // pop the object from the stack
                         cosmoV_pushValue(state, val);
-                        cosmoV_pushObj(state, (CObj*)obj);
+                        cosmoV_pushRef(state, (CObj*)obj);
                         if (cosmoV_call(state, 1, 1) != COSMOVM_OK) // we expect 1 return value on the stack, the iterable object
                             return -1;
 
@@ -871,7 +871,7 @@ int cosmoV_execute(CState *state) {
                         }
 
                         // get __next method and place it at the top of the stack
-                        cosmoV_getMethod(state, cosmoV_readRef(*iObj), cosmoV_newObj(state->iStrings[ISTRING_NEXT]), iObj);
+                        cosmoV_getMethod(state, cosmoV_readRef(*iObj), cosmoV_newRef(state->iStrings[ISTRING_NEXT]), iObj);
                     } else {
                         cosmoV_error(state, "Expected iterable object! '__iter' not defined!");
                         return -1;
@@ -879,21 +879,21 @@ int cosmoV_execute(CState *state) {
                 } else if (obj->type == COBJ_TABLE) {
                     CObjTable *tbl = (CObjTable*)obj;
 
-                    cosmoV_pushObj(state, (CObj*)state->iStrings[ISTRING_RESERVED]); // key
-                    cosmoV_pushObj(state, (CObj*)tbl); // value
+                    cosmoV_pushRef(state, (CObj*)state->iStrings[ISTRING_RESERVED]); // key
+                    cosmoV_pushRef(state, (CObj*)tbl); // value
 
                     cosmoV_pushString(state, "__next"); // key
                     CObjCFunction *tbl_next = cosmoO_newCFunction(state, _tbl__next);
-                    cosmoV_pushObj(state, (CObj*)tbl_next); // value
+                    cosmoV_pushRef(state, (CObj*)tbl_next); // value
 
                     CObjObject *obj = cosmoV_makeObject(state, 2); // pushes the new object to the stack
                     cosmoO_setUserI(obj, 0); // increment for iterator
 
                     // make our CObjMethod for OP_NEXT to call
-                    CObjMethod *method = cosmoO_newMethod(state, cosmoV_newObj(tbl_next), (CObj*)obj);
+                    CObjMethod *method = cosmoO_newMethod(state, cosmoV_newRef(tbl_next), (CObj*)obj);
 
                     cosmoV_setTop(state, 2); // pops the object & the tbl
-                    cosmoV_pushObj(state, (CObj*)method); // pushes the method for OP_NEXT
+                    cosmoV_pushRef(state, (CObj*)method); // pushes the method for OP_NEXT
                 } else {
                     cosmoV_error(state, "No proto defined! Couldn't get from type %s", cosmoO_typeStr(obj));
                     return -1;
