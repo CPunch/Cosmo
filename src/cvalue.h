@@ -57,7 +57,7 @@ typedef union CValue {
 
 #define cosmoV_readNumber(x)    ((x).num)
 #define cosmoV_readBoolean(x)   ((bool)READ_PAYLOAD(x))
-#define cosmoV_readObj(x)       ((CObj*)READ_PAYLOAD(x))
+#define cosmoV_readRef(x)       ((CObj*)READ_PAYLOAD(x))
 
 #define IS_NUMBER(x)    (((x).data & MASK_QUIETNAN) != MASK_QUIETNAN)
 #define IS_BOOLEAN(x)   (((x).data & SIG_MASK) == BOOL_SIG)
@@ -90,7 +90,9 @@ typedef struct CValue {
 
 #define cosmoV_readNumber(x)    ((cosmo_Number)(x).val.num)
 #define cosmoV_readBoolean(x)   ((bool)(x).val.b)
-#define cosmoV_readObj(x)       ((CObj*)(x).val.obj)
+
+// grabs the CObj* pointer from the CValue
+#define cosmoV_readRef(x)       ((CObj*)(x).val.obj)
 
 #define IS_NUMBER(x)    (GET_TYPE(x) == COSMO_TNUMBER)
 #define IS_BOOLEAN(x)   (GET_TYPE(x) == COSMO_TBOOLEAN)

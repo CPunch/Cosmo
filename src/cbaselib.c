@@ -145,7 +145,7 @@ void cosmoB_loadLibrary(CState *state) {
 
 int cosmoB_osetProto(CState *state, int nargs, CValue *args) {
     if (nargs == 2) {
-        CObj *obj = cosmoV_readObj(args[0]); // object to set proto too
+        CObj *obj = cosmoV_readRef(args[0]); // object to set proto too
         CObjObject *proto = cosmoV_readObject(args[1]);
 
         obj->proto = proto; // boom done
@@ -174,11 +174,11 @@ int cosmoB_oisChild(CState *state, int nargs, CValue *args) {
     }
 
     if (!IS_OBJ(args[0]) || !IS_OBJECT(args[1])) {
-        cosmoV_typeError(state, "oject.ischild()", "<reference obj>, <object>", "%s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
+        cosmoV_typeError(state, "object.ischild()", "<reference obj>, <object>", "%s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
         return 0;
     }
 
-    CObj *obj = cosmoV_readObj(args[0]);
+    CObj *obj = cosmoV_readRef(args[0]);
     CObjObject *proto = cosmoV_readObject(args[1]);
 
     // push result
@@ -545,7 +545,7 @@ int cosmoB_vsetGlobal(CState *state, int nargs, CValue *args) {
     }
 
     // this makes me very nervous ngl
-    CObjTable *tbl = (CObjTable*)cosmoV_readObj(args[1]);
+    CObjTable *tbl = (CObjTable*)cosmoV_readRef(args[1]);
     state->globals = tbl;
     return 0;
 }

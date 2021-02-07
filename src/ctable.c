@@ -67,7 +67,7 @@ uint32_t getObjectHash(CObj *obj) {
 uint32_t getValueHash(CValue *val) {
     switch (GET_TYPE(*val)) {
         case COSMO_TOBJ:
-            return getObjectHash(cosmoV_readObj(*val));
+            return getObjectHash(cosmoV_readRef(*val));
         case COSMO_TNUMBER: {
             uint32_t buf[sizeof(cosmo_Number)/sizeof(uint32_t)];
             cosmo_Number num = cosmoV_readNumber(*val);
@@ -238,7 +238,7 @@ CObjString *cosmoT_lookupString(CTable *tbl, const char *str, int length, uint32
             return NULL;
         } else if (IS_STRING(entry->key) && cosmoV_readString(entry->key)->length == length && memcmp(cosmoV_readString(entry->key)->str, str, length) == 0) {
             // it's a match!
-            return (CObjString*)cosmoV_readObj(entry->key);
+            return (CObjString*)cosmoV_readRef(entry->key);
         }
 
         indx = (indx + 1) & tbl->capacityMask; // fast mod here too

@@ -71,7 +71,7 @@ void tableRemoveWhite(CState *state, CTable *tbl) {
     int cap = tbl->capacityMask + 1;
     for (int i = 0; i < cap; i++) {
         CTableEntry *entry = &tbl->table[i];
-        if (IS_OBJ(entry->key) && !(cosmoV_readObj(entry->key))->isMarked) { // if the key is a object and it's white (unmarked), remove it from the table
+        if (IS_OBJ(entry->key) && !(cosmoV_readRef(entry->key))->isMarked) { // if the key is a object and it's white (unmarked), remove it from the table
             cosmoT_remove(state, tbl, entry->key);
         }
     }
@@ -175,7 +175,7 @@ void markObject(CState *state, CObj *obj) {
 
 void markValue(CState *state, CValue val) {
     if (IS_OBJ(val))
-        markObject(state, cosmoV_readObj(val));
+        markObject(state, cosmoV_readRef(val));
 }
 
 // trace our gray references

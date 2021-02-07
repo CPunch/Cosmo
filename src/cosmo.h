@@ -15,10 +15,7 @@
     this will produce undefined behavior as you reach the stack limit (and may cause a seg fault!). It is recommended to keep this enabled.
 */
 #define SAFE_STACK
-
 //#define NAN_BOXXED
-
-#define COSMOASSERT(x) assert(x)
 
 // forward declare *most* stuff so our headers are cleaner
 typedef struct CState CState;
@@ -44,11 +41,12 @@ typedef struct CObjClosure CObjClosure;
 typedef uint8_t INSTRUCTION;
 
 #define COSMOMAX_UPVALS 80
-#define FRAME_MAX   64
-#define STACK_MAX   (256 * FRAME_MAX)
+#define FRAME_MAX       64
+#define STACK_MAX       (256 * FRAME_MAX)
 
-#define COSMO_API extern
-#define UNNAMEDCHUNK "_main"
+#define COSMO_API       extern
+#define UNNAMEDCHUNK    "_main"
+#define COSMOASSERT(x)  assert(x)
 
 #define CERROR(err) \
     printf("%s : %s\n", "[ERROR]", err)

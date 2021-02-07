@@ -311,17 +311,17 @@ bool callCValue(CState *state, CValue func, int args, int nresults, int offset) 
         return false;
     }
 
-    switch (cosmoV_readObj(func)->type) {
+    switch (cosmoV_readRef(func)->type) {
         case COBJ_CLOSURE: 
             return rawCall(state, cosmoV_readClosure(func), args, nresults, offset);
         case COBJ_CFUNCTION:
             return callCFunction(state, cosmoV_readCFunction(func), args, nresults, offset);
         case COBJ_METHOD: {
-            CObjMethod *method = (CObjMethod*)cosmoV_readObj(func);
+            CObjMethod *method = (CObjMethod*)cosmoV_readRef(func);
             return invokeMethod(state, method->obj, method->func, args, nresults, offset + 1);
         }
         case COBJ_OBJECT: { // object is being instantiated, making another object
-            CObjObject *protoObj = (CObjObject*)cosmoV_readObj(func);
+            CObjObject *protoObj = (CObjObject*)cosmoV_readRef(func);
             CValue ret;
 
             cosmoV_pushObj(state, (CObj*)protoObj); // push proto to stack for GC to find
@@ -523,7 +523,7 @@ int _tbl__next(CState *state, int nargs, CValue *args) {
         return 0; // someone set the __reserved member to something else. this will exit the iterator loop 
     }
 
-    CObjTable *table = (CObjTable*)cosmoV_readObj(val);
+    CObjTable *table = (CObjTable*)cosmoV_readRef(val);
 
     // while the entry is invalid, go to the next entry
     int cap = table->tbl.capacityMask + 1;
@@ -706,7 +706,7 @@ int cosmoV_execute(CState *state) {
                     return -1;
                 }
 
-                CObj *obj = cosmoV_readObj(*temp);
+                CObj *obj = cosmoV_readRef(*temp);
                 CObjObject *proto = cosmoO_grabProto(obj);
                 CValue val; // to hold our value
 
@@ -738,7 +738,7 @@ int cosmoV_execute(CState *state) {
                     return -1;
                 }
 
-                CObj *obj = cosmoV_readObj(*temp);
+                CObj *obj = cosmoV_readRef(*temp);
                 CObjObject *proto = cosmoO_grabProto(obj);
 
                 if (proto != NULL) {
@@ -770,7 +770,7 @@ int cosmoV_execute(CState *state) {
 
                 // sanity check
                 if (IS_OBJ(*temp)) {
-                    if (!cosmoV_set(state, cosmoV_readObj(*temp), constants[ident], *value))
+                    if (!cosmoV_set(state, cosmoV_readRef(*temp), constants[ident], *value))
                         return -1;
                 } else {
                     CObjString *field = cosmoV_toString(state, constants[ident]);
@@ -789,7 +789,7 @@ int cosmoV_execute(CState *state) {
 
                 // sanity check
                 if (IS_OBJ(*temp)) {
-                    if (!cosmoV_get(state, cosmoV_readObj(*temp), constants[ident], &val))
+                    if (!cosmoV_get(state, cosmoV_readRef(*temp), constants[ident], &val))
                         return -1;
                 } else {
                     CObjString *field = cosmoV_toString(state, constants[ident]);
@@ -808,7 +808,7 @@ int cosmoV_execute(CState *state) {
 
                 // this is almost identical to GETOBJECT, however cosmoV_getMethod is used instead of just cosmoV_get
                 if (IS_OBJ(*temp)) {
-                    if (!cosmoV_getMethod(state, cosmoV_readObj(*temp), constants[ident], &val))
+                    if (!cosmoV_getMethod(state, cosmoV_readRef(*temp), constants[ident], &val))
                         return -1;
                 } else {
                     CObjString *field = cosmoV_toString(state, constants[ident]);
@@ -830,11 +830,11 @@ int cosmoV_execute(CState *state) {
                 // sanity check
                 if (IS_OBJ(*temp)) {
                     // get the field from the object
-                    if (!cosmoV_get(state, cosmoV_readObj(*temp), constants[ident], &val))
+                    if (!cosmoV_get(state, cosmoV_readRef(*temp), constants[ident], &val))
                         return -1;
                     
                     // now invoke the method!
-                    invokeMethod(state, cosmoV_readObj(*temp), val, args, nres, 1);
+                    invokeMethod(state, cosmoV_readRef(*temp), val, args, nres, 1);
                 } else {
                     cosmoV_error(state, "Couldn't get from type %s!", cosmoV_typeStr(*temp));
                     return -1;
@@ -850,7 +850,7 @@ int cosmoV_execute(CState *state) {
                     return -1;
                 }
 
-                CObj *obj = cosmoV_readObj(*temp);
+                CObj *obj = cosmoV_readRef(*temp);
                 CObjObject *proto = cosmoO_grabProto(obj);
                 CValue val;
 
@@ -871,7 +871,7 @@ int cosmoV_execute(CState *state) {
                         }
 
                         // get __next method and place it at the top of the stack
-                        cosmoV_getMethod(state, cosmoV_readObj(*iObj), cosmoV_newObj(state->iStrings[ISTRING_NEXT]), iObj);
+                        cosmoV_getMethod(state, cosmoV_readRef(*iObj), cosmoV_newObj(state->iStrings[ISTRING_NEXT]), iObj);
                     } else {
                         cosmoV_error(state, "Expected iterable object! '__iter' not defined!");
                         return -1;
@@ -973,7 +973,7 @@ int cosmoV_execute(CState *state) {
                     return -1;
                 }
 
-                int count = cosmoO_count(state, cosmoV_readObj(*temp));
+                int count = cosmoO_count(state, cosmoV_readRef(*temp));
                 cosmoV_pop(state);
 
                 cosmoV_pushNumber(state, count); // pushes the count onto the stack
@@ -1043,7 +1043,7 @@ int cosmoV_execute(CState *state) {
                     return -1;
                 }
 
-                CObj *obj = cosmoV_readObj(*temp);
+                CObj *obj = cosmoV_readRef(*temp);
                 CObjObject *proto = cosmoO_grabProto(obj);
                 CValue val;
 
@@ -1090,7 +1090,7 @@ int cosmoV_execute(CState *state) {
 
                 // sanity check
                 if (IS_OBJ(*temp)) {
-                    CObj *obj = cosmoV_readObj(*temp);
+                    CObj *obj = cosmoV_readRef(*temp);
                     CValue val;
                     
                     if (!cosmoV_get(state, obj, ident, &val))

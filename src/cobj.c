@@ -469,7 +469,7 @@ CObjString *cosmoO_toString(CState *state, CObj *obj) {
 
         // return string
         cosmoV_pop(state);
-        return (CObjString*)cosmoV_readObj(*ret);
+        return (CObjString*)cosmoV_readRef(*ret);
     }
 
    switch (obj->type) {
