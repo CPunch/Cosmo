@@ -24,6 +24,7 @@ typedef enum {
     TOKEN_STAR,
     TOKEN_POUND,
     TOKEN_PERCENT,
+    TOKEN_CARROT,
     TOKEN_EOS, // end of statement
 
     // equality operators

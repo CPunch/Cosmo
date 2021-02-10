@@ -981,10 +981,22 @@ int cosmoV_execute(CState *state) {
                 if (IS_NUMBER(*valA) && IS_NUMBER(*valB)) {
                     cosmoV_setTop(state, 2); /* pop the 2 values */
                     cosmoV_pushValue(state, cosmoV_newNumber(fmod(cosmoV_readNumber(*valA), cosmoV_readNumber(*valB))));
-                } else { \
+                } else {
                     cosmoV_error(state, "Expected numbers, got %s and %s!", cosmoV_typeStr(*valA), cosmoV_typeStr(*valB));
-                    return -1; \
-                } \
+                    return -1;
+                }
+                continue;
+            }
+            case OP_POW: {
+                StkPtr valA = cosmoV_getTop(state, 1);
+                StkPtr valB = cosmoV_getTop(state, 0);
+                if (IS_NUMBER(*valA) && IS_NUMBER(*valB)) {
+                    cosmoV_setTop(state, 2); /* pop the 2 values */
+                    cosmoV_pushValue(state, cosmoV_newNumber(pow(cosmoV_readNumber(*valA), cosmoV_readNumber(*valB))));
+                } else {
+                    cosmoV_error(state, "Expected numbers, got %s and %s!", cosmoV_typeStr(*valA), cosmoV_typeStr(*valB));
+                    return -1;
+                }
                 continue;
             }
             case OP_NOT: {

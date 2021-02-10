@@ -391,6 +391,7 @@ CToken cosmoL_scanToken(CLexState *state) {
         case ':': return makeToken(state, TOKEN_COLON);
         case '*': return makeToken(state, TOKEN_STAR);
         case '%': return makeToken(state, TOKEN_PERCENT);
+        case '^': return makeToken(state, TOKEN_CARROT);
         case '#': return makeToken(state, TOKEN_POUND);
         case '/': return makeToken(state, TOKEN_SLASH);
         // two character tokens
