@@ -147,6 +147,8 @@ static char peekNext(CLexState *state) {
 }
 
 char next(CLexState *state) {
+    if (isEnd(state))
+        return '\0'; // return a null terminator 
     state->currentChar++;
     return state->currentChar[-1];
 }
@@ -182,11 +184,21 @@ void skipWhitespace(CLexState *state) {
                 break;
             case '/': // consume comments
                 if (peekNext(state) == '/') {
-                    
                     // skip to next line (also let \n be consumed on the next iteration to properly handle that)
-                    while (!isEnd(state) && peek(state) != '\n' && peek(state) != '\0') // if it's not a newline or null terminator 
+                    while (!isEnd(state) && peek(state) != '\n') // if it's not a newline or the end of the source
                         next(state);
-                    
+
+                    // keep consuming whitespace
+                    break;
+                } else if (peekNext(state) == '*') { // multiline comments
+                    while (!isEnd(state) && !(peek(state) == '*' && peekNext(state) == '/')) // if it's the end of the comment or the end of the source
+                        next(state);
+
+                    // consume the '*/'
+                    next(state);
+                    next(state);
+
+                    // keep consuming whitespace
                     break;
                 }
                 return; // it's a TOKEN_SLASH, let the main body handle that
