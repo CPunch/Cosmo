@@ -256,6 +256,11 @@ int cosmoB_osRead(CState *state, int nargs, CValue *args) {
     char *buf;
     size_t size, bRead;
 
+    if (file == NULL) {
+        // return nil, file doesn't exist
+        return 0;
+    }
+
     // grab the size of the file
     fseek(file, 0L, SEEK_END);
     size = ftell(file);
@@ -266,8 +271,7 @@ int cosmoB_osRead(CState *state, int nargs, CValue *args) {
 
     if (bRead < size) {
         // an error occured! we don't need to really throw an error, returning a nil is good enough
-        cosmoV_pushNil(state);
-        return 1;
+        return 0;
     }
 
     buf[bRead] = '\0'; // place the NULL terminator at the end of the buffer
