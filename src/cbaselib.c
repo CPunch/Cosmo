@@ -5,6 +5,7 @@
 #include "cmem.h"
 
 #include <math.h>
+#include <sys/time.h>
 
 // ================================================================ [BASELIB] ================================================================
 
@@ -116,7 +117,7 @@ void cosmoB_loadLibrary(CState *state) {
         "type",
         "pcall",
         "tonumber",
-        "tostring"
+        "tostring",
         "loadstring"
     };
 
@@ -191,7 +192,7 @@ int cosmoB_oisChild(CState *state, int nargs, CValue *args) {
 }
 
 COSMO_API void cosmoB_loadObjLib(CState *state) {
-     const char *identifiers[] = {
+    const char *identifiers[] = {
         "ischild"
     };
 
@@ -232,6 +233,84 @@ COSMO_API void cosmoB_loadObjLib(CState *state) {
 
     // register "object" to the global table
     cosmoV_register(state, 1);
+}
+
+// ================================================================ [OS.*] ================================================================
+
+// os.read()
+int cosmoB_osRead(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "os.read() expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_STRING(args[0])) {
+        cosmoV_typeError(state, "os.read()", "<string>", "%s", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    CObjString *str = cosmoV_readString(args[0]);
+
+    // open file
+    FILE *file = fopen(str->str, "rb");
+    char *buf;
+    size_t size, bRead;
+
+    // grab the size of the file
+    fseek(file, 0L, SEEK_END);
+    size = ftell(file);
+    rewind(file);
+
+    buf = cosmoM_xmalloc(state, size + 1); // +1 for the NULL terminator
+    bRead = fread(buf, sizeof(char), size, file); // read the file into the buffer
+
+    if (bRead < size) {
+        // an error occured! we don't need to really throw an error, returning a nil is good enough
+        cosmoV_pushNil(state);
+        return 1;
+    }
+
+    buf[bRead] = '\0'; // place the NULL terminator at the end of the buffer
+
+    // push the string to the stack to return
+    cosmoV_pushValue(state, cosmoV_newRef(cosmoO_takeString(state, buf, bRead)));
+    return 1;
+}
+
+// os.time()
+int cosmoB_osTime(CState *state, int nargs, CValue *args) {
+    struct timeval time;
+    if (nargs > 0) {
+        cosmoV_error(state, "os.time() expected no arguments, got %d!", nargs);
+        return 0;
+    }
+
+    gettimeofday(&time, NULL);
+    cosmoV_pushNumber(state, (time.tv_usec / 1000000.0) + time.tv_sec);
+    return 1;
+}
+
+COSMO_API void cosmoB_loadOSLib(CState *state) {
+    const char *identifiers[] = {
+        "read",
+        "time"
+    };
+
+    CosmoCFunction osLib[] = {
+        cosmoB_osRead,
+        cosmoB_osTime
+    };
+
+    cosmoV_pushString(state, "os");
+
+    int i;
+    for (i = 0; i < sizeof(identifiers)/sizeof(identifiers[0]); i++) {
+        cosmoV_pushString(state, identifiers[i]);
+        cosmoV_pushCFunction(state, osLib[i]);
+    }
+
+    cosmoV_makeObject(state, i);
+    cosmoV_register(state, 1); // register the os.* object to the global table
 }
 
 // ================================================================ [STRING.*] ================================================================

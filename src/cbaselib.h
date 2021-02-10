@@ -13,9 +13,15 @@ COSMO_API void cosmoB_loadLibrary(CState *state);
 
 /* loads the base object library, including:
     - object.ischild or <obj>:ischild()
-
+    - object.__proto (allows grabbing and setting proto objects)
 */
 COSMO_API void cosmoB_loadObjLib(CState *state);
+
+/* loads the os library, including:
+    - os.read()
+    - os.time()
+*/
+COSMO_API void cosmoB_loadOSLib(CState *state);
 
 /* loads the base string library, including:
     - string.sub & <string>:sub()
