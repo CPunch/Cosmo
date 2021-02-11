@@ -93,7 +93,7 @@ int cosmoB_tostring(CState *state, int nargs, CValue *args) {
 }
 
 int cosmoB_loadstring(CState *state, int nargs, CValue *args) {
-    if (nargs < 1) {
+    if (nargs != 1) {
         cosmoV_error(state, "loadstring() expected 1 argument, got %d!", nargs);
         return 0;
     }
@@ -111,7 +111,7 @@ int cosmoB_loadstring(CState *state, int nargs, CValue *args) {
 }
 
 int cosmoB_error(CState *state, int nargs, CValue *args) {
-    if (nargs < 1) {
+    if (nargs != 1) {
         cosmoV_error(state, "error() expected 1 argument, got %d!", nargs);
         return 0;
     }
@@ -505,14 +505,14 @@ int cosmoB_sChar(CState *state, int nargs, CValue *args) {
         return 0;
     }
 
-    // basically, treat the c value on the stack as an """"array"""" with a length of 1
+    // basically, treat the character value on the C stack as an """"array"""" with a length of 1
     cosmoV_pushLString(state, &c, 1);
     return 1;
 }
 
 int cosmoB_sLen(CState *state, int nargs, CValue *args) {
     if (nargs < 1) {
-        cosmoV_error(state, "string.len() expected 1 argument, got %d", nargs);
+        cosmoV_error(state, "string.len() expected 1 argument, got %d!", nargs);
         return 0;
     }
 
