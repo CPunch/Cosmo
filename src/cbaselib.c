@@ -121,7 +121,7 @@ int cosmoB_error(CState *state, int nargs, CValue *args) {
         return 0;
     }
 
-    cosmoV_error(state, "%s", cosmoO_readCString(cosmoV_readString(args[0])));
+    cosmoV_error(state, "%s", cosmoV_readCString(args[0]));
 
     return 0;
 }
@@ -516,7 +516,7 @@ int cosmoB_sLen(CState *state, int nargs, CValue *args) {
         return 0;
     }
 
-    cosmoV_pushNumber(state, strlen(cosmoO_readCString(cosmoV_readString(args[0]))));
+    cosmoV_pushNumber(state, strlen(cosmoV_readCString(args[0])));
 
     return 1;
 }
