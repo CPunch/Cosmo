@@ -510,13 +510,25 @@ int cosmoB_sChar(CState *state, int nargs, CValue *args) {
     return 1;
 }
 
+int cosmoB_sLen(CState *state, int nargs, CValue *args) {
+    if (nargs < 1) {
+        cosmoV_error(state, "string.len() expected 1 argument, got %d", nargs);
+        return 0;
+    }
+
+    cosmoV_pushNumber(state, strlen(cosmoO_readCString(cosmoV_readString(args[0]))));
+
+    return 1;
+}
+
 void cosmoB_loadStrLib(CState *state) {
     const char *identifiers[] = {
         "sub",
         "find",
         "split",
         "byte",
-        "char"
+        "char",
+        "len"
     };
 
     CosmoCFunction strLib[] = {
@@ -524,7 +536,8 @@ void cosmoB_loadStrLib(CState *state) {
         cosmoB_sFind,
         cosmoB_sSplit,
         cosmoB_sByte,
-        cosmoB_sChar
+        cosmoB_sChar,
+        cosmoB_sLen
     };
 
     // make string library object
