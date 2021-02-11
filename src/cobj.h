@@ -120,6 +120,7 @@ typedef struct CObjUpval {
 #define IS_CLOSURE(x)   isObjType(x, COBJ_CLOSURE)
 
 #define cosmoV_readString(x)    ((CObjString*)cosmoV_readRef(x))
+#define cosmoV_readCString(x)   (((CObjString*)cosmoV_readRef(x))->str)
 #define cosmoV_readObject(x)    ((CObjObject*)cosmoV_readRef(x))
 #define cosmoV_readTable(x)     ((CObjTable*)cosmoV_readRef(x))
 #define cosmoV_readFunction(x)  ((CObjFunction*)cosmoV_readRef(x))
