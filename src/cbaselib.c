@@ -110,6 +110,22 @@ int cosmoB_loadstring(CState *state, int nargs, CValue *args) {
     return 2; // <boolean>, <closure> or <error>
 }
 
+int cosmoB_error(CState *state, int nargs, CValue *args) {
+    if (nargs < 1) {
+        cosmoV_error(state, "error() expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_STRING(args[0])) {
+        cosmoV_typeError(state, "error()", "<string>", "%s", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    cosmoV_error(state, "%s", cosmoO_readCString(cosmoV_readString(args[0])));
+
+    return 0;
+}
+
 void cosmoB_loadLibrary(CState *state) {
     const char *identifiers[] = {
         "print",
@@ -118,7 +134,8 @@ void cosmoB_loadLibrary(CState *state) {
         "pcall",
         "tonumber",
         "tostring",
-        "loadstring"
+        "loadstring",
+        "error"
     };
 
     CosmoCFunction baseLib[] = {
@@ -128,7 +145,8 @@ void cosmoB_loadLibrary(CState *state) {
         cosmoB_pcall,
         cosmoB_tonumber,
         cosmoB_tostring,
-        cosmoB_loadstring
+        cosmoB_loadstring,
+        cosmoB_error
     };
 
     int i;
