@@ -516,6 +516,11 @@ int cosmoB_sLen(CState *state, int nargs, CValue *args) {
         return 0;
     }
 
+    if (!IS_STRING(args[0])) {
+        cosmoV_typeError(state, "string.len", "<string>", "%s", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
     cosmoV_pushNumber(state, strlen(cosmoV_readCString(args[0])));
 
     return 1;
