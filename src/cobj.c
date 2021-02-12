@@ -6,6 +6,7 @@
 #include "clex.h"
 
 #include <string.h>
+#include <stdarg.h>
 
 // we don't actually hash the whole string :eyes:
 uint32_t hashString(const char *str, size_t sz) {

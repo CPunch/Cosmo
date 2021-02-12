@@ -7,6 +7,7 @@
 #include "cvm.h"
 
 #include <string.h>
+#include <stdarg.h>
 
 // we define all of this here because we only need it in this file, no need for it to be in the header /shrug
 

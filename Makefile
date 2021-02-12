@@ -33,7 +33,7 @@ CSRC=\
 	src/cvm.c\
 	src/cobj.c\
 	src/cbaselib.c\
-	src/main.c\
+	main.c\
 
 COBJ=$(CSRC:.c=.o)
 
