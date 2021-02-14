@@ -393,9 +393,11 @@ int cosmoB_sFind(CState *state, int nargs, CValue *args) {
 
         char *indx = strstr(str->str, ptrn->str);
 
-        // failed, we have nothing to return
-        if (indx == NULL)
-            return 0;
+        // failed, return the error index -1
+        if (indx == NULL) {
+            cosmoV_pushNumber(state, -1);
+            return 1;
+        }
 
         // success! push the index
         cosmoV_pushNumber(state, indx - str->str);
@@ -411,9 +413,11 @@ int cosmoB_sFind(CState *state, int nargs, CValue *args) {
 
         char *indx = strstr(str->str + startIndx, ptrn->str);
 
-        // failed, we have nothing to return
-        if (indx == NULL)
-            return 0;
+        // failed, return the error index -1
+        if (indx == NULL) {
+            cosmoV_pushNumber(state, -1);
+            return 1;
+        }
 
         // success! push the index
         cosmoV_pushNumber(state, indx - str->str);
@@ -526,6 +530,42 @@ int cosmoB_sLen(CState *state, int nargs, CValue *args) {
     return 1;
 }
 
+int cosmoB_sRep(CState *state, int nargs, CValue *args) {
+    if (nargs != 2) {
+        cosmoV_error(state, "string.rep() expected 2 arguments, got %d!", nargs);
+        return 0;
+    }
+
+    // expects <string>, <number>
+    if (!IS_STRING(args[0]) || !IS_NUMBER(args[1])) {
+        cosmoV_typeError(state, "string.rep", "<string>, <number>", "%s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
+        return 0;
+    }
+
+    CObjString *str = cosmoV_readString(args[0]);
+    int times = (int)cosmoV_readNumber(args[1]);
+
+    if (times <= 0) {
+        cosmoV_error(state, "Expected times to be > 0, got %d!", times);
+        return 0;
+    }
+
+    // allocated the new buffer for the string
+    size_t length = str->length * times;
+    char *newStr = cosmoM_xmalloc(state, length + 1); // + 1 for the NULL terminator
+
+    // copy the string over the new buffer
+    for (int i = 0; i < times; i++)
+        memcpy(&newStr[i * str->length], str->str, str->length);
+
+    // write the NULL terminator
+    newStr[length] = '\0';
+    
+    // finally, push the resulting string onto the stack
+    cosmoV_pushRef(state, (CObj*)cosmoO_takeString(state, newStr, length));
+    return 1;
+}
+
 void cosmoB_loadStrLib(CState *state) {
     const char *identifiers[] = {
         "sub",
@@ -533,7 +573,8 @@ void cosmoB_loadStrLib(CState *state) {
         "split",
         "byte",
         "char",
-        "len"
+        "len",
+        "rep"
     };
 
     CosmoCFunction strLib[] = {
@@ -542,7 +583,8 @@ void cosmoB_loadStrLib(CState *state) {
         cosmoB_sSplit,
         cosmoB_sByte,
         cosmoB_sChar,
-        cosmoB_sLen
+        cosmoB_sLen,
+        cosmoB_sRep
     };
 
     // make string library object
