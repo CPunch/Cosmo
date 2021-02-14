@@ -427,6 +427,17 @@ COSMO_API CObjObject* cosmoV_makeObject(CState *state, int pairs) {
 COSMO_API bool cosmoV_registerProtoObject(CState *state, CObjType objType, CObjObject *obj) {
     bool replaced = state->protoObjects[objType] != NULL;
     state->protoObjects[objType] = obj;
+
+    // walk through the object list
+    CObj *curr = state->objects;
+    while (curr != NULL) {
+        // update the proto
+        if (curr->type == objType && curr->proto != NULL) {
+            curr->proto = obj;
+        }
+        curr = curr->next;
+    }
+
     return replaced;
 }
 
