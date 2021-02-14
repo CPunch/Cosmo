@@ -29,6 +29,7 @@ COSMO_API void cosmoB_loadOSLib(CState *state);
     - string.split & <string>:split()
     - string.byte & <string>:byte()
     - string.char & <string>:char()
+    - string.rep & <string>:rep()
 
     The base proto object for strings is also set, allowing you to invoke the string.* api through string objects, eg.
         `"hello world":split(" ")` is equivalent to `string.split("hello world", " ")`
