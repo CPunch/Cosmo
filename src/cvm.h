@@ -28,7 +28,12 @@ COSMO_API CObjError* cosmoV_throw(CState *state);
 COSMO_API void cosmoV_error(CState *state, const char *format, ...);
 COSMO_API void cosmo_insert(CState *state, int indx, CValue val);
 
-// returns true if replacing a previously registered proto object for this type
+/*
+    Sets the default proto objects for the passed objType. Also walks through the object heap and updates protos
+    for the passed objType if that CObj* has no proto.
+
+    returns true if replacing a previously registered proto object for this type
+*/
 COSMO_API bool cosmoV_registerProtoObject(CState *state, CObjType objType, CObjObject *obj);
 
 /*
@@ -43,14 +48,14 @@ COSMO_API bool cosmoV_compileString(CState *state, const char *src, const char *
 /*
     expects object to be pushed, then the key. 
     
-    if returns false an error was thrown, if returns true the value was pushed onto the stack and the object and key were popped
+    returns false if an error was thrown, returns true if the value was pushed onto the stack and the object and key were popped
 */
 COSMO_API bool cosmoV_get(CState *state);
 
 /*
     expects object to be pushed, then the key, and finally the new value. 
     
-    if returns false an error was thrown, if returns true the value was set and the object key, and value were popped
+    returns false if an error was thrown, returns true if the value was set and the object key, and value were popped
 */
 COSMO_API bool cosmoV_set(CState *state);
 
@@ -59,7 +64,7 @@ COSMO_API bool cosmoV_getMethod(CState *state, CObj *obj, CValue key, CValue *va
 
 // nice to have wrappers
 
-// pushes raw CValue to the stack
+// pushes a raw CValue to the stack, might throw an error if the stack is overflowed (with the SAFE_STACK macro on)
 static inline void cosmoV_pushValue(CState *state, CValue val) {
 #ifdef SAFE_STACK
     ptrdiff_t stackSize = state->top - state->stack;
@@ -92,7 +97,7 @@ static inline StkPtr cosmoV_getTop(CState *state, int indx) {
     return &state->top[-(indx + 1)];
 }
 
-// pops 1 value off the stack
+// pops 1 value off the stack, returns the popped value
 static inline StkPtr cosmoV_pop(CState *state) {
     return cosmoV_setTop(state, 1);
 }
