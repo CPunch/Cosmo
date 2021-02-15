@@ -6,11 +6,11 @@
 #include "cvalue.h"
 #include "ctable.h"
 
-typedef struct CCallFrame {
+struct CCallFrame {
     CObjClosure *closure;
     INSTRUCTION *pc;
     CValue* base;
-} CCallFrame;
+};
 
 typedef enum IStringEnum {
     ISTRING_INIT,       // __init
@@ -33,7 +33,7 @@ typedef struct ArrayCObj {
     int capacity;
 } ArrayCObj;
 
-typedef struct CState {
+struct CState {
     bool panic;
     int freezeGC; // when > 0, GC events will be ignored (for internal use)
     int frameCount;
@@ -54,7 +54,7 @@ typedef struct CState {
     CObjString *iStrings[ISTRING_MAX]; // strings used internally by the VM, eg. __init, __index & friends
     CCallFrame callFrame[FRAME_MAX]; // call frames
     CValue stack[STACK_MAX]; // stack
-} CState;
+};
 
 COSMO_API CState *cosmoV_newState();
 // expects 2*pairs values on the stack, each pair should consist of 1 key and 1 value

@@ -22,42 +22,38 @@ typedef enum CObjType {
 #include "cvalue.h"
 #include "ctable.h"
 
-typedef struct CState CState;
-typedef struct CCallFrame CCallFrame;
-typedef uint32_t cosmo_Flag;
-
 #define CommonHeader CObj _obj
 #define readFlag(x, flag)   (x & (1u << flag))
 #define setFlagOn(x, flag)  (x |= (1u << flag))
 
 typedef int (*CosmoCFunction)(CState *state, int argCount, CValue *args);
 
-typedef struct CObj {
+struct CObj {
     struct CObj *next;
     struct CObj *nextRoot; // for the root linked list
     struct CObjObject *proto; // protoobject, describes the behavior of the object
     CObjType type;
     bool isMarked; // for the GC
-} CObj;
+};
 
-typedef struct CObjString {
+struct CObjString {
     CommonHeader; // "is a" CObj
     char *str; // NULL termincated string
     uint32_t hash; // for hashtable lookup
     int length;
     bool isIString;
-} CObjString;
+};
 
-typedef struct CObjError {
+struct CObjError {
     CommonHeader; // "is a" CObj
     CValue err; // error string
     CCallFrame *frames;
     int frameCount;
     int line; // reserved for parser errors
     bool parserError; // if true, cosmoV_printError will format the error to the lexer
-} CObjError;
+};
 
-typedef struct CObjObject {
+struct CObjObject {
     CommonHeader; // "is a" CObj
     CTable tbl;
     cosmo_Flag istringFlags; // enables us to have a much faster lookup for reserved IStrings (like __init, __index, etc.)
@@ -67,14 +63,14 @@ typedef struct CObjObject {
     };
     int userT; // user-defined type (for describing the userdata pointer/integer)
     bool isLocked;
-} CObjObject;
+};
 
-typedef struct CObjTable { // table, a wrapper for CTable
+struct CObjTable { // table, a wrapper for CTable
     CommonHeader; // "is a" CObj
     CTable tbl;
-} CObjTable;
+};
 
-typedef struct CObjFunction {
+struct CObjFunction {
     CommonHeader; // "is a" CObj
     CChunk chunk;
     CObjString *name;
@@ -82,32 +78,32 @@ typedef struct CObjFunction {
     int args;
     int upvals;
     bool variadic;
-} CObjFunction;
+};
 
-typedef struct CObjCFunction {
+struct CObjCFunction {
     CommonHeader; // "is a" CObj
     CosmoCFunction cfunc;
-} CObjCFunction;
+};
 
-typedef struct CObjClosure {
+struct CObjClosure {
     CommonHeader; // "is a" CObj
     CObjFunction *function;
     CObjUpval **upvalues;
     int upvalueCount;
-} CObjClosure;
+};
 
-typedef struct CObjMethod {
+struct CObjMethod {
     CommonHeader; // "is a " CObj
     CValue func;
     CObj *obj; // obj this method is bound too
-} CObjMethod;
+};
 
-typedef struct CObjUpval {
+struct CObjUpval {
     CommonHeader; // "is a" CObj
     CValue closed;
     CValue *val;
     struct CObjUpval *next;
-} CObjUpval;
+};
 
 #undef CommonHeader
 

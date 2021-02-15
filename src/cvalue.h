@@ -27,10 +27,10 @@ typedef double cosmo_Number;
 
     TL;DR: we can store payloads in the NaN value in the IEEE 754 standard.
 */
-typedef union CValue {
+union CValue {
     uint64_t data;
     cosmo_Number num;
-} CValue;
+};
 
 #define MASK_TYPE       ((uint64_t)0x0007000000000000)
 #define MASK_PAYLOAD    ((uint64_t)0x0000ffffffffffff)
@@ -68,14 +68,14 @@ typedef union CValue {
 /*
     Tagged union, this is the best platform independent solution
 */
-typedef struct CValue {
+struct CValue {
     CosmoType type;
     union {
         cosmo_Number num;
         bool b; // boolean
         CObj *obj;
     } val;
-} CValue;
+};
 
 #define GET_TYPE(x)     ((x).type)
 
@@ -103,11 +103,11 @@ typedef struct CValue {
 
 typedef CValue* StkPtr;
 
-typedef struct CValueArray {
+struct CValueArray {
     size_t capacity;
     size_t count;
     CValue *values;
-} CValueArray;
+};
 
 void initValArray(CState *state, CValueArray *val, size_t startCapacity);
 void cleanValArray(CState *state, CValueArray *array); // cleans array
