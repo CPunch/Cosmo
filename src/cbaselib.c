@@ -662,17 +662,119 @@ int cosmoB_mCeil(CState *state, int nargs, CValue *args) {
     return 1;
 }
 
+int cosmoB_mSin(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "math.sin() expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_NUMBER(args[0])) {
+        cosmoV_typeError(state, "math.sin", "<number>", "%s", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    cosmoV_pushNumber(state, sin(cosmoV_readNumber(args[0])));
+    return 1;
+}
+
+int cosmoB_mCos(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "math.cos() expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_NUMBER(args[0])) {
+        cosmoV_typeError(state, "math.cos", "<number>", "%s", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    cosmoV_pushNumber(state, cos(cosmoV_readNumber(args[0])));
+    return 1;
+}
+
+int cosmoB_mTan(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "math.tan() expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_NUMBER(args[0])) {
+        cosmoV_typeError(state, "math.tan", "<number>", "%s", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    cosmoV_pushNumber(state, tan(cosmoV_readNumber(args[0])));
+    return 1;
+}
+
+int cosmoB_mASin(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "math.asin() expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_NUMBER(args[0])) {
+        cosmoV_typeError(state, "math.asin", "<number>", "%s", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    cosmoV_pushNumber(state, asin(cosmoV_readNumber(args[0])));
+    return 1;
+}
+
+int cosmoB_mACos(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "math.acos() expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_NUMBER(args[0])) {
+        cosmoV_typeError(state, "math.acos", "<number>", "%s", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    cosmoV_pushNumber(state, acos(cosmoV_readNumber(args[0])));
+    return 1;
+}
+
+int cosmoB_mATan(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "math.atan() expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_NUMBER(args[0])) {
+        cosmoV_typeError(state, "math.atan", "<number>", "%s", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    cosmoV_pushNumber(state, atan(cosmoV_readNumber(args[0])));
+    return 1;
+}
+
 void cosmoB_loadMathLib(CState *state) {
     const char *identifiers[] = {
         "abs",
         "floor",
-        "ceil"
+        "ceil",
+        "sin",
+        "cos",
+        "tan",
+        "asin",
+        "acos",
+        "atan"
     };
 
     CosmoCFunction mathLib[] = {
         cosmoB_mAbs,
         cosmoB_mFloor,
-        cosmoB_mCeil
+        cosmoB_mCeil,
+        cosmoB_mSin,
+        cosmoB_mCos,
+        cosmoB_mTan,
+        cosmoB_mASin,
+        cosmoB_mACos,
+        cosmoB_mATan
     };
 
     // make math library object
@@ -682,6 +784,10 @@ void cosmoB_loadMathLib(CState *state) {
         cosmoV_pushString(state, identifiers[i]);
         cosmoV_pushCFunction(state, mathLib[i]);
     }
+
+    cosmoV_pushString(state, "pi");
+    cosmoV_pushNumber(state, acos(-1));
+    i++;
 
     // make the object and register it as a global to the state
     cosmoV_makeObject(state, i);

@@ -40,6 +40,7 @@ COSMO_API void cosmoB_loadStrLib(CState *state);
     - math.abs
     - math.floor
     - math.ceil
+    - math.tan
 */
 COSMO_API void cosmoB_loadMathLib(CState *state);
 
