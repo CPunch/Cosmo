@@ -6,16 +6,14 @@
 #include "coperators.h"
 #include "cvalue.h"
 
-typedef struct CValueArray CValueArray;
-
-typedef struct CChunk {
+struct CChunk {
     size_t capacity; // the amount of space we've allocated for
     size_t count; // the space we're currently using
     INSTRUCTION *buf; // whole chunk
     CValueArray constants; // holds constants
     size_t lineCapacity;
     int *lineInfo;
-} CChunk;
+};
 
 CChunk *newChunk(CState* state, size_t startCapacity);
 void initChunk(CState* state, CChunk *chunk, size_t startCapacity);

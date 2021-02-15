@@ -1,7 +1,7 @@
 # make clean && make && ./bin/cosmo
 
 CC=clang
-CFLAGS=-fPIE -Wall -O3 -Isrc -std=c11
+CFLAGS=-fPIE -Wall -O3 -Isrc -std=c99 -Werror
 LDFLAGS=-lm #-fsanitize=address
 OUT=bin/cosmo
 

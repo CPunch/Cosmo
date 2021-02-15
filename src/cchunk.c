@@ -2,6 +2,7 @@
 #include "cchunk.h"
 #include "cvalue.h"
 #include "cvm.h"
+#include "cobj.h"
 
 CChunk *newChunk(CState* state, size_t startCapacity) {
     CChunk *chunk = cosmoM_xmalloc(state, sizeof(CChunk));

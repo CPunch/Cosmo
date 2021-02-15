@@ -20,11 +20,16 @@
 // forward declare *most* stuff so our headers are cleaner
 typedef struct CState CState;
 typedef struct CChunk CChunk;
+typedef struct CCallFrame CCallFrame;
+
 #ifdef NAN_BOXXED
 typedef union CValue CValue;
 #else
 typedef struct CValue CValue;
 #endif
+
+typedef struct CValueArray CValueArray;
+typedef uint32_t cosmo_Flag;
 
 // objs
 typedef struct CObj CObj;
