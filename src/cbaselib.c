@@ -752,6 +752,38 @@ int cosmoB_mATan(CState *state, int nargs, CValue *args) {
     return 1;
 }
 
+int cosmoB_mRad(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "math.rad() expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_NUMBER(args[0])) {
+        cosmoV_typeError(state, "math.rad", "<number>", "%s", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    // convert the degree to radians
+    cosmoV_pushNumber(state, cosmoV_readNumber(args[0]) * (acos(-1) / 180));
+    return 1;
+}
+
+int cosmoB_mDeg(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "math.deg() expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_NUMBER(args[0])) {
+        cosmoV_typeError(state, "math.deg", "<number>", "%s", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    // convert the degree to radians
+    cosmoV_pushNumber(state, cosmoV_readNumber(args[0]) * (180 / acos(-1)));
+    return 1;
+}
+
 void cosmoB_loadMathLib(CState *state) {
     const char *identifiers[] = {
         "abs",
@@ -762,7 +794,9 @@ void cosmoB_loadMathLib(CState *state) {
         "tan",
         "asin",
         "acos",
-        "atan"
+        "atan",
+        "rad",
+        "deg"
     };
 
     CosmoCFunction mathLib[] = {
@@ -774,7 +808,9 @@ void cosmoB_loadMathLib(CState *state) {
         cosmoB_mTan,
         cosmoB_mASin,
         cosmoB_mACos,
-        cosmoB_mATan
+        cosmoB_mATan,
+        cosmoB_mRad,
+        cosmoB_mDeg
     };
 
     // make math library object
