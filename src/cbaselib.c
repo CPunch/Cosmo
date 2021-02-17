@@ -30,7 +30,12 @@ int cosmoB_assert(CState *state, int nargs, CValue *args) {
     }
 
     if (!IS_BOOLEAN(args[0]) || (nargs == 2 && !IS_STRING(args[1]))) {
-        cosmoV_typeError(state, "assert()", "<boolean>, <string>", "%s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
+        if (nargs == 2) {
+            cosmoV_typeError(state, "assert()", "<boolean>, <string>", "%s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
+        }
+        else {
+            cosmoV_typeError(state, "assert()", "<boolean>", "%s", cosmoV_typeStr(args[0]));
+        }
         return 0;
     }
 
