@@ -14,7 +14,7 @@ Includes misc. functions. The "junk drawer" of the standard library. Without the
 | tostring     | `(<ANY>)` -> `<string>`                          | Converts the datatype to a `<string>`, if a `<ref>` is passed `__tostring` metamethod is invoked | `tostring(12)` -> `"12"` |
 | error        | `(<string>)`                                     | Throws an error with the passed `<string>`                 | `error("error!")` |
 | pcall        | `(<callable>)` -> `<bool>, <error> or <ANY>`              | Tries a protected call on the passed function, if an error is thrown, `<bool>` will be false and the 2nd result will be the error message | `pcall(error("Hello world!"))` -> `false, "Hello world!"` |
-| assert       | `(<bool>)`                                       | If the passed `<bool>` is false, an error is thrown        | `assert(1 == 1)`  |
+| assert       | `(<bool>, <string>)`                                       | If the passed `<bool>` is false, an error is thrown, optionally uses custom error message        | `assert(1 == 1, "Error Message!")`  |
 | loadstring   | `(<string>)` -> `<boolean>, <function> or <error>` | If the `<string>` compiled successfully, 1st result will be true and the 2nd result will be the newly compiled function. If there was a compiler/lexer error, the 1st result will be false and the 2nd result will be the error | `loadstring("print(\"hi\")")()` |
 > -> means 'returns'
 
