@@ -633,7 +633,7 @@ int cosmoV_execute(CState *state) {
                 uint16_t indx = READUINT();
                 CValue ident = constants[indx]; // grabs identifier
                 CValue val; // to hold our value
-                cosmoT_get(&state->globals->tbl, ident, &val);
+                cosmoT_get(state, &state->globals->tbl, ident, &val);
                 cosmoV_pushValue(state, val); // pushes the value to the stack
                 continue;
             }
@@ -766,7 +766,7 @@ int cosmoV_execute(CState *state) {
                 } else if (obj->type == COBJ_TABLE) {
                     CObjTable *tbl = (CObjTable*)obj;
 
-                    cosmoT_get(&tbl->tbl, *key, &val);
+                    cosmoT_get(state, &tbl->tbl, *key, &val);
                 } else {
                     cosmoV_error(state, "No proto defined! Couldn't __index from type %s", cosmoV_typeStr(*temp));
                     return -1;
@@ -1182,7 +1182,7 @@ int cosmoV_execute(CState *state) {
                 StkPtr valA = cosmoV_pop(state);
 
                 // compare & push
-                cosmoV_pushBoolean(state, cosmoV_equal(*valA, *valB));
+                cosmoV_pushBoolean(state, cosmoV_equal(state, *valA, *valB));
                 continue;
             }
             case OP_GREATER: {

@@ -136,7 +136,7 @@ static inline bool IS_CALLABLE(CValue val) {
 }  
 
 void cosmoO_free(CState *state, CObj* obj);
-bool cosmoO_equal(CObj* obj1, CObj* obj2);
+bool cosmoO_equal(CState *state, CObj* obj1, CObj* obj2);
 
 // walks the protos of obj and checks for proto
 bool cosmoO_isDescendant(CObj *obj, CObjObject *proto);

@@ -114,7 +114,7 @@ void cleanValArray(CState *state, CValueArray *array); // cleans array
 void appendValArray(CState *state, CValueArray *array, CValue val);
 
 void printValue(CValue val);
-COSMO_API bool cosmoV_equal(CValue valA, CValue valB);
+COSMO_API bool cosmoV_equal(CState *state, CValue valA, CValue valB);
 COSMO_API CObjString *cosmoV_toString(CState *state, CValue val);
 COSMO_API cosmo_Number cosmoV_toNumber(CState *state, CValue val);
 COSMO_API const char *cosmoV_typeStr(CValue val); // return constant char array for corresponding type

@@ -19,7 +19,7 @@ void appendValArray(CState *state, CValueArray *array, CValue val) {
     array->values[array->count++] = val;
 }
 
-bool cosmoV_equal(CValue valA, CValue valB) {
+bool cosmoV_equal(CState *state, CValue valA, CValue valB) {
     if (GET_TYPE(valA) != GET_TYPE(valB)) // are they the same type?
         return false;
 
@@ -27,7 +27,7 @@ bool cosmoV_equal(CValue valA, CValue valB) {
     switch (GET_TYPE(valA)) {
         case COSMO_TBOOLEAN: return cosmoV_readBoolean(valA) == cosmoV_readBoolean(valB);
         case COSMO_TNUMBER: return cosmoV_readNumber(valA) == cosmoV_readNumber(valB);
-        case COSMO_TREF: return cosmoO_equal(cosmoV_readRef(valA), cosmoV_readRef(valB));
+        case COSMO_TREF: return cosmoO_equal(state, cosmoV_readRef(valA), cosmoV_readRef(valB));
         case COSMO_TNIL: return true;
         default:
             return false;

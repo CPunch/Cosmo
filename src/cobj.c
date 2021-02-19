@@ -90,25 +90,48 @@ void cosmoO_free(CState *state, CObj* obj) {
             cosmoM_free(state, CObjClosure, closure);
             break;
         }
-        case COBJ_MAX: { /* stubbed, should never happen */ }
+        case COBJ_MAX:
+        default: { /* stubbed, should never happen */ }
     }
 }
 
-bool cosmoO_equal(CObj* obj1, CObj* obj2) {
+bool cosmoO_equal(CState *state, CObj* obj1, CObj* obj2) {
+    if (obj1 == obj2) // its the same object, this compares strings for us since they're interned anyways :)
+        return true;
+
     if (obj1->type != obj2->type)
-        return false;
+        goto _eqFail;
 
     switch (obj1->type) {
-        case COBJ_STRING:
-            return obj1 == obj2; // compare pointers because we already intern all strings :)
         case COBJ_CFUNCTION: {
             CObjCFunction *cfunc1 = (CObjCFunction*)obj1;
             CObjCFunction *cfunc2 = (CObjCFunction*)obj2;
-            return cfunc1->cfunc == cfunc2->cfunc;
+            if (cfunc1->cfunc == cfunc2->cfunc)
+                return true;
+            goto _eqFail;
+        }
+        case COBJ_METHOD: {
+            CObjMethod *method1 = (CObjMethod*)obj1;
+            CObjMethod *method2 = (CObjMethod*)obj2;
+            if (cosmoV_equal(state, method1->func, method2->func))
+                return true;
+            goto _eqFail;
+        }
+        case COBJ_CLOSURE: {
+            CObjClosure *closure1 = (CObjClosure*)obj1;
+            CObjClosure *closure2 = (CObjClosure*)obj2;
+            // we just compare the function pointer
+            if (closure1->function == closure2->function)
+                return true;
+            goto _eqFail;
         }
         default:
-            return false;
+            goto _eqFail;
     }
+
+_eqFail:
+    // TODO: add support for an '__equal' metamethod
+    return false;
 }
 
 CObjObject *cosmoO_newObject(CState *state) {
@@ -312,8 +335,8 @@ bool cosmoO_isDescendant(CObj *obj, CObjObject *proto) {
 
 // returns false if error thrown
 bool cosmoO_getRawObject(CState *state, CObjObject *proto, CValue key, CValue *val, CObj *obj) {
-    if (!cosmoT_get(&proto->tbl, key, val)) { // if the field doesn't exist in the object, check the proto
-        if (cosmoO_getIString(state, proto, ISTRING_GETTER, val) && IS_TABLE(*val) && cosmoT_get(&cosmoV_readTable(*val)->tbl, key, val)) {
+    if (!cosmoT_get(state, &proto->tbl, key, val)) { // if the field doesn't exist in the object, check the proto
+        if (cosmoO_getIString(state, proto, ISTRING_GETTER, val) && IS_TABLE(*val) && cosmoT_get(state, &cosmoV_readTable(*val)->tbl, key, val)) {
             cosmoV_pushValue(state, *val); // push function
             cosmoV_pushRef(state, (CObj*)obj); // push object
             if (cosmoV_call(state, 1, 1) != COSMOVM_OK) // call the function with the 1 argument
@@ -342,7 +365,7 @@ void cosmoO_setRawObject(CState *state, CObjObject *proto, CValue key, CValue va
     }
 
     // check for __setters
-    if (cosmoO_getIString(state, proto, ISTRING_SETTER, &ret) && IS_TABLE(ret) && cosmoT_get(&cosmoV_readTable(ret)->tbl, key, &ret)) {
+    if (cosmoO_getIString(state, proto, ISTRING_SETTER, &ret) && IS_TABLE(ret) && cosmoT_get(state, &cosmoV_readTable(ret)->tbl, key, &ret)) {
         cosmoV_pushValue(state, ret); // push function
         cosmoV_pushRef(state, (CObj*)obj); // push object
         cosmoV_pushValue(state, val); // push new value
@@ -398,7 +421,7 @@ bool rawgetIString(CState *state, CObjObject *object, int flag, CValue *val) {
     if (readFlag(object->istringFlags, flag))
         return false; // it's been cached as bad
 
-    if (!cosmoT_get(&object->tbl, cosmoV_newRef(state->iStrings[flag]), val)) {
+    if (!cosmoT_get(state, &object->tbl, cosmoV_newRef(state->iStrings[flag]), val)) {
         // mark it bad!
         setFlagOn(object->istringFlags, flag);
         return false;
