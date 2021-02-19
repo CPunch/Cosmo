@@ -84,8 +84,11 @@ typedef struct {
     Precedence level;
 } ParseRule;
 
-static void parsePrecedence(CParseState*, Precedence);
+// returns true if first prefix was ran
+static bool parsePrecedence(CParseState*, Precedence);
+// returns # of pushed values onto the stack
 static int expressionPrecedence(CParseState *pstate, int needed, Precedence prec, bool forceNeeded);
+// returns # of pushed values onto the stack
 static int expression(CParseState *pstate, int needed, bool forceNeeded);
 static void statement(CParseState *pstate);
 static void declaration(CParseState *pstate);
@@ -969,13 +972,14 @@ static ParseRule* getRule(CTokenType type) {
     return &ruleTable[type];
 }
 
-static void parsePrecedence(CParseState *pstate, Precedence prec) {
+// returns true if it got past the first token (aka prefix wasn't null)
+static bool parsePrecedence(CParseState *pstate, Precedence prec) {
     advance(pstate);
 
     ParseFunc prefix = getRule(pstate->previous.type)->prefix;
 
     if (prefix == NULL)
-        return;
+        return false;
 
     bool canAssign = prec <= PREC_ASSIGNMENT;
     prefix(pstate, canAssign, prec);
@@ -989,6 +993,8 @@ static void parsePrecedence(CParseState *pstate, Precedence prec) {
     if (canAssign && match(pstate, TOKEN_EQUAL)) {
         error(pstate, "Invalid assignment!");
     }
+
+    return true;
 }
 
 static void declareLocal(CParseState *pstate, bool forceLocal) {
@@ -1588,9 +1594,21 @@ static void expressionStatement(CParseState *pstate) {
         continueStatement(pstate);
     } else if (match(pstate, TOKEN_RETURN)) {
         returnStatement(pstate);
+    } else if (match(pstate, TOKEN_EOS)) {
+        // just consume the ';'
     } else {
+        // cache expectedValues
+        int lastExpected = pstate->compiler->expectedValues;
+        pstate->compiler->expectedValues = 0;
+
         // expression or assignment
-        expressionPrecedence(pstate, 0, PREC_ASSIGNMENT, false);
+        if (!parsePrecedence(pstate, PREC_ASSIGNMENT)) {
+            // we never processed anything :/
+            error(pstate, "Expected expresssion, statement or assignment!");
+        }
+
+        // restore previous expectedValues
+        pstate->compiler->expectedValues = lastExpected;
     }
 
     // realign the stack
