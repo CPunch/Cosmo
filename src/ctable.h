@@ -26,7 +26,7 @@ bool cosmoT_checkShrink(CState *state, CTable *tbl);
 
 CObjString *cosmoT_lookupString(CTable *tbl, const char *str, int length, uint32_t hash);
 CValue *cosmoT_insert(CState *state, CTable *tbl, CValue key);
-bool cosmoT_get(CTable *tbl, CValue key, CValue *val);
+bool cosmoT_get(CState *state, CTable *tbl, CValue key, CValue *val);
 bool cosmoT_remove(CState *state, CTable *tbl, CValue key);
 
 void cosmoT_printTable(CTable *tbl, const char *name);

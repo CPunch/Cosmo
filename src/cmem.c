@@ -86,6 +86,7 @@ void markArray(CState *state, CValueArray *array) {
 }
 
 // mark all references associated with the object
+// black = keep, white = discard
 void blackenObject(CState *state, CObj *obj) {
     markObject(state, (CObj*)obj->proto);
     switch (obj->type) {

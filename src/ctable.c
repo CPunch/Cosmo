@@ -86,7 +86,7 @@ uint32_t getValueHash(CValue *val) {
 }
 
 // mask should always be (capacity - 1)
-static CTableEntry *findEntry(CTableEntry *entries, int mask, CValue key) {
+static CTableEntry *findEntry(CState *state, CTableEntry *entries, int mask, CValue key) {
     uint32_t hash = getValueHash(&key);
     uint32_t indx = hash & mask; // since we know the capacity will *always* be a power of 2, we can use bitwise & to perform a MUCH faster mod operation
     CTableEntry *tomb = NULL;
@@ -104,7 +104,7 @@ static CTableEntry *findEntry(CTableEntry *entries, int mask, CValue key) {
                 // its a tombstone!
                 tomb = entry;
             }
-        } else if (cosmoV_equal(entry->key, key)) {
+        } else if (cosmoV_equal(state, entry->key, key)) {
             return entry;
         }
 
@@ -142,7 +142,7 @@ static void resizeTbl(CState *state, CTable *tbl, int newCapacity, bool canShrin
             continue; // skip empty keys
 
         // get new entry location & update the node
-        CTableEntry *newEntry = findEntry(entries, newCapacity - 1, oldEntry->key);
+        CTableEntry *newEntry = findEntry(state, entries, newCapacity - 1, oldEntry->key);
         newEntry->key = oldEntry->key;
         newEntry->val = oldEntry->val;
         newCount++; // inc count
@@ -178,7 +178,7 @@ COSMO_API CValue* cosmoT_insert(CState *state, CTable *tbl, CValue key) {
     }
 
     // insert into the table
-    CTableEntry *entry = findEntry(tbl->table, tbl->capacityMask, key); // -1 for our capacity mask
+    CTableEntry *entry = findEntry(state, tbl->table, tbl->capacityMask, key); // -1 for our capacity mask
 
     if (IS_NIL(entry->key)) {
         if (IS_NIL(entry->val)) // is it empty?
@@ -191,14 +191,14 @@ COSMO_API CValue* cosmoT_insert(CState *state, CTable *tbl, CValue key) {
     return &entry->val;
 }
 
-bool cosmoT_get(CTable *tbl, CValue key, CValue *val) {
+bool cosmoT_get(CState *state, CTable *tbl, CValue key, CValue *val) {
     // sanity check
     if (tbl->count == 0) {
         *val = cosmoV_newNil();
         return false;
     }
     
-    CTableEntry *entry = findEntry(tbl->table, tbl->capacityMask, key);
+    CTableEntry *entry = findEntry(state, tbl->table, tbl->capacityMask, key);
     *val = entry->val;
     
     // return if get was successful
@@ -208,7 +208,7 @@ bool cosmoT_get(CTable *tbl, CValue key, CValue *val) {
 bool cosmoT_remove(CState* state, CTable *tbl, CValue key) {
     if (tbl->count == 0) return 0; // sanity check
 
-    CTableEntry *entry = findEntry(tbl->table, tbl->capacityMask, key);
+    CTableEntry *entry = findEntry(state, tbl->table, tbl->capacityMask, key);
     if (IS_NIL(entry->key)) // sanity check
         return false;
 

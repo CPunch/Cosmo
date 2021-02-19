@@ -62,6 +62,10 @@ COSMO_API bool cosmoV_set(CState *state);
 // wraps the closure into a CObjMethod, so the function is called as an invoked method 
 COSMO_API bool cosmoV_getMethod(CState *state, CObj *obj, CValue key, CValue *val);
 
+// clears the stack, callstack and restores the state into a usable state after a calloverflow or another hard to recover error
+// (keeps the global table intact)
+COSMO_API bool cosmoV_restore(CState *state);
+
 // nice to have wrappers
 
 // pushes a raw CValue to the stack, might throw an error if the stack is overflowed (with the SAFE_STACK macro on)
