@@ -35,7 +35,7 @@ CObj *cosmoO_allocateBase(CState *state, size_t sz, CObjType type) {
     return obj;
 }
 
-void cosmoO_free(CState *state, CObj* obj) {
+void cosmoO_free(CState *state, CObj *obj) {
 #ifdef GC_DEBUG
     printf("freeing %p [", obj);
     printObject(obj);
@@ -95,10 +95,14 @@ void cosmoO_free(CState *state, CObj* obj) {
     }
 }
 
-bool cosmoO_equal(CState *state, CObj* obj1, CObj* obj2) {
-    if (obj1 == obj2) // its the same object, this compares strings for us since they're interned anyways :)
+bool cosmoO_equal(CState *state, CObj *obj1, CObj *obj2) {
+    CObjObject *proto1, *proto2;
+    CValue eq1, eq2;
+
+    if (obj1 == obj2) // its the same reference, this compares strings for us since they're interned anyways :)
         return true;
 
+    // its not the same type, maybe both <ref>'s have the same '__equal' metamethod in their protos?
     if (obj1->type != obj2->type)
         goto _eqFail;
 
@@ -130,7 +134,30 @@ bool cosmoO_equal(CState *state, CObj* obj1, CObj* obj2) {
     }
 
 _eqFail:
-    // TODO: add support for an '__equal' metamethod
+    // this is pretty expensive (bad lookup caching helps a lot), but it only all gets run if both objects have protos & both have the `__equal` metamethod defined so...
+    // it should stay light for the majority of cases
+    if ((proto1 = cosmoO_grabProto(obj1)) != NULL && (proto2 = cosmoO_grabProto(obj2)) != NULL && // make sure both protos exist
+        cosmoO_getIString(state, proto1, ISTRING_EQUAL, &eq1) && // grab the `__equal` metamethod from the first proto, if fail abort
+        cosmoO_getIString(state, proto2, ISTRING_EQUAL, &eq2) && // grab the `__equal` metamethod from the second proto, if fail abort
+        cosmoV_equal(state, eq1, eq2)) { // compare the two `__equal` metamethods
+
+        // now finally, call the `__equal` metamethod (<object>, <object>)
+        cosmoV_pushValue(state, eq1);
+        cosmoV_pushRef(state, obj1);
+        cosmoV_pushRef(state, obj2);
+        if (cosmoV_call(state, 2, 1) != COSMOVM_OK)
+            return false;
+
+        // check return value and make sure it's a boolean
+        if (!IS_BOOLEAN(*cosmoV_getTop(state, 0))) {
+            cosmoV_error(state, "__equal expected to return <boolean>, got %s!", cosmoV_typeStr(*cosmoV_pop(state)));
+            return false;
+        }
+
+        // return the result
+        return cosmoV_readBoolean(*cosmoV_pop(state));
+    }
+
     return false;
 }
 
