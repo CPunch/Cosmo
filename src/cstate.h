@@ -16,6 +16,7 @@ typedef enum IStringEnum {
     ISTRING_INIT,       // __init
     ISTRING_TOSTRING,   // __tostring
     ISTRING_TONUMBER,   // __tonumber
+    ISTRING_EQUAL,      // __equals
     ISTRING_INDEX,      // __index
     ISTRING_NEWINDEX,   // __newindex
     ISTRING_COUNT,      // __count
