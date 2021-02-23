@@ -107,6 +107,13 @@ bool cosmoO_equal(CState *state, CObj *obj1, CObj *obj2) {
         goto _eqFail;
 
     switch (obj1->type) {
+        case COBJ_STRING: {
+            /* 
+                we already compared the pointers at the top of the function, this prevents the `__equal` metamethod
+                from being checked. If you plan on using `__equal` with strings just remove this case!
+            */
+            return false;
+        }
         case COBJ_CFUNCTION: {
             CObjCFunction *cfunc1 = (CObjCFunction*)obj1;
             CObjCFunction *cfunc2 = (CObjCFunction*)obj2;
