@@ -94,11 +94,12 @@ that are called on special operators.
 | __init       | `(<object>, ...)`                                | Newly crafted object is passed, called on instantiation     |
 | __newindex   | `(<object>, key, newValue)`                      | Called on new index using the '[] = ' operator              |
 | __index      | `(<object>, key)` -> `value`                     | Called on index using the '[]' operator                     |
+| __equal      | `(<object>, <object>)` -> `<boolean>`            | Called on equality fail if both protos have the same `__equal` metamethod defined |
 | __tostring   | `(<object>)` -> `<string>`                       | Called when tostring() is called on an object               |
 | __tonumber   | `(<object>)` -> `<number>`                       | Called when tonumber() is called on an object               |
 | __count      | `(<object>)` -> `<number>`                       | Called when object is used with the '#' count operator      |
 | __iter       | `(<object>)` -> `<object>`                       | Called when used in a for-each loop with the 'in' operator  |
-| __next       | `(<object>)` -> `...`                            | Called on each iteration in a for-each loop, return values are passed as parameters in the loop |
+| __next       | `(<object>)` -> `...` | Called on each iteration in a for-each loop, return values are passed as parameters in the loop |
 | __getter     | `[<string> fieldName : <function> getterMethod]` | Indexed & called on field get using the '.' operator        |
 | __setter     | `[<string> fieldName : <function> setterMethod]` | Indexed & Called on field set using the '.' & '=' operators |
 > -> means 'returns'
