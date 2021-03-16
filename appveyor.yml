@@ -5,6 +5,11 @@ version: 'cosmo-0.1.{build}'
 # only:
 #  - main
 
+# only run CI if we changed actual code
+only_commits:
+  files:
+    - src/
+
 # images we're using
 image:
   - Ubuntu2004
