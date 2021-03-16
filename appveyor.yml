@@ -1,0 +1,24 @@
+version: 'cosmo-0.1.{build}'
+
+# we compile every commit under all branches
+#branch:
+# only:
+#  - main
+
+# images we're using
+image:
+  - Ubuntu2004
+
+platform:
+  - x64
+
+install:
+  - sudo apt install clang cmake -y
+
+build_script:
+  - cmake . && make
+
+artifacts:
+  - path: bin
+    name: ubuntu20_04-bin-x64
+    type: zip
