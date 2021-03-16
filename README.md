@@ -1,4 +1,6 @@
 # Cosmo
+[![AppVeyor](https://ci.appveyor.com/api/projects/status/github/CPunch/Cosmo?svg=true)](https://ci.appveyor.com/project/CPunch/Cosmo)
+
 Cosmo is a portable scripting language loosely based off of Lua. Cosmo easily allows the user to extend the language through the use of Proto objects, which describe the behavior of Objects. For example the following is a simple Vector Proto which describes behavior for a Vector-like object.
 
 ```lua
