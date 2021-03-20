@@ -9,6 +9,10 @@ version: 'cosmo-0.1.{build}'
 only_commits:
   files:
     - src/
+    - main.c
+    - Makefile
+    - CMakeLists.txt
+    - appveyor.yml
 
 # images we're using
 image:
@@ -21,7 +25,7 @@ install:
   - sudo apt install clang cmake -y
 
 build_script:
-  - cmake . && make
+  - make && ./bin/cosmo examples/testsuite.cosmo examples/getters_setters.cosmo
 
 artifacts:
   - path: bin
