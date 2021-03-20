@@ -19,6 +19,7 @@ COSMO_API void cosmoB_loadObjLib(CState *state);
 
 /* loads the os library, including:
     - os.read()
+    - os.system()
     - os.time()
 */
 COSMO_API void cosmoB_loadOSLib(CState *state);
