@@ -33,13 +33,14 @@ typedef uint32_t cosmo_Flag;
 
 // objs
 typedef struct CObj CObj;
+typedef struct CObjObject CObjObject;
+typedef struct CObjStream CObjStream;
 typedef struct CObjString CObjString;
 typedef struct CObjUpval CObjUpval;
 typedef struct CObjFunction CObjFunction;
 typedef struct CObjCFunction CObjCFunction;
 typedef struct CObjMethod CObjMethod;
 typedef struct CObjError CObjError;
-typedef struct CObjObject CObjObject;
 typedef struct CObjTable CObjTable;
 typedef struct CObjClosure CObjClosure;
 

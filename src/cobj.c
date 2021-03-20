@@ -7,6 +7,7 @@
 
 #include <string.h>
 #include <stdarg.h>
+#include <unistd.h>
 
 // we don't actually hash the whole string :eyes:
 uint32_t hashString(const char *str, size_t sz) {
@@ -52,6 +53,12 @@ void cosmoO_free(CState *state, CObj *obj) {
             CObjObject *objTbl = (CObjObject*)obj;
             cosmoT_clearTable(state, &objTbl->tbl);
             cosmoM_free(state, CObjObject, objTbl);
+            break;
+        }
+        case COBJ_STREAM: {
+            CObjStream *objStrm = (CObjStream*)obj;
+            close(objStrm->fd);
+            cosmoM_free(state, CObjStream, objStrm);
             break;
         }
         case COBJ_TABLE: {
@@ -179,6 +186,13 @@ CObjObject *cosmoO_newObject(CState *state) {
     cosmoV_pop(state);
 
     return obj;
+}
+
+CObjStream *cosmoO_newStream(CState *state, int fd) {
+    CObjStream *strm = (CObjStream*)cosmoO_allocateBase(state, sizeof(CObjStream), COBJ_STREAM);
+    strm->fd = fd;
+
+    return strm;
 }
 
 CObjTable *cosmoO_newTable(CState *state) {

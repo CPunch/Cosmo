@@ -25,7 +25,7 @@ typedef enum IStringEnum {
     ISTRING_ITER,       // __iter
     ISTRING_NEXT,       // __next
     ISTRING_RESERVED,   // __reserved
-    ISTRING_MAX
+    ISTRING_MAX // if this becomes greater than 33, we are out of space in cosmo_Flag. you'll have to change that to uint64_t
 } IStringEnum;
 
 typedef struct ArrayCObj {
