@@ -315,15 +315,34 @@ int cosmoB_osTime(CState *state, int nargs, CValue *args) {
     return 1;
 }
 
+// os.system()
+int cosmoB_osSystem(CState *state, int nargs, CValue *args) {
+    if (nargs != 1) {
+        cosmoV_error(state, "os.system() expects 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    if (!IS_STRING(args[0])) {
+        cosmoV_typeError(state, "os.system()", "<string>", "%s", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    // run the command and return the exit code
+    cosmoV_pushNumber(state, system(cosmoV_readCString(args[0])));
+    return 1;
+}
+
 COSMO_API void cosmoB_loadOSLib(CState *state) {
     const char *identifiers[] = {
         "read",
-        "time"
+        "time",
+        "system"
     };
 
     CosmoCFunction osLib[] = {
         cosmoB_osRead,
-        cosmoB_osTime
+        cosmoB_osTime,
+        cosmoB_osSystem
     };
 
     cosmoV_pushString(state, "os");
