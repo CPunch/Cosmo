@@ -31,7 +31,9 @@ int cosmoB_input(CState *state, int nargs, CValue *args) {
     return 1; // 1 return value
 }
 
-static void interpret(CState *state, const char *script, const char *mod) {
+static bool interpret(CState *state, const char *script, const char *mod) {
+    bool ret;
+
     // cosmoV_compileString pushes the result onto the stack (COBJ_ERROR or COBJ_CLOSURE)
     if (cosmoV_compileString(state, script, mod)) {        
         COSMOVMRESULT res = cosmoV_call(state, 0, 0); // 0 args being passed, 0 results expected
@@ -43,7 +45,9 @@ static void interpret(CState *state, const char *script, const char *mod) {
         cosmoV_printError(state, state->error);
     }
 
+    ret = state->panic;
     state->panic = false; // so our repl isn't broken
+    return !ret;
 }
 
 static void repl() {
@@ -110,7 +114,8 @@ static char *readFile(const char* path) {
     return buffer;
 }
 
-static void runFile(const char* fileName) {
+static bool runFile(const char* fileName) {
+    bool ret;
     char* script = readFile(fileName);
     CState *state = cosmoV_newState();
     cosmoB_loadLibrary(state);
@@ -122,10 +127,11 @@ static void runFile(const char* fileName) {
 
     cosmoV_register(state, 1);
 
-    interpret(state, script, fileName);
+    ret = interpret(state, script, fileName);
 
     cosmoV_freeState(state);
     free(script);
+    return ret; // let the caller know if the script failed
 }
 
 int main(int argc, const char *argv[]) {
@@ -133,7 +139,9 @@ int main(int argc, const char *argv[]) {
         repl();
     } else if (argc >= 2) { // they passed a file (or more lol)
         for (int i = 1; i < argc; i++) {
-            runFile(argv[i]);
+            if (!runFile(argv[i])) {
+                exit(EXIT_FAILURE);
+            }
         }
     }
 

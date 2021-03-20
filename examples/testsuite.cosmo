@@ -1,0 +1,45 @@
+/*
+    This script tests cosmo and makes sure everything still runs correctly. Pretty minimal for now
+*/
+
+print("starting Testsuite...")
+
+// tests the string.* library
+
+assert("Hello world!":sub(6) == "world!", "string.sub() failed!")
+assert("A":rep(6) == "AAAAAA", "string.red() failed!")
+
+// tests some basic PEMDAS arithmetic
+
+assert(2 * (2 + 6) == 16, "PEMDAS check #1 failed!")
+assert(2 / 5 + 3 / 5 == 1, "PEMDAS check #2 failed!")
+
+// iterator test
+
+proto Range
+    function __init(self, x)
+        self.max = x
+    end
+
+    function __iter(self)
+        self.i = 0
+        return self
+    end
+
+    function __next(self)
+        if self.i >= self.max then
+            return nil // exit iterator loop
+        end
+
+        return self.i++
+    end
+end
+
+var total = 0
+for i in Range(100) do
+    total = total + i
+end
+
+assert(total == 4950, "Iterator check failed!")
+
+print("Testsuite passed!")
