@@ -52,3 +52,14 @@ Includes functions to do some common algebraic operations.
 | math.acos    | `(cos<number>)` -> `<number>`                    | Returns the arc cosine of radian `Rad`              | `math.deg(math.acos(-1))` -> `180` |
 | math.atan    | `(tan<number>)` -> `<number>`                    | Returns the arc tangent of radian `Rad`             | `math.deg(math.atan(1))` -> `45` |
 > -> means 'returns'
+
+## OS Library
+
+Includes functions that interact with the operating system.
+
+| Name         | Type                                             | Behavior                                                                 | Example                  |
+| ------------ | ------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------ |
+| os.read      | `(path<string>)` -> `<string>` or `<nil>`        | Returns a file's contents or nil if it doesn't exist/an error occurred   | `os.read("path")` -> `Hello, World!`|
+| os.time      | `()` -> `<number>`                               | Returns the system time in Epoch format                                  | `os.time()` -> `1.61691e+09` |
+| os.system    | `(cmd<string>)` -> `<number>`                    | Runs a system command as if it were a terminal and returns the exit code | `os.system("mkdir test")` -> `0`  |
+> -> means 'returns'
