@@ -59,8 +59,7 @@ struct CState
 
     CValue *top;                        // top of the stack
     CObjObject *protoObjects[COBJ_MAX]; // proto object for each COBJ type [NULL = no default proto]
-    CObjString
-        *iStrings[ISTRING_MAX]; // strings used internally by the VM, eg. __init, __index & friends
+    CObjString *iStrings[ISTRING_MAX]; // strings used internally by the VM, eg. __init, __index
     CCallFrame callFrame[FRAME_MAX]; // call frames
     CValue stack[STACK_MAX];         // stack
 };

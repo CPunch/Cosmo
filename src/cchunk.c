@@ -56,7 +56,6 @@ int addConstant(CState *state, CChunk *chunk, CValue value)
 }
 
 // ================================================================ [WRITE TO CHUNK]
-// ================================================================
 
 void writeu8Chunk(CState *state, CChunk *chunk, INSTRUCTION i, int line)
 {
@@ -71,8 +70,8 @@ void writeu8Chunk(CState *state, CChunk *chunk, INSTRUCTION i, int line)
 
 void writeu16Chunk(CState *state, CChunk *chunk, uint16_t i, int line)
 {
+    static const int sz = sizeof(uint16_t) / sizeof(INSTRUCTION);
     INSTRUCTION *buffer = (INSTRUCTION *)(&i);
-    int sz = sizeof(uint16_t) / sizeof(INSTRUCTION);
 
     for (int i = 0; i < sz; i++) {
         writeu8Chunk(state, chunk, buffer[i], line);
