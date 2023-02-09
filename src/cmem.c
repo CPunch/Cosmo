@@ -1,13 +1,15 @@
 #include "cmem.h"
-#include "cstate.h"
-#include "cvalue.h"
-#include "ctable.h"
-#include "cparse.h"
-#include "cobj.h"
+
 #include "cbaselib.h"
+#include "cobj.h"
+#include "cparse.h"
+#include "cstate.h"
+#include "ctable.h"
+#include "cvalue.h"
 
 // realloc wrapper
-void *cosmoM_reallocate(CState* state, void *buf, size_t oldSize, size_t newSize) {
+void *cosmoM_reallocate(CState *state, void *buf, size_t oldSize, size_t newSize)
+{
     state->allocatedBytes += newSize - oldSize;
 
     if (newSize == 0) { // it needs to be freed
@@ -19,11 +21,11 @@ void *cosmoM_reallocate(CState* state, void *buf, size_t oldSize, size_t newSize
     if (!(cosmoM_isFrozen(state)) && newSize > oldSize) {
         cosmoM_collectGarbage(state);
     }
-#ifdef GC_DEBUG
+#    ifdef GC_DEBUG
     else {
         printf("GC event ignored! state frozen! [%d]\n", state->freezeGC);
     }
-#endif
+#    endif
 #else
     cosmoM_checkGarbage(state, 0);
 #endif
@@ -39,7 +41,8 @@ void *cosmoM_reallocate(CState* state, void *buf, size_t oldSize, size_t newSize
     return newBuf;
 }
 
-COSMO_API bool cosmoM_checkGarbage(CState *state, size_t needed) {
+COSMO_API bool cosmoM_checkGarbage(CState *state, size_t needed)
+{
     if (!(cosmoM_isFrozen(state)) && state->allocatedBytes + needed > state->nextGC) {
         cosmoM_collectGarbage(state); // cya lol
         return true;
@@ -51,10 +54,11 @@ COSMO_API bool cosmoM_checkGarbage(CState *state, size_t needed) {
 void markObject(CState *state, CObj *obj);
 void markValue(CState *state, CValue val);
 
-void markTable(CState *state, CTable *tbl) {
+void markTable(CState *state, CTable *tbl)
+{
     if (tbl->table == NULL) // table is still being initialized
         return;
-    
+
     int cap = tbl->capacityMask + 1;
     for (int i = 0; i < cap; i++) {
         CTableEntry *entry = &tbl->table[i];
@@ -64,14 +68,17 @@ void markTable(CState *state, CTable *tbl) {
 }
 
 // frees white members from the table
-void tableRemoveWhite(CState *state, CTable *tbl) {
+void tableRemoveWhite(CState *state, CTable *tbl)
+{
     if (tbl->table == NULL) // table is still being initialized
         return;
-    
+
     int cap = tbl->capacityMask + 1;
     for (int i = 0; i < cap; i++) {
         CTableEntry *entry = &tbl->table[i];
-        if (IS_REF(entry->key) && !(cosmoV_readRef(entry->key))->isMarked) { // if the key is a object and it's white (unmarked), remove it from the table
+        if (IS_REF(entry->key) &&
+            !(cosmoV_readRef(entry->key))->isMarked) { // if the key is a object and it's white
+                                                       // (unmarked), remove it from the table
             cosmoT_remove(state, tbl, entry->key);
         }
     }
@@ -79,7 +86,8 @@ void tableRemoveWhite(CState *state, CTable *tbl) {
     cosmoT_checkShrink(state, tbl); // recovers the memory we're no longer using
 }
 
-void markArray(CState *state, CValueArray *array) {
+void markArray(CState *state, CValueArray *array)
+{
     for (size_t i = 0; i < array->count; i++) {
         markValue(state, array->values[i]);
     }
@@ -87,72 +95,74 @@ void markArray(CState *state, CValueArray *array) {
 
 // mark all references associated with the object
 // black = keep, white = discard
-void blackenObject(CState *state, CObj *obj) {
-    markObject(state, (CObj*)obj->proto);
+void blackenObject(CState *state, CObj *obj)
+{
+    markObject(state, (CObj *)obj->proto);
     switch (obj->type) {
-        case COBJ_STRING:
-        case COBJ_CFUNCTION:
-            // stubbed
-            break;
-        case COBJ_OBJECT: {
-            // mark everything this object is keeping track of
-            CObjObject *cobj = (CObjObject*)obj;
-            markTable(state, &cobj->tbl);
-            break;
-        }
-        case COBJ_TABLE: { // tables are just wrappers for CTable
-            CObjTable *tbl = (CObjTable*)obj;
-            markTable(state, &tbl->tbl);
-            break;
-        }
-        case COBJ_UPVALUE: {
-            markValue(state, ((CObjUpval*)obj)->closed);
-            break;
-        }
-        case COBJ_FUNCTION: {
-            CObjFunction *func = (CObjFunction*)obj;
-            markObject(state, (CObj*)func->name);
-            markObject(state, (CObj*)func->module);
-            markArray(state, &func->chunk.constants);
+    case COBJ_STRING:
+    case COBJ_CFUNCTION:
+        // stubbed
+        break;
+    case COBJ_OBJECT: {
+        // mark everything this object is keeping track of
+        CObjObject *cobj = (CObjObject *)obj;
+        markTable(state, &cobj->tbl);
+        break;
+    }
+    case COBJ_TABLE: { // tables are just wrappers for CTable
+        CObjTable *tbl = (CObjTable *)obj;
+        markTable(state, &tbl->tbl);
+        break;
+    }
+    case COBJ_UPVALUE: {
+        markValue(state, ((CObjUpval *)obj)->closed);
+        break;
+    }
+    case COBJ_FUNCTION: {
+        CObjFunction *func = (CObjFunction *)obj;
+        markObject(state, (CObj *)func->name);
+        markObject(state, (CObj *)func->module);
+        markArray(state, &func->chunk.constants);
 
-            break;
-        }
-        case COBJ_METHOD: {
-            CObjMethod *method = (CObjMethod*)obj;
-            markValue(state, method->func);
-            markObject(state, (CObj*)method->obj);
-            break;
-        }
-        case COBJ_ERROR: {
-            CObjError *err = (CObjError*)obj;
-            markValue(state, err->err);
+        break;
+    }
+    case COBJ_METHOD: {
+        CObjMethod *method = (CObjMethod *)obj;
+        markValue(state, method->func);
+        markObject(state, (CObj *)method->obj);
+        break;
+    }
+    case COBJ_ERROR: {
+        CObjError *err = (CObjError *)obj;
+        markValue(state, err->err);
 
-            // mark callframes
-            for (int i = 0; i < err->frameCount; i++) 
-                markObject(state, (CObj*)err->frames[i].closure);
+        // mark callframes
+        for (int i = 0; i < err->frameCount; i++)
+            markObject(state, (CObj *)err->frames[i].closure);
 
-            break;
+        break;
+    }
+    case COBJ_CLOSURE: {
+        CObjClosure *closure = (CObjClosure *)obj;
+        markObject(state, (CObj *)closure->function);
+
+        // mark all upvalues
+        for (int i = 0; i < closure->upvalueCount; i++) {
+            markObject(state, (CObj *)closure->upvalues[i]);
         }
-        case COBJ_CLOSURE: {
-            CObjClosure *closure = (CObjClosure*)obj;
-            markObject(state, (CObj*)closure->function);
 
-            // mark all upvalues
-            for (int i = 0; i < closure->upvalueCount; i++) {
-                markObject(state, (CObj*)closure->upvalues[i]);
-            }
-
-            break;
-        }
-        default:
+        break;
+    }
+    default:
 #ifdef GC_DEBUG
-            printf("Unknown type in blackenObject with %p, type %d\n", (void*)obj, obj->type);
+        printf("Unknown type in blackenObject with %p, type %d\n", (void *)obj, obj->type);
 #endif
-            break;
+        break;
     }
 }
 
-void markObject(CState *state, CObj *obj) {
+void markObject(CState *state, CObj *obj)
+{
     if (obj == NULL || obj->isMarked) // skip if NULL or already marked
         return;
 
@@ -165,33 +175,37 @@ void markObject(CState *state, CObj *obj) {
 #endif
 
     // they don't need to be added to the gray stack, they don't reference any other CObjs
-    if (obj->type == COBJ_CFUNCTION || obj->type == COBJ_STRING) 
+    if (obj->type == COBJ_CFUNCTION || obj->type == COBJ_STRING)
         return;
 
     // we can use cosmoM_growarray because we lock the GC when we entered in cosmoM_collectGarbage
-    cosmoM_growarray(state, CObj*, state->grayStack.array, state->grayStack.count, state->grayStack.capacity);
+    cosmoM_growarray(state, CObj *, state->grayStack.array, state->grayStack.count,
+                     state->grayStack.capacity);
 
     state->grayStack.array[state->grayStack.count++] = obj;
 }
 
-void markValue(CState *state, CValue val) {
+void markValue(CState *state, CValue val)
+{
     if (IS_REF(val))
         markObject(state, cosmoV_readRef(val));
 }
 
 // trace our gray references
-void traceGrays(CState *state) {
+void traceGrays(CState *state)
+{
     while (state->grayStack.count > 0) {
-        CObj* obj = state->grayStack.array[--state->grayStack.count];
+        CObj *obj = state->grayStack.array[--state->grayStack.count];
         blackenObject(state, obj);
     }
 }
 
-void sweep(CState *state) {
+void sweep(CState *state)
+{
     CObj *prev = NULL;
     CObj *object = state->objects;
     while (object != NULL) {
-        if (object->isMarked) { // skip over it
+        if (object->isMarked) {       // skip over it
             object->isMarked = false; // rest to white
             prev = object;
             object = object->next;
@@ -210,7 +224,8 @@ void sweep(CState *state) {
     }
 }
 
-void markUserRoots(CState *state) {
+void markUserRoots(CState *state)
+{
     CObj *root = state->userRoots;
 
     // traverse userRoots and mark all the object
@@ -220,7 +235,8 @@ void markUserRoots(CState *state) {
     }
 }
 
-void markRoots(CState *state) {
+void markRoots(CState *state)
+{
     // mark all values on the stack
     for (StkPtr value = state->stack; value < state->top; value++) {
         markValue(state, *value);
@@ -228,33 +244,34 @@ void markRoots(CState *state) {
 
     // mark all active callframe closures
     for (int i = 0; i < state->frameCount; i++) {
-        markObject(state, (CObj*)state->callFrame[i].closure);
+        markObject(state, (CObj *)state->callFrame[i].closure);
     }
 
     // mark all open upvalues
     for (CObjUpval *upvalue = state->openUpvalues; upvalue != NULL; upvalue = upvalue->next) {
-        markObject(state, (CObj*)upvalue);
+        markObject(state, (CObj *)upvalue);
     }
 
-    markObject(state, (CObj*)state->globals);
+    markObject(state, (CObj *)state->globals);
 
     // mark all internal strings
     for (int i = 0; i < ISTRING_MAX; i++)
-        markObject(state, (CObj*)state->iStrings[i]);
+        markObject(state, (CObj *)state->iStrings[i]);
 
     // mark the user defined roots
     markUserRoots(state);
 
     // mark other misc. internally reserved objects
-    markObject(state, (CObj*)state->error);
+    markObject(state, (CObj *)state->error);
 
     for (int i = 0; i < COBJ_MAX; i++)
-        markObject(state, (CObj*)state->protoObjects[i]);
+        markObject(state, (CObj *)state->protoObjects[i]);
 
     traceGrays(state);
 }
 
-COSMO_API void cosmoM_collectGarbage(CState *state) {
+COSMO_API void cosmoM_collectGarbage(CState *state)
+{
 #ifdef GC_DEBUG
     printf("-- GC start\n");
     size_t start = state->allocatedBytes;
@@ -263,41 +280,48 @@ COSMO_API void cosmoM_collectGarbage(CState *state) {
 
     markRoots(state);
 
-    tableRemoveWhite(state, &state->strings); // make sure we aren't referencing any strings that are about to be freed
+    tableRemoveWhite(
+        state,
+        &state->strings); // make sure we aren't referencing any strings that are about to be freed
     // now finally, free all the unmarked objects
     sweep(state);
 
     // set our next GC event
     cosmoM_updateThreshhold(state);
 
-    state->freezeGC--; // we don't want to use cosmoM_unfreezeGC because that might trigger a GC event (if GC_STRESS is defined)
+    state->freezeGC--; // we don't want to use cosmoM_unfreezeGC because that might trigger a GC
+                       // event (if GC_STRESS is defined)
 #ifdef GC_DEBUG
-    printf("-- GC end, reclaimed %ld bytes (started at %ld, ended at %ld), next garbage collection scheduled at %ld bytes\n",
-            start - state->allocatedBytes, start, state->allocatedBytes, state->nextGC);
+    printf("-- GC end, reclaimed %ld bytes (started at %ld, ended at %ld), next garbage collection "
+           "scheduled at %ld bytes\n",
+           start - state->allocatedBytes, start, state->allocatedBytes, state->nextGC);
     getchar(); // pauses execution
 #endif
 }
 
-COSMO_API void cosmoM_updateThreshhold(CState *state) {
+COSMO_API void cosmoM_updateThreshhold(CState *state)
+{
     state->nextGC = state->allocatedBytes * HEAP_GROW_FACTOR;
 }
 
-COSMO_API void cosmoM_addRoot(CState *state, CObj *newRoot) {
+COSMO_API void cosmoM_addRoot(CState *state, CObj *newRoot)
+{
     // first, check and make sure this root doesn't already exist in the list
     CObj *root = state->userRoots;
     while (root != NULL) {
         if (root == newRoot) // found in the list, abort
             return;
-        
+
         root = root->nextRoot;
     }
-    
+
     // adds root to userRoot linked list
     newRoot->nextRoot = state->userRoots;
     state->userRoots = newRoot;
 }
 
-COSMO_API void cosmoM_removeRoot(CState *state, CObj *oldRoot) {
+COSMO_API void cosmoM_removeRoot(CState *state, CObj *oldRoot)
+{
     CObj *prev = NULL;
     CObj *root = state->userRoots;
 

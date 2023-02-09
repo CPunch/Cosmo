@@ -1,21 +1,21 @@
 #ifndef COSMOMAIN_H
 #define COSMOMAIN_H
 
-#include <stdlib.h>
+#include <assert.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-#include <assert.h>
-
-/* 
+/*
     SAFE_STACK:
-        if undefined, the stack will not be checked for stack overflows. This may improve performance, however 
-    this will produce undefined behavior as you reach the stack limit (and may cause a seg fault!). It is recommended to keep this enabled.
+        if undefined, the stack will not be checked for stack overflows. This may improve
+   performance, however this will produce undefined behavior as you reach the stack limit (and may
+   cause a seg fault!). It is recommended to keep this enabled.
 */
 #define SAFE_STACK
-//#define NAN_BOXXED
+// #define NAN_BOXXED
 
 // forward declare *most* stuff so our headers are cleaner
 typedef struct CState CState;
@@ -54,7 +54,6 @@ typedef uint8_t INSTRUCTION;
 #define UNNAMEDCHUNK    "_main"
 #define COSMOASSERT(x)  assert(x)
 
-#define CERROR(err) \
-    printf("%s : %s\n", "[ERROR]", err)
+#define CERROR(err)     printf("%s : %s\n", "[ERROR]", err)
 
 #endif

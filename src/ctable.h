@@ -1,17 +1,20 @@
 #ifndef CTABLE_H
 #define CTABLE_H
 
-/* TODO: rewrite this table implementation. compared to other languages (including python!) this table is verrryyyy slow */
+/* TODO: rewrite this table implementation. compared to other languages (including python!) this
+ * table is verrryyyy slow */
 
 #include "cosmo.h"
 #include "cvalue.h"
 
-typedef struct CTableEntry {
+typedef struct CTableEntry
+{
     CValue key;
     CValue val;
 } CTableEntry;
 
-typedef struct CTable {
+typedef struct CTable
+{
     int count;
     int capacityMask; // +1 to get the capacity
     int tombstones;
