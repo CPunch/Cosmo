@@ -7,7 +7,7 @@ print("starting Testsuite...")
 // tests the string.* library
 
 assert("Hello world!":sub(6) == "world!", "string.sub() failed!")
-assert("A":rep(6) == "AAAAAA", "string.red() failed!")
+assert("A":rep(6) == "AAAAAA", "string.rep() failed!")
 
 // tests some basic PEMDAS arithmetic
 

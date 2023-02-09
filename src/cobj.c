@@ -59,12 +59,6 @@ void cosmoO_free(CState *state, CObj *obj)
         cosmoM_free(state, CObjObject, objTbl);
         break;
     }
-    case COBJ_STREAM: {
-        CObjStream *objStrm = (CObjStream *)obj;
-        close(objStrm->fd);
-        cosmoM_free(state, CObjStream, objStrm);
-        break;
-    }
     case COBJ_TABLE: {
         CObjTable *tbl = (CObjTable *)obj;
         cosmoT_clearTable(state, &tbl->tbl);
@@ -202,14 +196,6 @@ CObjObject *cosmoO_newObject(CState *state)
     cosmoV_pop(state);
 
     return obj;
-}
-
-CObjStream *cosmoO_newStream(CState *state, int fd)
-{
-    CObjStream *strm = (CObjStream *)cosmoO_allocateBase(state, sizeof(CObjStream), COBJ_STREAM);
-    strm->fd = fd;
-
-    return strm;
 }
 
 CObjTable *cosmoO_newTable(CState *state)
