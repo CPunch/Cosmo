@@ -9,7 +9,6 @@
 #include <sys/time.h>
 
 // ================================================================ [BASELIB]
-// ================================================================
 
 int cosmoB_print(CState *state, int nargs, CValue *args)
 {
@@ -164,7 +163,6 @@ void cosmoB_loadLibrary(CState *state)
 }
 
 // ================================================================ [OBJECT.*]
-// ================================================================
 
 int cosmoB_osetProto(CState *state, int nargs, CValue *args)
 {
@@ -255,7 +253,6 @@ COSMO_API void cosmoB_loadObjLib(CState *state)
 }
 
 // ================================================================ [OS.*]
-// ================================================================
 
 // os.read()
 int cosmoB_osRead(CState *state, int nargs, CValue *args)
@@ -353,7 +350,6 @@ COSMO_API void cosmoB_loadOSLib(CState *state)
 }
 
 // ================================================================ [STRING.*]
-// ================================================================
 
 // string.sub
 int cosmoB_sSub(CState *state, int nargs, CValue *args)
@@ -629,7 +625,6 @@ void cosmoB_loadStrLib(CState *state)
 }
 
 // ================================================================ [MATH]
-// ================================================================
 
 // math.abs
 int cosmoB_mAbs(CState *state, int nargs, CValue *args)
@@ -847,7 +842,6 @@ void cosmoB_loadMathLib(CState *state)
 }
 
 // ================================================================ [VM.*]
-// ================================================================
 
 // vm.__getter["globals"]
 int cosmoB_vgetGlobal(CState *state, int nargs, CValue *args)

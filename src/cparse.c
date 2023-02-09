@@ -108,7 +108,6 @@ static ParseRule *getRule(CTokenType type);
 static CObjFunction *endCompiler(CParseState *pstate);
 
 // ================================================================ [FRONT END/TALK TO LEXER]
-// ================================================================
 
 static void initCompilerState(CParseState *pstate, CCompilerState *ccstate, FunctionType type,
                               CCompilerState *enclosing)
@@ -269,7 +268,6 @@ static bool blockFollow(CToken token)
 }
 
 // ================================================================ [WRITE TO CHUNK]
-// ================================================================
 
 CChunk *getChunk(CParseState *pstate)
 {
@@ -460,7 +458,6 @@ static bool isLast(CParseState *pstate, Precedence pType)
 }
 
 // ================================================================ [PARSER]
-// ================================================================
 
 static void number(CParseState *pstate, bool canAssign, Precedence prec)
 {
