@@ -1,8 +1,8 @@
 // just testing continues and breaks
 
-for (var x = 0; x < 700; x++) do
-    for (var i = 0; true; i++) do
-        var str = i .. "." .. x
+for (let x = 0; x < 700; x++) do
+    for (let i = 0; true; i++) do
+        let str = i .. "." .. x
         if (i == 998) then
             print(i .. " reached")
             break // exits the loop
@@ -13,9 +13,9 @@ for (var x = 0; x < 700; x++) do
     end
 
     // same example as the for loop but done manually using a while loop
-    var i = 0
+    let i = 0
     while true do
-        var str = i .. "." .. x
+        let str = i .. "." .. x
         if (i++ == 998) then
             print("done")
             break

@@ -1,5 +1,5 @@
 // adds all args passed (expects numbers)
-function add(start, ...args) 
+func add(start, ...args) 
     // starting at `start`, add up all numbers passed
     local total = start
     for val in args do

@@ -57,7 +57,7 @@ typedef enum
     TOKEN_ELSEIF,
     TOKEN_END,
     TOKEN_FOR,
-    TOKEN_FUNCTION,
+    TOKEN_FUNC,
     TOKEN_PROTO,
     TOKEN_IF,
     TOKEN_IN,
@@ -66,7 +66,7 @@ typedef enum
     TOKEN_OR,
     TOKEN_RETURN,
     TOKEN_THEN,
-    TOKEN_VAR,
+    TOKEN_LET,
     TOKEN_WHILE,
 
     TOKEN_ERROR,

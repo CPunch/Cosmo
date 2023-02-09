@@ -14,7 +14,7 @@ CReservedWord reservedWords[] = {
     {     TOKEN_END,      "end", 3},
     {   TOKEN_FALSE,    "false", 5},
     {     TOKEN_FOR,      "for", 3},
-    {TOKEN_FUNCTION, "function", 8},
+    {    TOKEN_FUNC,     "func", 4},
     {      TOKEN_IF,       "if", 2},
     {      TOKEN_IN,       "in", 2},
     {   TOKEN_LOCAL,    "local", 5},
@@ -25,7 +25,7 @@ CReservedWord reservedWords[] = {
     {  TOKEN_RETURN,   "return", 6},
     {    TOKEN_THEN,     "then", 4},
     {    TOKEN_TRUE,     "true", 4},
-    {     TOKEN_VAR,      "var", 3},
+    {     TOKEN_LET,      "let", 3},
     {   TOKEN_WHILE,    "while", 5}
 };
 

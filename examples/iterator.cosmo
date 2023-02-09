@@ -1,14 +1,14 @@
 proto Range
-    function __init(self, x)
+    func __init(self, x)
         self.max = x
     end
 
-    function __iter(self)
+    func __iter(self)
         self.i = 0
         return self
     end
 
-    function __next(self)
+    func __next(self)
         if self.i >= self.max then
             return nil // exit iterator loop
         end

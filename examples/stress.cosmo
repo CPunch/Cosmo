@@ -1,15 +1,15 @@
 proto Test
-    function __init(self, x)
+    func __init(self, x)
         self.x = x
     end
 
-    function print(self)
+    func print(self)
         print(self.x)
     end
 end
 
 // stressing the GC
-for (var i = 0; i < 100000; i++) do
-    var x = Test("Hello world " .. i)
+for (let i = 0; i < 100000; i++) do
+    let x = Test("Hello world " .. i)
     x:print()
 end

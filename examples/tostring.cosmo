@@ -1,27 +1,27 @@
 proto test
-    function __init(self, x)
+    func __init(self, x)
         self:setArg(x)
     end
 
-    function __tostring(self)
-        var total = 1
+    func __tostring(self)
+        let total = 1
 
-        for (var i = self.x; i > 0; i = i - 1) do
+        for (let i = self.x; i > 0; i = i - 1) do
             total = total * i;
         end
 
         return "The factorial of " .. self.x .. " is " .. total
     end
 
-    function setArg(self, x)
+    func setArg(self, x)
         self.x = x
     end
 end
 
-var t = test(1)
+let t = test(1)
 
-for (var x = 1; x < 1000; x = x + 1) do
-    for (var i = 1; i < 100; i = i + 1) do
+for (let x = 1; x < 1000; x = x + 1) do
+    for (let i = 1; i < 100; i = i + 1) do
         t:setArg(i)
 
         print(t)

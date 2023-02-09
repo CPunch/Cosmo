@@ -1,7 +1,7 @@
-var words = "hello world! this is a sentence with words separated by space":split(" ")
+let words = "hello world! this is a sentence with words separated by space":split(" ")
 
-var str = ""
-for (var i = 0; i < #words; i++) do
+let str = ""
+for (let i = 0; i < #words; i++) do
     str = str .. words[i]
     print(words[i])
 end

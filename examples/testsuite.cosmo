@@ -17,16 +17,16 @@ assert(2 / 5 + 3 / 5 == 1, "PEMDAS check #2 failed!")
 // iterator test
 
 proto Range
-    function __init(self, x)
+    func __init(self, x)
         self.max = x
     end
 
-    function __iter(self)
+    func __iter(self)
         self.i = 0
         return self
     end
 
-    function __next(self)
+    func __next(self)
         if self.i >= self.max then
             return nil // exit iterator loop
         end
@@ -35,7 +35,7 @@ proto Range
     end
 end
 
-var total = 0
+let total = 0
 for i in Range(100) do
     total = total + i
 end

@@ -1,20 +1,20 @@
-var strtable = []
-var strLen = 4 // length of all strings to generate
-var AByte = "A":byte() // grabs the ascii value of 'A'
+let strtable = []
+let strLen = 4 // length of all strings to generate
+let AByte = "A":byte() // grabs the ascii value of 'A'
 
 proto stringBuilder 
-    function __init(self, length)
+    func __init(self, length)
         self.len = length
     end
 
     // we are the iterator object lol
-    function __iter(self)
+    func __iter(self)
         self.x = 0
         return self
     end
 
-    function __next(self)
-        var x = self.x++
+    func __next(self)
+        let x = self.x++
 
         // if we've generated all the possible strings, return nil ending the loop
         if x >= 26 ^ self.len then
@@ -22,8 +22,8 @@ proto stringBuilder
         end
 
         // generate the string
-        var str = ""
-        for (var i = 0; i < self.len; i++) do
+        let str = ""
+        for (let i = 0; i < self.len; i++) do
             str = string.char(AByte + (x % 26)) .. str
  
             x = math.floor(x / 26)

@@ -1,4 +1,4 @@
-var object = {
+let object = {
     __setter = [
         "field1" = function(self, val)
             print("setter for field1 called!")
