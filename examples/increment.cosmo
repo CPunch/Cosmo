@@ -1,22 +1,22 @@
 proto Vector
-    function __init(self)
+    func __init(self)
         self.vector = []
         self.x = 0
     end
 
-    function push(self, val)
+    func push(self, val)
         self.vector[self.x++] = val
     end 
 
-    function pop(self)
+    func pop(self)
         return self.vector[--self.x]
     end
 
-    function __index(self, key)
+    func __index(self, key)
         return self.vector[key]
     end
 
-    function __iter(self)
+    func __iter(self)
         // you don't *have* to make a new object, i just wanted to show off anonymous functions
         return {__next = (function(self)             
                 return self.vector[self.iterIndex++]
@@ -27,9 +27,9 @@ proto Vector
     end
 end
 
-var vector = Vector()
+let vector = Vector()
 
-for (var i = 0; i < 100000; i++) do
+for (let i = 0; i < 100000; i++) do
     vector:push(i)
 end
 

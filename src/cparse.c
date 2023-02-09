@@ -102,7 +102,7 @@ static int expressionPrecedence(CParseState *pstate, int needed, Precedence prec
 static int expression(CParseState *pstate, int needed, bool forceNeeded);
 static void statement(CParseState *pstate);
 static void declaration(CParseState *pstate);
-static void function(CParseState *pstate, FunctionType type);
+static void parseFunction(CParseState *pstate, FunctionType type);
 static void expressionStatement(CParseState *pstate);
 static ParseRule *getRule(CTokenType type);
 static CObjFunction *endCompiler(CParseState *pstate);
@@ -590,36 +590,40 @@ static void group(CParseState *pstate, bool canAssign, Precedence prec)
     consume(pstate, TOKEN_RIGHT_PAREN, "Expected ')'");
 }
 
-static void _etterOP(CParseState *pstate, uint8_t op, int arg)
+#define WRITE_GLOBAL_OP(pstate, op, arg)
+
+static void _etterAB(CParseState *pstate, uint8_t a, int b, bool isGlobal)
 {
-    writeu8(pstate, op);
-    if (op == OP_GETGLOBAL || op == OP_SETGLOBAL) // globals are stored with a u16
-        writeu16(pstate, arg);
+    writeu8(pstate, a);
+    if (isGlobal) // globals are stored with a u16
+        writeu16(pstate, b);
     else
-        writeu8(pstate, arg);
+        writeu8(pstate, b);
 }
 
 static void namedVariable(CParseState *pstate, CToken name, bool canAssign, bool canIncrement,
                           int expectedValues)
 {
-    uint8_t opGet, opSet, inc;
+    uint8_t opGet, opSet, opInc;
+    bool isGlobal = false;
     int arg = getLocal(pstate->compiler, &name);
 
     if (arg != -1) {
-        // we found it in out local table!
+        // we found it in our local table!
         opGet = OP_GETLOCAL;
         opSet = OP_SETLOCAL;
-        inc = OP_INCLOCAL;
+        opInc = OP_INCLOCAL;
     } else if ((arg = getUpvalue(pstate, pstate->compiler, &name)) != -1) {
         opGet = OP_GETUPVAL;
         opSet = OP_SETUPVAL;
-        inc = OP_INCUPVAL;
+        opInc = OP_INCUPVAL;
     } else {
         // local & upvalue wasn't found, assume it's a global!
         arg = identifierConstant(pstate, &name);
         opGet = OP_GETGLOBAL;
         opSet = OP_SETGLOBAL;
-        inc = OP_INCGLOBAL;
+        opInc = OP_INCGLOBAL;
+        isGlobal = true;
     }
 
     if (canAssign && match(pstate, TOKEN_COMMA)) {
@@ -628,7 +632,7 @@ static void namedVariable(CParseState *pstate, CToken name, bool canAssign, bool
         consume(pstate, TOKEN_IDENTIFIER, "Expected another identifer!");
 
         namedVariable(pstate, pstate->previous, true, false, expectedValues);
-        _etterOP(pstate, opSet, arg);
+        _etterAB(pstate, opSet, arg, isGlobal);
         valuePopped(pstate, 1);
     } else if (canAssign && match(pstate, TOKEN_EQUAL)) {
         expectedValues++;
@@ -651,29 +655,21 @@ static void namedVariable(CParseState *pstate, CToken name, bool canAssign, bool
             writeu8(pstate, OP_NIL);
         }
 
-        _etterOP(pstate, opSet, arg);
+        _etterAB(pstate, opSet, arg, isGlobal);
         valuePopped(pstate, 1);
     } else if (canIncrement && match(pstate, TOKEN_PLUS_PLUS)) { // i++
         // now we increment the value
-        writeu8(pstate, inc);
-        writeu8(pstate, 128 + 1); // setting signed values in an unsigned int
-        if (inc == OP_INCGLOBAL)  // globals are stored with a u16
-            writeu16(pstate, arg);
-        else
-            writeu8(pstate, arg);
+        writeu8(pstate, opInc);
+        _etterAB(pstate, 128 + 1, arg, isGlobal); // As B(x?)
         valuePushed(pstate, 1);
     } else if (canIncrement && match(pstate, TOKEN_MINUS_MINUS)) { // i--
         // now we increment the value
-        writeu8(pstate, inc);
-        writeu8(pstate, 128 - 1); // setting signed values in an unsigned int
-        if (inc == OP_INCGLOBAL)  // globals are stored with a u16
-            writeu16(pstate, arg);
-        else
-            writeu8(pstate, arg);
+        writeu8(pstate, opInc);
+        _etterAB(pstate, 128 - 1, arg, isGlobal); // As B(x?)
         valuePushed(pstate, 1);
     } else {
         // getter
-        _etterOP(pstate, opGet, arg);
+        _etterAB(pstate, opGet, arg, isGlobal);
         valuePushed(pstate, 1);
     }
 }
@@ -705,7 +701,7 @@ static void or_(CParseState *pstate, bool canAssign, Precedence prec)
 
 static void anonFunction(CParseState *pstate, bool canAssign, Precedence prec)
 {
-    function(pstate, FTYPE_FUNCTION);
+    parseFunction(pstate, FTYPE_FUNCTION);
 }
 
 static void variable(CParseState *pstate, bool canAssign, Precedence prec)
@@ -1079,7 +1075,7 @@ ParseRule ruleTable[] = {
     [TOKEN_ELSEIF]          = {NULL, NULL, PREC_NONE},
     [TOKEN_END]             = {NULL, NULL, PREC_NONE},
     [TOKEN_FOR]             = {NULL, NULL, PREC_NONE},
-    [TOKEN_FUNCTION]        = {anonFunction, NULL, PREC_NONE},
+    [TOKEN_FUNC]            = {anonFunction, NULL, PREC_NONE},
     [TOKEN_PROTO]           = {NULL, NULL, PREC_NONE},
     [TOKEN_IF]              = {NULL, NULL, PREC_NONE},
     [TOKEN_IN]              = {NULL, NULL, PREC_NONE},
@@ -1090,7 +1086,7 @@ ParseRule ruleTable[] = {
     [TOKEN_THEN]            = {NULL, NULL, PREC_NONE},
     [TOKEN_WHILE]           = {NULL, NULL, PREC_NONE},
     [TOKEN_ERROR]           = {NULL, NULL, PREC_NONE},
-    [TOKEN_VAR]             = {NULL, NULL, PREC_NONE},
+    [TOKEN_LET]             = {NULL, NULL, PREC_NONE},
     [TOKEN_EOF]             = {NULL, NULL, PREC_NONE}
 };
 
@@ -1182,7 +1178,7 @@ static void _proto(CParseState *pstate)
     int entries = 0;
 
     while (!match(pstate, TOKEN_END) && !match(pstate, TOKEN_EOF) && !pstate->hadError) {
-        if (match(pstate, TOKEN_FUNCTION)) {
+        if (match(pstate, TOKEN_FUNC)) {
             // define method
             consume(pstate, TOKEN_IDENTIFIER, "Expected identifier for method!");
             uint16_t fieldIdent = identifierConstant(pstate, &pstate->previous);
@@ -1191,7 +1187,7 @@ static void _proto(CParseState *pstate)
             writeu8(pstate, OP_LOADCONST);
             writeu16(pstate, fieldIdent);
 
-            function(pstate, FTYPE_METHOD);
+            parseFunction(pstate, FTYPE_METHOD);
             valuePopped(pstate, 1);
         } else {
             errorAtCurrent(pstate, "Illegal syntax!");
@@ -1409,7 +1405,7 @@ static void whileStatement(CParseState *pstate)
     patchJmp(pstate, exitJump);
 }
 
-static void function(CParseState *pstate, FunctionType type)
+static void parseFunction(CParseState *pstate, FunctionType type)
 {
     CCompilerState compiler;
     initCompilerState(pstate, &compiler, type, pstate->compiler);
@@ -1475,7 +1471,7 @@ static void functionDeclaration(CParseState *pstate)
     if (pstate->compiler->scopeDepth > 0)
         markInitialized(pstate, var);
 
-    function(pstate, FTYPE_FUNCTION);
+    parseFunction(pstate, FTYPE_FUNCTION);
 
     defineVariable(pstate, var, false);
 }
@@ -1506,12 +1502,12 @@ static void returnStatement(CParseState *pstate)
     valuePopped(pstate, rvalues);
 }
 
-static void localFunction(CParseState *pstate)
+static void localparseFunction(CParseState *pstate)
 {
     uint16_t var = parseVariable(pstate, "Expected identifer!", true);
     markInitialized(pstate, var);
 
-    function(pstate, FTYPE_FUNCTION);
+    parseFunction(pstate, FTYPE_FUNCTION);
 
     defineVariable(pstate, var, true);
 }
@@ -1732,12 +1728,12 @@ static void expressionStatement(CParseState *pstate)
 {
     int savedPushed = pstate->compiler->pushedValues;
 
-    if (match(pstate, TOKEN_VAR)) {
+    if (match(pstate, TOKEN_LET)) {
         varDeclaration(pstate, false, 0);
     } else if (match(pstate, TOKEN_LOCAL)) {
         // force declare a local
-        if (match(pstate, TOKEN_FUNCTION))
-            localFunction(pstate); // force a local function declaration
+        if (match(pstate, TOKEN_FUNC))
+            localparseFunction(pstate); // force a local function declaration
         else if (match(pstate, TOKEN_PROTO))
             localProto(pstate); // force a local proto declaration
         else
@@ -1752,7 +1748,7 @@ static void expressionStatement(CParseState *pstate)
         whileStatement(pstate);
     } else if (match(pstate, TOKEN_FOR)) {
         forLoop(pstate);
-    } else if (match(pstate, TOKEN_FUNCTION)) {
+    } else if (match(pstate, TOKEN_FUNC)) {
         functionDeclaration(pstate);
     } else if (match(pstate, TOKEN_PROTO)) {
         protoDeclaration(pstate);

@@ -1,4 +1,4 @@
-local function fib(num)
+local func fib(num)
     if num <= 1 then
         return num
     else
@@ -6,6 +6,6 @@ local function fib(num)
     end
 end
 
-for (var i = 1; i < 40; i++) do
+for (let i = 1; i < 40; i++) do
     print("The fib number of " .. i .. " is " .. fib(i))
 end

@@ -1,10 +1,10 @@
 // crafts a dummy proto
 proto test 
-    function __init(self) end
+    func __init(self) end
 end
 
 // instance of test
-var obj = test()
+let obj = test()
 
 test.__index = function(self, key)
     print("__index called!")

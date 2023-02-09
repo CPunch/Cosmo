@@ -5,31 +5,31 @@ Cosmo is a portable scripting language loosely based off of Lua. Cosmo easily al
 
 ```lua
 proto Vector
-    function __init(self)
+    func __init(self)
         self.vector = []
         self.x = 0
     end
 
-    function __index(self, key)
+    func __index(self, key)
         return self.vector[key]
     end
 
-    function push(self, val)
+    func push(self, val)
         self.vector[self.x++] = val
     end 
 
-    function pop(self)
+    func pop(self)
         return self.vector[--self.x]
     end
 end
 
-var vector = Vector()
+let vector = Vector()
 
-for (var i = 0; i < 4; i++) do
+for (let i = 0; i < 4; i++) do
     vector:push(i)
 end
 
-for (var i = 0; i < 4; i++) do
+for (let i = 0; i < 4; i++) do
     print(vector:pop() .. " : " .. vector[i])
 end
 ```
