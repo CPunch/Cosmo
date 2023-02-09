@@ -3,24 +3,25 @@
 
 #include "cosmo.h"
 
-// instructions 
+// instructions
 
-typedef enum {
+typedef enum
+{
     // STACK/STATE MANIPULATION
     OP_LOADCONST, // pushes const[uint8_t] to the stack
     OP_SETGLOBAL, // pops and sets global[const[uint16_t]]
     OP_GETGLOBAL, // pushes global[const[uint16_t]]
-    OP_SETLOCAL, // pops and sets base[uint8_t]
-    OP_GETLOCAL, // pushes base[uint8_t]
-    OP_GETUPVAL, // pushes closure->upvals[uint8_t]
-    OP_SETUPVAL, // pops and sets closure->upvals[uint8_t]
-    OP_PEJMP, // pops, if false jumps uint16_t
-    OP_EJMP, // if peek(0) is falsey jumps uint16_t
-    OP_JMP, // always jumps uint16_t
-    OP_JMPBACK, // jumps -uint16_t
-    OP_POP, // - pops[uint8_t] from stack
-    OP_CALL, // calls top[-uint8_t] expecting uint8_t results
-    OP_CLOSURE, 
+    OP_SETLOCAL,  // pops and sets base[uint8_t]
+    OP_GETLOCAL,  // pushes base[uint8_t]
+    OP_GETUPVAL,  // pushes closure->upvals[uint8_t]
+    OP_SETUPVAL,  // pops and sets closure->upvals[uint8_t]
+    OP_PEJMP,     // pops, if false jumps uint16_t
+    OP_EJMP,      // if peek(0) is falsey jumps uint16_t
+    OP_JMP,       // always jumps uint16_t
+    OP_JMPBACK,   // jumps -uint16_t
+    OP_POP,       // - pops[uint8_t] from stack
+    OP_CALL,      // calls top[-uint8_t] expecting uint8_t results
+    OP_CLOSURE,
     OP_CLOSE,
     OP_NEWTABLE,
     OP_NEWARRAY, // really just a table
@@ -44,10 +45,10 @@ typedef enum {
     OP_NOT,
     OP_NEGATE,
     OP_COUNT,
-    OP_CONCAT, // concats uint8_t vars on the stack
-    OP_INCLOCAL, // pushes old value to stack, adds (uint8_t-128) to local[uint8_t]
+    OP_CONCAT,    // concats uint8_t vars on the stack
+    OP_INCLOCAL,  // pushes old value to stack, adds (uint8_t-128) to local[uint8_t]
     OP_INCGLOBAL, // pushes old value to stack, adds (uint8_t-128) to globals[const[uint16_t]]
-    OP_INCUPVAL, // pushes old value to stack, adds (uint8_t-128) to closure->upval[uint8_t]
+    OP_INCUPVAL,  // pushes old value to stack, adds (uint8_t-128) to closure->upval[uint8_t]
     OP_INCINDEX,
     OP_INCOBJECT, // pushes old value to stack, adds (uint8_t-128) to obj[const[uint16_t]]
 

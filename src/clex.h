@@ -3,7 +3,8 @@
 
 #include "cosmo.h"
 
-typedef enum {
+typedef enum
+{
     // single character tokens
     TOKEN_LEFT_PAREN,
     TOKEN_RIGHT_PAREN,
@@ -72,26 +73,30 @@ typedef enum {
     TOKEN_EOF
 } CTokenType;
 
-typedef struct {
+typedef struct
+{
     CTokenType type;
     const char *word;
     int len;
 } CReservedWord;
 
-typedef struct {
+typedef struct
+{
     CTokenType type;
     char *start;
     int length;
     int line;
 } CToken;
 
-typedef struct {
+typedef struct
+{
     char *currentChar;
     char *startChar;
-    char *buffer; // if non-NULL & bufCount > 0, token->start & token->length will be set to buffer & bufCount respectively
+    char *buffer; // if non-NULL & bufCount > 0, token->start & token->length will be set to buffer
+                  // & bufCount respectively
     size_t bufCount;
-    size_t bufCap; 
-    int line; // current line
+    size_t bufCap;
+    int line;     // current line
     int lastLine; // line of the previous consumed token
     bool isEnd;
     CTokenType lastType;

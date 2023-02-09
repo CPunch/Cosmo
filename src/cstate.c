@@ -1,12 +1,14 @@
 #include "cstate.h"
+
 #include "cchunk.h"
+#include "cmem.h"
 #include "cobj.h"
 #include "cvm.h"
-#include "cmem.h"
 
 #include <string.h>
 
-CState *cosmoV_newState() {
+CState *cosmoV_newState()
+{
     // we use C's malloc because we don't want to trigger a GC with an invalid state
     CState *state = malloc(sizeof(CState));
 
@@ -33,7 +35,7 @@ CState *cosmoV_newState() {
     state->openUpvalues = NULL;
 
     state->error = NULL;
-    
+
     // set default proto objects
     for (int i = 0; i < COBJ_MAX; i++)
         state->protoObjects[i] = NULL;
@@ -73,7 +75,8 @@ CState *cosmoV_newState() {
     return state;
 }
 
-void cosmoV_freeState(CState *state) {
+void cosmoV_freeState(CState *state)
+{
 #ifdef GC_DEBUG
     printf("state %p is being free'd!\n", state);
 #endif
@@ -93,34 +96,36 @@ void cosmoV_freeState(CState *state) {
 
     // free our string table (the string table includes the internal VM strings)
     cosmoT_clearTable(state, &state->strings);
-    
+
     // free our gray stack & finally free the state structure
-    cosmoM_freearray(state, CObj*, state->grayStack.array, state->grayStack.capacity);
+    cosmoM_freearray(state, CObj *, state->grayStack.array, state->grayStack.capacity);
 
     // TODO: yeah idk, it looks like im missing 520 bytes somewhere? i'll look into it later
-/*#ifdef GC_DEBUG
-    if (state->allocatedBytes != sizeof(CState)) {
-        printf("state->allocatedBytes doesn't match expected value (%lu), got %lu!", sizeof(CState), state->allocatedBytes);
-        exit(0);
-    }
-#endif*/
+    /*#ifdef GC_DEBUG
+        if (state->allocatedBytes != sizeof(CState)) {
+            printf("state->allocatedBytes doesn't match expected value (%lu), got %lu!",
+    sizeof(CState), state->allocatedBytes); exit(0);
+        }
+    #endif*/
     free(state);
 }
 
 // expects 2*pairs values on the stack, each pair should consist of 1 key and 1 value
-void cosmoV_register(CState *state, int pairs) {
+void cosmoV_register(CState *state, int pairs)
+{
     for (int i = 0; i < pairs; i++) {
         StkPtr key = cosmoV_getTop(state, 1);
         StkPtr val = cosmoV_getTop(state, 0);
 
         CValue *oldVal = cosmoT_insert(state, &state->globals->tbl, *key);
         *oldVal = *val;
-        
+
         cosmoV_setTop(state, 2); // pops the 2 values off the stack
     }
 }
 
-void cosmoV_printStack(CState *state) {
+void cosmoV_printStack(CState *state)
+{
     printf("==== [[ stack dump ]] ====\n");
     for (CValue *top = state->top - 1; top >= state->stack; top--) {
         printf("%d: ", (int)(top - state->stack));

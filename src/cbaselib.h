@@ -32,7 +32,8 @@ COSMO_API void cosmoB_loadOSLib(CState *state);
     - string.char & <string>:char()
     - string.rep & <string>:rep()
 
-    The base proto object for strings is also set, allowing you to invoke the string.* api through string objects, eg.
+    The base proto object for strings is also set, allowing you to invoke the string.* api through
+   string objects, eg.
         `"hello world":split(" ")` is equivalent to `string.split("hello world", " ")`
 */
 COSMO_API void cosmoB_loadStrLib(CState *state);
@@ -54,7 +55,7 @@ COSMO_API void cosmoB_loadMathLib(CState *state);
 */
 COSMO_API void cosmoB_loadVM(CState *state);
 
-#define cosmoV_typeError(state, name, expectedTypes, formatStr, ...) \
-        cosmoV_error(state, name " expected (" expectedTypes "), got (" formatStr ")!", __VA_ARGS__);
+#define cosmoV_typeError(state, name, expectedTypes, formatStr, ...)                               \
+    cosmoV_error(state, name " expected (" expectedTypes "), got (" formatStr ")!", __VA_ARGS__);
 
 #endif
