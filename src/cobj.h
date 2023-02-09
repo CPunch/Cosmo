@@ -48,12 +48,6 @@ struct CObjString
     bool isIString;
 };
 
-struct CObjStream
-{
-    CommonHeader; // "is a" CObj
-    int fd; // handle to file descriptor, on POSIX compliant OSes this can also be a socket :pog:
-};
-
 struct CObjError
 {
     CommonHeader; // "is a" CObj
@@ -138,7 +132,6 @@ struct CObjUpval
 
 #define cosmoV_readString(x)    ((CObjString *)cosmoV_readRef(x))
 #define cosmoV_readCString(x)   (((CObjString *)cosmoV_readRef(x))->str)
-#define cosmoV_readFD(x)        (((CObjStream *)cosmoV_readRef(x))->fd)
 #define cosmoV_readObject(x)    ((CObjObject *)cosmoV_readRef(x))
 #define cosmoV_readTable(x)     ((CObjTable *)cosmoV_readRef(x))
 #define cosmoV_readFunction(x)  ((CObjFunction *)cosmoV_readRef(x))
@@ -166,7 +159,6 @@ bool cosmoO_equal(CState *state, CObj *obj1, CObj *obj2);
 bool cosmoO_isDescendant(CObj *obj, CObjObject *proto);
 
 CObjObject *cosmoO_newObject(CState *state);
-CObjStream *cosmoO_newStream(CState *state, int fd);
 CObjTable *cosmoO_newTable(CState *state);
 CObjFunction *cosmoO_newFunction(CState *state);
 CObjCFunction *cosmoO_newCFunction(CState *state, CosmoCFunction func);
