@@ -46,8 +46,8 @@ There are two main types of for loops, the traditional c-style for loops, and th
 The c-style for loops starts with the `for` keyword, followed by '(' and an initializer, a conditional expression, and an iterator statement each separated by a ';', followed by ')' then the `do` keyword. The loop body is ended by the matching `end` keyword. Like so:
 
 ```
-var total = 0
-for (var i = 0; i < 10; i++) do
+let total = 0
+for (let i = 0; i < 10; i++) do
     total = total + i
 end
 print(total)

@@ -6,17 +6,17 @@ For example, the following is a proto description for a Range Iterator Object, m
 
 ```
 proto Range
-    function __init(self, x)
+    func __init(self, x)
         self.max = x
     end
 
     // __iter expects an iterable object to be returned (an object with __next defined)
-    function __iter(self)
+    func __iter(self)
         self.i = 0
         return self
     end
 
-    function __next(self)
+    func __next(self)
         if self.i >= self.max then
             return nil // exit iterator loop
         end
@@ -50,7 +50,7 @@ When an object is called using the `()` operator, `__init` is called and a new O
 Objects hold fields, these fields can be grabbed using the '.' operator. Conversely, fields can also be set using the '.' and '=' operators. For example:
 
 ```
-var object = {
+let object = {
     field = "Hello world"
 }
 
@@ -63,17 +63,17 @@ Objects have two main ways of being declared, first was just shown in the above 
 
 ```
 proto Test
-    function __init(self)
+    func __init(self)
         // __init is required for an object to be instantiated, the 'self' passed is the
         // newly allocated object with it's proto already set
     end
 
-    function print(self)
+    func print(self)
         print(self)
     end
 end
 
-var objTest = Test()
+let objTest = Test()
 
 // the ':' operator is used to invoke a method. if the '.' operator is used instead, the
 // raw closure will be given meaning the 'self' parameter won't be populated
