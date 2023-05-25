@@ -8,7 +8,6 @@ typedef enum CObjType
     COBJ_STRING,
     COBJ_OBJECT,
     COBJ_TABLE,
-    COBJ_STREAM,
     COBJ_FUNCTION,
     COBJ_CFUNCTION,
     // internal use
@@ -123,7 +122,6 @@ struct CObjUpval
 
 #define IS_STRING(x)            isObjType(x, COBJ_STRING)
 #define IS_OBJECT(x)            isObjType(x, COBJ_OBJECT)
-#define IS_STREAM(x)            isObjType(x, COBJ_STREAM)
 #define IS_TABLE(x)             isObjType(x, COBJ_TABLE)
 #define IS_FUNCTION(x)          isObjType(x, COBJ_FUNCTION)
 #define IS_CFUNCTION(x)         isObjType(x, COBJ_CFUNCTION)
