@@ -13,6 +13,7 @@ typedef int (*cosmo_Writer)(CState *state, const void *data, size_t size, const 
 
 bool cosmoD_isBigEndian();
 
+/* returns non-zero on error */
 int cosmoD_dump(CState *state, CObjFunction *func, cosmo_Writer writer, const void *userData);
 
 #endif
