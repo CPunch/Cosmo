@@ -41,7 +41,7 @@ struct CObj
 struct CObjString
 {
     CommonHeader;  // "is a" CObj
-    char *str;     // NULL termincated string
+    char *str;     // NULL terminated string
     uint32_t hash; // for hashtable lookup
     int length;
     bool isIString;
@@ -138,6 +138,7 @@ struct CObjUpval
 #define cosmoV_readClosure(x)   ((CObjClosure *)cosmoV_readRef(x))
 
 #define cosmoO_readCString(x)   ((CObjString *)x)->str
+#define cosmoO_readType(x)      ((CObj *)x)->type
 
 static inline bool isObjType(CValue val, CObjType type)
 {

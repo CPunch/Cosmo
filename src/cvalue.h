@@ -123,7 +123,6 @@ void printValue(CValue val);
 COSMO_API bool cosmoV_equal(CState *state, CValue valA, CValue valB);
 COSMO_API CObjString *cosmoV_toString(CState *state, CValue val);
 COSMO_API cosmo_Number cosmoV_toNumber(CState *state, CValue val);
-COSMO_API const char *
-cosmoV_typeStr(CValue val); // return constant char array for corresponding type
+COSMO_API const char *cosmoV_typeStr(CValue val);
 
 #endif

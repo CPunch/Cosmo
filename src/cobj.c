@@ -705,7 +705,7 @@ void printObject(CObj *o)
     switch (o->type) {
     case COBJ_STRING: {
         CObjString *objStr = (CObjString *)o;
-        printf("%.*s", objStr->length, objStr->str);
+        printf("<string> \"%.*s\"", objStr->length, objStr->str);
         break;
     }
     case COBJ_OBJECT: {
