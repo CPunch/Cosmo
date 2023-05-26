@@ -92,17 +92,11 @@ static void writeCObjFunction(DumpState *dstate, CObjFunction *obj)
     writeVector(dstate, obj->chunk.lineInfo, sizeof(int) * obj->chunk.count);
 
     /* write constants */
+    writeSize(dstate, obj->chunk.constants.count);
     for (int i = 0; i < obj->chunk.constants.count; i++) {
         writeCValue(dstate, obj->chunk.constants.values[i]);
     }
 }
-
-#define WRITE_VAR(dstate, type, expression)                                                        \
-    {                                                                                              \
-        type _tmp = expression;                                                                    \
-        writeBlock(dstate, &_tmp, sizeof(_tmp));                                                   \
-        break;                                                                                     \
-    }
 
 static void writeCObj(DumpState *dstate, CObj *obj)
 {
@@ -131,6 +125,13 @@ static void writeCObj(DumpState *dstate, CObj *obj)
         break;
     }
 }
+
+#define WRITE_VAR(dstate, type, expression)                                                        \
+    {                                                                                              \
+        type _tmp = expression;                                                                    \
+        writeBlock(dstate, &_tmp, sizeof(_tmp));                                                   \
+        break;                                                                                     \
+    }
 
 static void writeCValue(DumpState *dstate, CValue val)
 {
