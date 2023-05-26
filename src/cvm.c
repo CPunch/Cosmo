@@ -229,11 +229,7 @@ static bool callCFunction(CState *state, CosmoCFunction cfunc, int args, int nre
 {
     StkPtr savedBase = cosmoV_getTop(state, args);
 
-    // we don't want a GC event during c api because we don't actually trust the user to know how to
-    // evade the GC
-    cosmoM_freezeGC(state);
     int nres = cfunc(state, args, savedBase + 1);
-    cosmoM_unfreezeGC(state);
 
     // caller function wasn't expecting this many return values, cap it
     if (nres > nresults)

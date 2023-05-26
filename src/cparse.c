@@ -59,10 +59,10 @@ typedef struct CCompilerState
 
 typedef struct
 {
+    CState *state;
     CLexState *lex;
     CCompilerState *compiler;
     CObjString *module; // name of the module
-    CState *state;
     CToken current;
     CToken previous; // token right after the current token
     bool hadError;
