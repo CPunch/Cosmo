@@ -2,6 +2,7 @@
 #include "cundump.h"
 #include "cvm.h"
 #include "cchunk.h"
+#include "cmem.h"
 
 typedef struct
 {
@@ -11,7 +12,12 @@ typedef struct
     int readerStatus;
 } UndumpState;
 
-#define check(e) if (!e) return false;
+static bool readCValue(UndumpState *udstate, CValue *val);
+
+#define check(e) if (!e) { \
+    printf("FAILED %d\n", __LINE__); \
+    return false; \
+}
 
 static void initUndumpState(CState *state, UndumpState *udstate, cosmo_Reader reader,
                             const void *userData)
@@ -36,9 +42,9 @@ static bool readu8(UndumpState *udstate, uint8_t *d)
     return readBlock(udstate, d, sizeof(uint8_t));
 }
 
-static bool readu16(UndumpState *udstate, uint16_t *d)
+static bool readu32(UndumpState *udstate, uint32_t *d)
 {
-    return readBlock(udstate, d, sizeof(uint16_t));
+    return readBlock(udstate, d, sizeof(uint32_t));
 }
 
 static bool readSize(UndumpState *udstate, size_t *d)
@@ -46,11 +52,11 @@ static bool readSize(UndumpState *udstate, size_t *d)
     return readBlock(udstate, d, sizeof(size_t));
 }
 
-static bool readVector(UndumpState *udstate, void **data, size_t *size)
+static bool readVector(UndumpState *udstate, void **data, size_t size, size_t *count)
 {
-    check(readSize(udstate, size));
-    *data = cosmoM_malloc(udstate->state, *size);
-    return readBlock(udstate, *data, *size);
+    check(readSize(udstate, count));
+    *data = cosmoM_xmalloc(udstate->state, (*count)*size);
+    return readBlock(udstate, *data, (*count)*size);
 }
 
 #define checku8(udstate, d, tmp) \
@@ -84,17 +90,17 @@ static bool checkHeader(UndumpState *udstate) {
 
 static bool readCObjString(UndumpState *udstate, CObjString **str)
 {
-    size_t size;
+    uint32_t size;
     char *data;
 
-    check(readu32(udstate, &size));
+    check(readu32(udstate, (uint32_t *)&size));
     if (size == 0) { /* empty string */
         *str = NULL;
         return true;
     }
 
-    *data = cosmoM_malloc(udstate->state, size+1);
-    check(readBlock(udstate, (void *)&data, size));
+    data = cosmoM_xmalloc(udstate->state, size+1);
+    check(readBlock(udstate, (void *)data, size));
     data[size] = '\0'; /* add NULL-terminator */
 
     *str = cosmoO_takeString(udstate->state, data, size);
@@ -107,13 +113,13 @@ static bool readCObjFunction(UndumpState *udstate, CObjFunction **func) {
     check(readCObjString(udstate, &(*func)->name));
     check(readCObjString(udstate, &(*func)->module));
 
-    check(readu32(udstate, &(*func)->args));
-    check(readu32(udstate, &(*func)->upvals));
-    check(readu8(udstate, &(*func)->variadic));
+    check(readu32(udstate, (uint32_t *)&(*func)->args));
+    check(readu32(udstate, (uint32_t *)&(*func)->upvals));
+    check(readu8(udstate, (uint8_t *)&(*func)->variadic));
 
     /* read chunk info */
-    check(readVector(udstate, (void **)&(*func)->chunk.buf, &(*func)->chunk.count));
-    check(readVector(udstate, (void **)&(*func)->chunk.lineInfo, &(*func)->chunk.count));
+    check(readVector(udstate, (void **)&(*func)->chunk.buf, sizeof(uint8_t), &(*func)->chunk.count));
+    check(readVector(udstate, (void **)&(*func)->chunk.lineInfo, sizeof(int), &(*func)->chunk.count));
 
     /* read constants */
     size_t constants;
@@ -121,6 +127,8 @@ static bool readCObjFunction(UndumpState *udstate, CObjFunction **func) {
     for (int i = 0; i < constants; i++) {
         CValue val;
         check(readCValue(udstate, &val));
+        // printValue(val);
+        // putc('\n', stdout);
         addConstant(udstate->state, &(*func)->chunk, val);
     }
 
@@ -178,17 +186,20 @@ static bool readCValue(UndumpState *udstate, CValue *val) {
     return true;
 }
 
-int cosmoD_undump(CState *state, CObjFunction *func, cosmo_Reader writer, const void *userData) {
+int cosmoD_undump(CState *state, cosmo_Reader reader, const void *userData, CObjFunction **func) {
     UndumpState udstate;
-    initUndumpState(state, &udstate, writer, userData);
+    initUndumpState(state, &udstate, reader, userData);
 
     if (!checkHeader(&udstate)) {
+        cosmoV_pushNil(state);
         return 1;
     }
 
-    if (!readCObjFunction(&udstate, &func)) {
+    if (!readCObjFunction(&udstate, func)) {
+        cosmoV_pushNil(state);
         return 1;
     }
 
+    cosmoV_pushRef(state, (CObj *)*func);
     return udstate.readerStatus;
 }

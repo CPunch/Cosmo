@@ -45,6 +45,9 @@ typedef struct CObjClosure CObjClosure;
 
 typedef uint8_t INSTRUCTION;
 
+typedef int (*cosmo_Reader)(CState *state, void *data, size_t size, const void *ud);
+typedef int (*cosmo_Writer)(CState *state, const void *data, size_t size, const void *ud);
+
 #define COSMOMAX_UPVALS 80
 #define FRAME_MAX       64
 #define STACK_MAX       (256 * FRAME_MAX)

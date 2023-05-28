@@ -6,9 +6,7 @@
 
 #include <stdio.h>
 
-typedef int (*cosmo_Reader)(CState *state, void *data, size_t size, const void *ud);
-
 /* returns non-zero on error */
-int cosmoD_undump(CState *state, CObjFunction *func, cosmo_Reader writer, const void *userData);
+int cosmoD_undump(CState *state, cosmo_Reader reader, const void *userData, CObjFunction **func);
 
 #endif
