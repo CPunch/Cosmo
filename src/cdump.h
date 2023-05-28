@@ -9,8 +9,6 @@
 #define COSMO_MAGIC     "COS\x12"
 #define COSMO_MAGIC_LEN 4
 
-typedef int (*cosmo_Writer)(CState *state, const void *data, size_t size, const void *ud);
-
 bool cosmoD_isBigEndian();
 
 /* returns non-zero on error */
