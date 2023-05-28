@@ -172,10 +172,10 @@ static bool readCObj(UndumpState *udstate, CObj **obj)
 
 static bool readCValue(UndumpState *udstate, CValue *val)
 {
-    uint8_t type;
-    check(readu8(udstate, &type));
+    uint8_t t;
+    check(readu8(udstate, &t));
 
-    switch (type) {
+    switch (t) {
     case COSMO_TNUMBER:
         READ_VAR(udstate, val, cosmo_Number, cosmoV_newNumber)
     case COSMO_TBOOLEAN:
@@ -190,7 +190,8 @@ static bool readCValue(UndumpState *udstate, CValue *val)
         *val = cosmoV_newNil();
         break;
     default:
-        break;
+        cosmoV_error(udstate->state, "invalid value type: %d", t);
+        return false;
     }
 
     return true;
