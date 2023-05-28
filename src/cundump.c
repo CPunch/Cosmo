@@ -17,7 +17,6 @@ static bool readCValue(UndumpState *udstate, CValue *val);
 
 #define check(e)                                                                                   \
     if (!e) {                                                                                      \
-        printf("FAILED %d\n", __LINE__);                                                           \
         return false;                                                                              \
     }
 
@@ -196,6 +195,9 @@ static bool readCValue(UndumpState *udstate, CValue *val)
 
     return true;
 }
+
+#undef READ_VAR
+#undef check
 
 int cosmoD_undump(CState *state, cosmo_Reader reader, const void *userData, CObjFunction **func)
 {
