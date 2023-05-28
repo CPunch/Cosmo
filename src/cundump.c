@@ -112,6 +112,9 @@ static bool readCObjString(UndumpState *udstate, CObjString **str)
 
 static bool readCObjFunction(UndumpState *udstate, CObjFunction **func)
 {
+    size_t constants;
+    CValue val;
+
     *func = cosmoO_newFunction(udstate->state);
 
     check(readCObjString(udstate, &(*func)->name));
@@ -128,10 +131,8 @@ static bool readCObjFunction(UndumpState *udstate, CObjFunction **func)
         readVector(udstate, (void **)&(*func)->chunk.lineInfo, sizeof(int), &(*func)->chunk.count));
 
     /* read constants */
-    size_t constants;
     check(readSize(udstate, &constants));
     for (int i = 0; i < constants; i++) {
-        CValue val;
         check(readCValue(udstate, &val));
         addConstant(udstate->state, &(*func)->chunk, val);
     }
