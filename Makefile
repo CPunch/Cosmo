@@ -1,8 +1,8 @@
 # make clean && make && ./bin/cosmo
 
 CC=clang
-CFLAGS=-fPIE -Wall -O3 -Isrc -std=c99
-LDFLAGS=-lm #-fsanitize=address
+CFLAGS=-fPIE -Wall -O0 -Isrc -std=c99 -g
+LDFLAGS=-lm -fsanitize=address
 OUT=bin/cosmo
 
 CHDR=\
@@ -19,6 +19,8 @@ CHDR=\
 	src/cvm.h\
 	src/cobj.h\
 	src/cbaselib.h\
+	src/cdump.h\
+	src/cundump.h\
 
 CSRC=\
 	src/cchunk.c\
@@ -33,6 +35,8 @@ CSRC=\
 	src/cvm.c\
 	src/cobj.c\
 	src/cbaselib.c\
+	src/cdump.c\
+	src/cundump.c\
 	main.c\
 
 COBJ=$(CSRC:.c=.o)
