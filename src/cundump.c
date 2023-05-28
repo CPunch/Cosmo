@@ -1,8 +1,9 @@
-#include "cdump.h"
 #include "cundump.h"
-#include "cvm.h"
+
 #include "cchunk.h"
+#include "cdump.h"
 #include "cmem.h"
+#include "cvm.h"
 
 typedef struct
 {
@@ -14,10 +15,11 @@ typedef struct
 
 static bool readCValue(UndumpState *udstate, CValue *val);
 
-#define check(e) if (!e) { \
-    printf("FAILED %d\n", __LINE__); \
-    return false; \
-}
+#define check(e)                                                                                   \
+    if (!e) {                                                                                      \
+        printf("FAILED %d\n", __LINE__);                                                           \
+        return false;                                                                              \
+    }
 
 static void initUndumpState(CState *state, UndumpState *udstate, cosmo_Reader reader,
                             const void *userData)
@@ -55,18 +57,19 @@ static bool readSize(UndumpState *udstate, size_t *d)
 static bool readVector(UndumpState *udstate, void **data, size_t size, size_t *count)
 {
     check(readSize(udstate, count));
-    *data = cosmoM_xmalloc(udstate->state, (*count)*size);
-    return readBlock(udstate, *data, (*count)*size);
+    *data = cosmoM_xmalloc(udstate->state, (*count) * size);
+    return readBlock(udstate, *data, (*count) * size);
 }
 
-#define checku8(udstate, d, tmp) \
-    check(readu8(udstate, &tmp)); \
-    if (d != tmp) { \
-        cosmoV_error(udstate->state, "bad header!"); \
-        return false; \
+#define checku8(udstate, d, tmp)                                                                   \
+    check(readu8(udstate, &tmp));                                                                  \
+    if (d != tmp) {                                                                                \
+        cosmoV_error(udstate->state, "bad header!");                                               \
+        return false;                                                                              \
     }
 
-static bool checkHeader(UndumpState *udstate) {
+static bool checkHeader(UndumpState *udstate)
+{
     char magic[COSMO_MAGIC_LEN];
     uint8_t tmp;
 
@@ -99,7 +102,7 @@ static bool readCObjString(UndumpState *udstate, CObjString **str)
         return true;
     }
 
-    data = cosmoM_xmalloc(udstate->state, size+1);
+    data = cosmoM_xmalloc(udstate->state, size + 1);
     check(readBlock(udstate, (void *)data, size));
     data[size] = '\0'; /* add NULL-terminator */
 
@@ -107,7 +110,8 @@ static bool readCObjString(UndumpState *udstate, CObjString **str)
     return true;
 }
 
-static bool readCObjFunction(UndumpState *udstate, CObjFunction **func) {
+static bool readCObjFunction(UndumpState *udstate, CObjFunction **func)
+{
     *func = cosmoO_newFunction(udstate->state);
 
     check(readCObjString(udstate, &(*func)->name));
@@ -118,8 +122,10 @@ static bool readCObjFunction(UndumpState *udstate, CObjFunction **func) {
     check(readu8(udstate, (uint8_t *)&(*func)->variadic));
 
     /* read chunk info */
-    check(readVector(udstate, (void **)&(*func)->chunk.buf, sizeof(uint8_t), &(*func)->chunk.count));
-    check(readVector(udstate, (void **)&(*func)->chunk.lineInfo, sizeof(int), &(*func)->chunk.count));
+    check(
+        readVector(udstate, (void **)&(*func)->chunk.buf, sizeof(uint8_t), &(*func)->chunk.count));
+    check(
+        readVector(udstate, (void **)&(*func)->chunk.lineInfo, sizeof(int), &(*func)->chunk.count));
 
     /* read constants */
     size_t constants;
@@ -127,8 +133,6 @@ static bool readCObjFunction(UndumpState *udstate, CObjFunction **func) {
     for (int i = 0; i < constants; i++) {
         CValue val;
         check(readCValue(udstate, &val));
-        // printValue(val);
-        // putc('\n', stdout);
         addConstant(udstate->state, &(*func)->chunk, val);
     }
 
@@ -153,15 +157,16 @@ static bool readCObj(UndumpState *udstate, CObj **obj)
     return true;
 }
 
-#define READ_VAR(udstate, val, type, creator) \
-    { \
-        type _tmp; \
-        check(readBlock(udstate, &_tmp, sizeof(type))); \
-        *val = creator(_tmp); \
-        break; \
+#define READ_VAR(udstate, val, type, creator)                                                      \
+    {                                                                                              \
+        type _tmp;                                                                                 \
+        check(readBlock(udstate, &_tmp, sizeof(type)));                                            \
+        *val = creator(_tmp);                                                                      \
+        break;                                                                                     \
     }
 
-static bool readCValue(UndumpState *udstate, CValue *val) {
+static bool readCValue(UndumpState *udstate, CValue *val)
+{
     uint8_t type;
     check(readu8(udstate, &type));
 
@@ -186,7 +191,8 @@ static bool readCValue(UndumpState *udstate, CValue *val) {
     return true;
 }
 
-int cosmoD_undump(CState *state, cosmo_Reader reader, const void *userData, CObjFunction **func) {
+int cosmoD_undump(CState *state, cosmo_Reader reader, const void *userData, CObjFunction **func)
+{
     UndumpState udstate;
     initUndumpState(state, &udstate, reader, userData);
 

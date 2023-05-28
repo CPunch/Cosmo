@@ -31,7 +31,8 @@ COSMO_API void cosmo_insert(CState *state, int indx, CValue val)
     state->top++;
 }
 
-COSMO_API bool cosmoV_undump(CState *state, cosmo_Reader reader, const void *ud) {
+COSMO_API bool cosmoV_undump(CState *state, cosmo_Reader reader, const void *ud)
+{
     CObjFunction *func;
 
     if (cosmoD_undump(state, reader, ud, &func)) {
