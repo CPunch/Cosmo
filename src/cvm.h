@@ -38,7 +38,7 @@ COSMO_API void cosmo_insert(CState *state, int indx, CValue val);
 COSMO_API bool cosmoV_registerProtoObject(CState *state, CObjType objType, CObjObject *obj);
 
 /*
-    compiles string into a <closure>, if successful, <closure> will be pushed onto the stack
+    compiles string into a <closure>. if successful, <closure> will be pushed onto the stack
    otherwise the <error> will be pushed.
 
     returns:
@@ -46,6 +46,16 @@ COSMO_API bool cosmoV_registerProtoObject(CState *state, CObjType objType, CObjO
         true  : <closure> is at the top of the stack
 */
 COSMO_API bool cosmoV_compileString(CState *state, const char *src, const char *name);
+
+/*
+    loads a <closure> from a dump. if successful, <closure> will be pushed onto the stack
+   otherwise the <error> will be pushed.
+
+   returns:
+        false : <error> is at the top of the stack
+        true  : <closure> is at the top of the stack
+*/
+COSMO_API bool cosmoV_undump(CState *state, cosmo_Reader reader, const void *ud);
 
 /*
     expects object to be pushed, then the key.
