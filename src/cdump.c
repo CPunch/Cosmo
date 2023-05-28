@@ -1,9 +1,9 @@
 #include "cdump.h"
 
+#include "cdebug.h"
 #include "cmem.h"
 #include "cobj.h"
 #include "cvalue.h"
-#include "cdebug.h"
 
 typedef struct
 {
