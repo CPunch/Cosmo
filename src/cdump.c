@@ -3,6 +3,7 @@
 #include "cmem.h"
 #include "cobj.h"
 #include "cvalue.h"
+#include "cdebug.h"
 
 typedef struct
 {
@@ -45,10 +46,10 @@ static void writeSize(DumpState *dstate, size_t d)
     writeBlock(dstate, &d, sizeof(size_t));
 }
 
-static void writeVector(DumpState *dstate, const void *data, size_t size)
+static void writeVector(DumpState *dstate, const void *data, size_t size, size_t count)
 {
-    writeSize(dstate, size);
-    writeBlock(dstate, data, size);
+    writeSize(dstate, count);
+    writeBlock(dstate, data, size * count);
 }
 
 static void writeHeader(DumpState *dstate)
@@ -86,10 +87,10 @@ static void writeCObjFunction(DumpState *dstate, CObjFunction *obj)
     writeu8(dstate, obj->variadic);
 
     /* write chunk info */
-    writeVector(dstate, obj->chunk.buf, sizeof(uint8_t) * obj->chunk.count);
+    writeVector(dstate, obj->chunk.buf, sizeof(uint8_t), obj->chunk.count);
 
     /* write line info */
-    writeVector(dstate, obj->chunk.lineInfo, sizeof(int) * obj->chunk.count);
+    writeVector(dstate, obj->chunk.lineInfo, sizeof(int), obj->chunk.count);
 
     /* write constants */
     writeSize(dstate, obj->chunk.constants.count);
