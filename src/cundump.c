@@ -32,6 +32,7 @@ static void initUndumpState(CState *state, UndumpState *udstate, cosmo_Reader re
 static bool readBlock(UndumpState *udstate, void *data, size_t size)
 {
     if (udstate->readerStatus == 0) {
+        /* if reader returns 1, we expect an error was thrown */
         udstate->readerStatus = udstate->reader(udstate->state, data, size, udstate->userData);
     }
 
@@ -73,7 +74,7 @@ static bool checkHeader(UndumpState *udstate)
     uint8_t tmp;
 
     /* check header */
-    readBlock(udstate, magic, COSMO_MAGIC_LEN);
+    check(readBlock(udstate, magic, COSMO_MAGIC_LEN));
     if (memcmp(magic, COSMO_MAGIC, COSMO_MAGIC_LEN) != 0) {
         cosmoV_error(udstate->state, "bad header!");
         return false;
@@ -206,12 +207,10 @@ int cosmoD_undump(CState *state, cosmo_Reader reader, const void *userData, CObj
     initUndumpState(state, &udstate, reader, userData);
 
     if (!checkHeader(&udstate)) {
-        cosmoV_pushNil(state);
         return 1;
     }
 
     if (!readCObjFunction(&udstate, func)) {
-        cosmoV_pushNil(state);
         return 1;
     }
 
