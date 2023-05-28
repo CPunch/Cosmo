@@ -4,6 +4,7 @@
 #include "cmem.h"
 #include "cparse.h"
 #include "cstate.h"
+#include "cundump.h"
 
 #include <math.h>
 #include <stdarg.h>
@@ -30,6 +31,27 @@ COSMO_API void cosmo_insert(CState *state, int indx, CValue val)
     state->top++;
 }
 
+COSMO_API bool cosmoV_undump(CState *state, cosmo_Reader reader, const void *ud) {
+    CObjFunction *func;
+
+    if (cosmoD_undump(state, reader, ud, &func)) {
+        // fail recovery
+        state->panic = false;
+        cosmoV_pushRef(state, (CObj *)state->error);
+        return false;
+    };
+
+#ifdef VM_DEBUG
+    disasmChunk(&func->chunk, func->name ? func->name->str : UNNAMEDCHUNK, 0);
+#endif
+
+    // push function onto the stack so it doesn't it cleaned up by the GC, at the same stack
+    // location put our closure
+    cosmoV_pushRef(state, (CObj *)func);
+    *(cosmoV_getTop(state, 0)) = cosmoV_newRef(cosmoO_newClosure(state, func));
+    return true;
+}
+
 COSMO_API bool cosmoV_compileString(CState *state, const char *src, const char *name)
 {
     CObjFunction *func;
@@ -46,7 +68,7 @@ COSMO_API bool cosmoV_compileString(CState *state, const char *src, const char *
         return true;
     }
 
-    // fail
+    // fail recovery
     state->panic = false;
     cosmoV_pushRef(state, (CObj *)state->error);
     return false;
