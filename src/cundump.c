@@ -117,6 +117,9 @@ static bool readCObjFunction(UndumpState *udstate, CObjFunction **func)
 
     *func = cosmoO_newFunction(udstate->state);
 
+    /* make sure our GC can see that we're currently using this function (and the values it uses) */
+    cosmoV_pushRef(udstate->state, (CObj *)*func);
+
     check(readCObjString(udstate, &(*func)->name));
     check(readCObjString(udstate, &(*func)->module));
 
@@ -137,6 +140,8 @@ static bool readCObjFunction(UndumpState *udstate, CObjFunction **func)
         addConstant(udstate->state, &(*func)->chunk, val);
     }
 
+    /* pop function off stack */
+    cosmoV_pop(udstate->state);
     return true;
 }
 
