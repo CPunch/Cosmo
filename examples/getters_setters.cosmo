@@ -1,13 +1,13 @@
 let object = {
     __setter = [
-        "field1" = function(self, val)
+        "field1" = func(self, val)
             print("setter for field1 called!")
             self.x = val
         end
     ],
 
     __getter = [
-        "field1" = function(self)
+        "field1" = func(self)
             print("getter for field1 called!")
 
             return self.x + 1
