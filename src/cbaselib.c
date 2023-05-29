@@ -980,6 +980,4 @@ void cosmoB_loadVM(CState *state)
 
     // register "vm" to the global table
     cosmoV_register(state, 1);
-
-    printf("[WARNING] the vm.* library has been loaded!\n");
 }
