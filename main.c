@@ -192,8 +192,8 @@ void printUsage(const char *name)
     printf("available options are:\n"
            "-c <in> <out>\tcompile <in> and dump to <out>\n"
            "-l <in>\t\tload dump from <in>\n"
-           "-s <in...>\t\tcompile and run <in...> script(s)\n"
-           "-r\t\t\tstart the repl\n\n");
+           "-s <in...>\tcompile and run <in...> script(s)\n"
+           "-r\t\tstart the repl\n\n");
 }
 
 int main(int argc, char *const argv[])
