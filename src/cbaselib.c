@@ -6,7 +6,7 @@
 #include "cvm.h"
 
 #include <math.h>
-#include <sys/time.h>
+#include "_time.h"
 
 // ================================================================ [BASELIB]
 
@@ -423,7 +423,7 @@ int cosmoB_sFind(CState *state, int nargs, CValue *args)
         }
 
         // success! push the index
-        cosmoV_pushNumber(state, indx - str->str);
+        cosmoV_pushNumber(state, (cosmo_Number)(indx - str->str));
     } else if (nargs == 3) {
         if (!IS_STRING(args[0]) || !IS_STRING(args[1]) || !IS_NUMBER(args[2])) {
             cosmoV_typeError(state, "string.find()", "<string>, <string>, <number>", "%s, %s, %s",
@@ -445,7 +445,7 @@ int cosmoB_sFind(CState *state, int nargs, CValue *args)
         }
 
         // success! push the index
-        cosmoV_pushNumber(state, indx - str->str);
+        cosmoV_pushNumber(state, (cosmo_Number)(indx - str->str));
     } else {
         cosmoV_error(state, "string.find() expected 2 or 3 arguments, got %d!", nargs);
         return 0;
@@ -557,7 +557,7 @@ int cosmoB_sLen(CState *state, int nargs, CValue *args)
         return 0;
     }
 
-    cosmoV_pushNumber(state, strlen(cosmoV_readCString(args[0])));
+    cosmoV_pushNumber(state, (cosmo_Number)strlen(cosmoV_readCString(args[0])));
 
     return 1;
 }

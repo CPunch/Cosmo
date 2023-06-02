@@ -8,7 +8,6 @@
 
 #include <stdarg.h>
 #include <string.h>
-#include <unistd.h>
 
 // we don't actually hash the whole string :eyes:
 uint32_t hashString(const char *str, size_t sz)

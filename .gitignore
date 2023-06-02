@@ -1,4 +1,5 @@
 *.o
 bin
+build
 .vscode
 CMakeFiles

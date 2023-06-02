@@ -10,8 +10,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <getopt.h>
+#ifdef _WIN32
+#    include "util/getopt.h"
+#else
+#    include <getopt.h>
+#endif
 
 static bool _ACTIVE = false;
 
