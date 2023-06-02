@@ -42,9 +42,9 @@ COSMO_API bool cosmoV_undump(CState *state, cosmo_Reader reader, const void *ud)
         return false;
     };
 
-#ifdef VM_DEBUG
+    // #ifdef VM_DEBUG
     disasmChunk(&func->chunk, func->name ? func->name->str : UNNAMEDCHUNK, 0);
-#endif
+    // #endif
 
     // push function onto the stack so it doesn't it cleaned up by the GC, at the same stack
     // location put our closure
