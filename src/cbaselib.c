@@ -1,13 +1,13 @@
 #include "cbaselib.h"
 
+#include "_time.h"
+#include "cdebug.h"
 #include "cmem.h"
 #include "cobj.h"
 #include "cvalue.h"
-#include "cdebug.h"
 #include "cvm.h"
 
 #include <math.h>
-#include "_time.h"
 
 // ================================================================ [BASELIB]
 
@@ -891,7 +891,8 @@ int cosmoB_vdisassemble(CState *state, int nargs, CValue *args)
     closure = cosmoV_readClosure(args[0]);
 
     // print the disasembly
-    disasmChunk(&closure->function->chunk, closure->function->name ? closure->function->name->str : UNNAMEDCHUNK, 0);
+    disasmChunk(&closure->function->chunk,
+                closure->function->name ? closure->function->name->str : UNNAMEDCHUNK, 0);
     return 0;
 }
 
