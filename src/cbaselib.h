@@ -50,6 +50,7 @@ COSMO_API void cosmoB_loadMathLib(CState *state);
     - manually setting/grabbing base protos of any object (vm.baseProtos)
     - manually setting/grabbing the global table (vm.globals)
     - manually invoking a garbage collection event (vm.collect())
+    - printing closure disassemblies (vm.disassemble())
 
     for this reason, it is recommended to NOT load this library in production
 */
