@@ -3,6 +3,7 @@
 #include "cmem.h"
 #include "cobj.h"
 #include "cvalue.h"
+#include "cdebug.h"
 #include "cvm.h"
 
 #include <math.h>
@@ -823,10 +824,10 @@ void cosmoB_loadMathLib(CState *state)
     CosmoCFunction mathLib[] = {cosmoB_mAbs,  cosmoB_mFloor, cosmoB_mCeil, cosmoB_mSin,
                                 cosmoB_mCos,  cosmoB_mTan,   cosmoB_mASin, cosmoB_mACos,
                                 cosmoB_mATan, cosmoB_mRad,   cosmoB_mDeg};
+    int i;
 
     // make math library object
     cosmoV_pushString(state, "math");
-    int i;
     for (i = 0; i < sizeof(identifiers) / sizeof(identifiers[0]); i++) {
         cosmoV_pushString(state, identifiers[i]);
         cosmoV_pushCFunction(state, mathLib[i]);
@@ -868,6 +869,29 @@ int cosmoB_vsetGlobal(CState *state, int nargs, CValue *args)
     // this makes me very nervous ngl
     CObjTable *tbl = (CObjTable *)cosmoV_readRef(args[1]);
     state->globals = tbl;
+    return 0;
+}
+
+// vm.disassemble()
+int cosmoB_vdisassemble(CState *state, int nargs, CValue *args)
+{
+    CObjClosure *closure;
+
+    if (nargs != 1) {
+        cosmoV_error(state, "Expected 1 argument, got %d!", nargs);
+        return 0;
+    }
+
+    // get the closure
+    if (!IS_CLOSURE(args[0])) {
+        cosmoV_typeError(state, "vm.disassemble", "<closure>", "%s", cosmoV_typeStr(args[0]));
+        return 0;
+    }
+
+    closure = cosmoV_readClosure(args[0]);
+
+    // print the disasembly
+    disasmChunk(&closure->function->chunk, closure->function->name ? closure->function->name->str : UNNAMEDCHUNK, 0);
     return 0;
 }
 
@@ -976,7 +1000,10 @@ void cosmoB_loadVM(CState *state)
     cosmoV_pushString(state, "collect");
     cosmoV_pushCFunction(state, cosmoB_vcollect);
 
-    cosmoV_makeObject(state, 4); // makes the vm object
+    cosmoV_pushString(state, "disassemble");
+    cosmoV_pushCFunction(state, cosmoB_vdisassemble);
+
+    cosmoV_makeObject(state, 5); // makes the vm object
 
     // register "vm" to the global table
     cosmoV_register(state, 1);
