@@ -672,14 +672,61 @@ int _tbl__next(CState *state, int nargs, CValue *args)
         return -1;                                                                                 \
     }
 
+static inline uint8_t READBYTE(CCallFrame *frame)
+{
+    return *frame->pc++;
+}
+
+static inline uint16_t READUINT(CCallFrame *frame)
+{
+    frame->pc += 2;
+    return *(uint16_t *)(&frame->pc[-2]);
+}
+
+#ifdef VM_JUMPTABLE
+#    define DISPATCH goto *cosmoV_dispatchTable[READBYTE(frame)]
+#    define CASE(op)                                                                               \
+        DISPATCH;                                                                                  \
+        JMP_##op
+#    define JMPLABEL(op) &&JMP_##op
+#    define SWITCH                                                                                 \
+        static void *cosmoV_dispatchTable[] = {                                                    \
+            JMPLABEL(OP_LOADCONST),     JMPLABEL(OP_SETGLOBAL), JMPLABEL(OP_GETGLOBAL),            \
+            JMPLABEL(OP_SETLOCAL),      JMPLABEL(OP_GETLOCAL),  JMPLABEL(OP_GETUPVAL),             \
+            JMPLABEL(OP_SETUPVAL),      JMPLABEL(OP_PEJMP),     JMPLABEL(OP_EJMP),                 \
+            JMPLABEL(OP_JMP),           JMPLABEL(OP_JMPBACK),   JMPLABEL(OP_POP),                  \
+            JMPLABEL(OP_CALL),          JMPLABEL(OP_CLOSURE),   JMPLABEL(OP_CLOSE),                \
+            JMPLABEL(OP_NEWTABLE),      JMPLABEL(OP_NEWARRAY),  JMPLABEL(OP_INDEX),                \
+            JMPLABEL(OP_NEWINDEX),      JMPLABEL(OP_NEWOBJECT), JMPLABEL(OP_SETOBJECT),            \
+            JMPLABEL(OP_GETOBJECT),     JMPLABEL(OP_GETMETHOD), JMPLABEL(OP_INVOKE),               \
+            JMPLABEL(OP_ITER),          JMPLABEL(OP_NEXT),      JMPLABEL(OP_ADD),                  \
+            JMPLABEL(OP_SUB),           JMPLABEL(OP_MULT),      JMPLABEL(OP_DIV),                  \
+            JMPLABEL(OP_MOD),           JMPLABEL(OP_POW),       JMPLABEL(OP_NOT),                  \
+            JMPLABEL(OP_NEGATE),        JMPLABEL(OP_COUNT),     JMPLABEL(OP_CONCAT),               \
+            JMPLABEL(OP_INCLOCAL),      JMPLABEL(OP_INCGLOBAL), JMPLABEL(OP_INCUPVAL),             \
+            JMPLABEL(OP_INCINDEX),      JMPLABEL(OP_INCOBJECT), JMPLABEL(OP_EQUAL),                \
+            JMPLABEL(OP_LESS),          JMPLABEL(OP_GREATER),   JMPLABEL(OP_LESS_EQUAL),           \
+            JMPLABEL(OP_GREATER_EQUAL), JMPLABEL(OP_TRUE),      JMPLABEL(OP_FALSE),                \
+            JMPLABEL(OP_NIL),           JMPLABEL(OP_RETURN),                                       \
+        };                                                                                         \
+        DISPATCH;
+#    define DEFAULT DISPATCH /* no-op */
+#else
+#    define CASE(op)                                                                               \
+        continue;                                                                                  \
+    case op
+#    define SWITCH switch (READBYTE(frame))
+#    define DEFAULT                                                                                \
+    default:                                                                                       \
+        CERROR("unknown opcode!");                                                                 \
+        exit(0)
+#endif
+
 // returns -1 if panic
 int cosmoV_execute(CState *state)
 {
     CCallFrame *frame = &state->callFrame[state->frameCount - 1];         // grabs the current frame
     CValue *constants = frame->closure->function->chunk.constants.values; // cache the pointer :)
-
-#define READBYTE() *frame->pc++
-#define READUINT() (frame->pc += 2, *(uint16_t *)(&frame->pc[-2]))
 
     while (!state->panic) {
 #ifdef VM_DEBUG
@@ -688,639 +735,629 @@ int cosmoV_execute(CState *state)
                     frame->pc - frame->closure->function->chunk.buf, state->frameCount - 1);
         printf("\n");
 #endif
-        switch (READBYTE()) {
-        case OP_LOADCONST: { // push const[uint] to stack
-            uint16_t indx = READUINT();
-            cosmoV_pushValue(state, constants[indx]);
-            continue;
-        }
-        case OP_SETGLOBAL: {
-            uint16_t indx = READUINT();
-            CValue ident = constants[indx]; // grabs identifier
-            CValue *val = cosmoT_insert(state, &state->globals->tbl, ident);
-            *val = *cosmoV_pop(state); // sets the value in the hash table
-            continue;
-        }
-        case OP_GETGLOBAL: {
-            uint16_t indx = READUINT();
-            CValue ident = constants[indx]; // grabs identifier
-            CValue val;                     // to hold our value
-            cosmoT_get(state, &state->globals->tbl, ident, &val);
-            cosmoV_pushValue(state, val); // pushes the value to the stack
-            continue;
-        }
-        case OP_SETLOCAL: {
-            uint8_t indx = READBYTE();
-            // set base to top of stack & pop
-            frame->base[indx] = *cosmoV_pop(state);
-            continue;
-        }
-        case OP_GETLOCAL: {
-            uint8_t indx = READBYTE();
-            cosmoV_pushValue(state, frame->base[indx]);
-            continue;
-        }
-        case OP_GETUPVAL: {
-            uint8_t indx = READBYTE();
-            cosmoV_pushValue(state, *frame->closure->upvalues[indx]->val);
-            continue;
-        }
-        case OP_SETUPVAL: {
-            uint8_t indx = READBYTE();
-            *frame->closure->upvalues[indx]->val = *cosmoV_pop(state);
-            continue;
-        }
-        case OP_PEJMP: { // pop equality jump
-            uint16_t offset = READUINT();
-
-            if (isFalsey(cosmoV_pop(state))) { // pop, if the condition is false, jump!
-                frame->pc += offset;
+        SWITCH
+        {
+            CASE(OP_LOADCONST) :
+            { // push const[uint] to stack
+                uint16_t indx = READUINT(frame);
+                cosmoV_pushValue(state, constants[indx]);
             }
-            continue;
-        }
-        case OP_EJMP: { // equality jump
-            uint16_t offset = READUINT();
-
-            if (isFalsey(cosmoV_getTop(state, 0))) { // if the condition is false, jump!
-                frame->pc += offset;
+            CASE(OP_SETGLOBAL) :
+            {
+                uint16_t indx = READUINT(frame);
+                CValue ident = constants[indx]; // grabs identifier
+                CValue *val = cosmoT_insert(state, &state->globals->tbl, ident);
+                *val = *cosmoV_pop(state); // sets the value in the hash table
             }
-            continue;
-        }
-        case OP_JMP: { // jump
-            uint16_t offset = READUINT();
-            frame->pc += offset;
-            continue;
-        }
-        case OP_JMPBACK: {
-            uint16_t offset = READUINT();
-            frame->pc -= offset;
-            continue;
-        }
-        case OP_POP: { // pops value off the stack
-            cosmoV_setTop(state, READBYTE());
-            continue;
-        }
-        case OP_CALL: {
-            uint8_t args = READBYTE();
-            uint8_t nres = READBYTE();
-            if (cosmoV_call(state, args, nres) != COSMOVM_OK) {
-                return -1;
+            CASE(OP_GETGLOBAL) :
+            {
+                uint16_t indx = READUINT(frame);
+                CValue ident = constants[indx]; // grabs identifier
+                CValue val;                     // to hold our value
+                cosmoT_get(state, &state->globals->tbl, ident, &val);
+                cosmoV_pushValue(state, val); // pushes the value to the stack
             }
-            continue;
-        }
-        case OP_CLOSURE: {
-            uint16_t index = READUINT();
-            CObjFunction *func = cosmoV_readFunction(constants[index]);
-            CObjClosure *closure = cosmoO_newClosure(state, func);
-            cosmoV_pushRef(state, (CObj *)closure);
+            CASE(OP_SETLOCAL) :
+            {
+                uint8_t indx = READBYTE(frame);
+                // set base to top of stack & pop
+                frame->base[indx] = *cosmoV_pop(state);
+            }
+            CASE(OP_GETLOCAL) :
+            {
+                uint8_t indx = READBYTE(frame);
+                cosmoV_pushValue(state, frame->base[indx]);
+                continue;
+            }
+            CASE(OP_GETUPVAL) :
+            {
+                uint8_t indx = READBYTE(frame);
+                cosmoV_pushValue(state, *frame->closure->upvalues[indx]->val);
+            }
+            CASE(OP_SETUPVAL) :
+            {
+                uint8_t indx = READBYTE(frame);
+                *frame->closure->upvalues[indx]->val = *cosmoV_pop(state);
+            }
+            CASE(OP_PEJMP) :
+            { // pop equality jump
+                uint16_t offset = READUINT(frame);
 
-            for (int i = 0; i < closure->upvalueCount; i++) {
-                uint8_t encoding = READBYTE();
-                uint8_t index = READBYTE();
-                if (encoding == OP_GETUPVAL) {
-                    // capture upvalue from current frame's closure
-                    closure->upvalues[i] = frame->closure->upvalues[index];
-                } else {
-                    // capture local
-                    closure->upvalues[i] = captureUpvalue(state, frame->base + index);
+                if (isFalsey(cosmoV_pop(state))) { // pop, if the condition is false, jump!
+                    frame->pc += offset;
                 }
             }
+            CASE(OP_EJMP) :
+            { // equality jump
+                uint16_t offset = READUINT(frame);
 
-            continue;
-        }
-        case OP_CLOSE: {
-            closeUpvalues(state, state->top - 1);
-            cosmoV_pop(state);
-            continue;
-        }
-        case OP_NEWTABLE: {
-            uint16_t pairs = READUINT();
-            cosmoV_makeTable(state, pairs);
-            continue;
-        }
-        case OP_NEWARRAY: {
-            uint16_t pairs = READUINT();
-            StkPtr val;
-            CObjTable *newObj = cosmoO_newTable(state);
-            cosmoV_pushRef(state, (CObj *)newObj); // so our GC doesn't free our new table
-
-            for (int i = 0; i < pairs; i++) {
-                val = cosmoV_getTop(state, i + 1);
-
-                // set key/value pair
-                CValue *newVal =
-                    cosmoT_insert(state, &newObj->tbl, cosmoV_newNumber(pairs - i - 1));
-                *newVal = *val;
+                if (isFalsey(cosmoV_getTop(state, 0))) { // if the condition is false, jump!
+                    frame->pc += offset;
+                }
             }
-
-            // once done, pop everything off the stack + push new table
-            cosmoV_setTop(state, pairs + 1); // + 1 for our table
-            cosmoV_pushRef(state, (CObj *)newObj);
-            continue;
-        }
-        case OP_INDEX: {
-            StkPtr key = cosmoV_getTop(state, 0);  // key should be the top of the stack
-            StkPtr temp = cosmoV_getTop(state, 1); // after that should be the table
-
-            // sanity check
-            if (!IS_REF(*temp)) {
-                cosmoV_error(state, "Couldn't index type %s!", cosmoV_typeStr(*temp));
-                return -1;
+            CASE(OP_JMP) :
+            { // jump
+                uint16_t offset = READUINT(frame);
+                frame->pc += offset;
             }
-
-            CObj *obj = cosmoV_readRef(*temp);
-            CObjObject *proto = cosmoO_grabProto(obj);
-            CValue val; // to hold our value
-
-            if (proto != NULL) {
-                // check for __index metamethod
-                if (!cosmoO_indexObject(state, proto, *key,
-                                        &val)) // if returns false, cosmoV_error was called
+            CASE(OP_JMPBACK) :
+            {
+                uint16_t offset = READUINT(frame);
+                frame->pc -= offset;
+            }
+            CASE(OP_POP) :
+            { // pops value off the stack
+                cosmoV_setTop(state, READBYTE(frame));
+            }
+            CASE(OP_CALL) :
+            {
+                uint8_t args = READBYTE(frame);
+                uint8_t nres = READBYTE(frame);
+                if (cosmoV_call(state, args, nres) != COSMOVM_OK) {
                     return -1;
-            } else if (obj->type == COBJ_TABLE) {
-                CObjTable *tbl = (CObjTable *)obj;
-
-                cosmoT_get(state, &tbl->tbl, *key, &val);
-            } else {
-                cosmoV_error(state, "No proto defined! Couldn't __index from type %s",
-                             cosmoV_typeStr(*temp));
-                return -1;
+                }
             }
+            CASE(OP_CLOSURE) :
+            {
+                uint16_t index = READUINT(frame);
+                CObjFunction *func = cosmoV_readFunction(constants[index]);
+                CObjClosure *closure = cosmoO_newClosure(state, func);
+                cosmoV_pushRef(state, (CObj *)closure);
 
-            cosmoV_setTop(state, 2);      // pops the table & the key
-            cosmoV_pushValue(state, val); // pushes the field result
-            continue;
-        }
-        case OP_NEWINDEX: {
-            StkPtr value = cosmoV_getTop(state, 0); // value is at the top of the stack
-            StkPtr key = cosmoV_getTop(state, 1);
-            StkPtr temp = cosmoV_getTop(state, 2); // table is after the key
-
-            // sanity check
-            if (!IS_REF(*temp)) {
-                cosmoV_error(state, "Couldn't set index with type %s!", cosmoV_typeStr(*temp));
-                return -1;
-            }
-
-            CObj *obj = cosmoV_readRef(*temp);
-            CObjObject *proto = cosmoO_grabProto(obj);
-
-            if (proto != NULL) {
-                if (!cosmoO_newIndexObject(state, proto, *key,
-                                           *value)) // if it returns false, cosmoV_error was called
-                    return -1;
-            } else if (obj->type == COBJ_TABLE) {
-                CObjTable *tbl = (CObjTable *)obj;
-                CValue *newVal = cosmoT_insert(state, &tbl->tbl, *key);
-
-                *newVal = *value; // set the index
-            } else {
-                cosmoV_error(state, "No proto defined! Couldn't __newindex from type %s",
-                             cosmoV_typeStr(*temp));
-                return -1;
-            }
-
-            // pop everything off the stack
-            cosmoV_setTop(state, 3);
-            continue;
-        }
-        case OP_NEWOBJECT: {
-            uint16_t pairs = READUINT();
-            cosmoV_makeObject(state, pairs);
-            continue;
-        }
-        case OP_SETOBJECT: {
-            StkPtr value = cosmoV_getTop(state, 0); // value is at the top of the stack
-            StkPtr temp = cosmoV_getTop(state, 1);  // object is after the value
-            uint16_t ident = READUINT();            // use for the key
-
-            // sanity check
-            if (IS_REF(*temp)) {
-                if (!cosmoV_rawset(state, cosmoV_readRef(*temp), constants[ident], *value))
-                    return -1;
-            } else {
-                CObjString *field = cosmoV_toString(state, constants[ident]);
-                cosmoV_error(state, "Couldn't set field '%s' on type %s!", field->str,
-                             cosmoV_typeStr(*temp));
-                return -1;
-            }
-
-            // pop everything off the stack
-            cosmoV_setTop(state, 2);
-            continue;
-        }
-        case OP_GETOBJECT: {
-            CValue val;                            // to hold our value
-            StkPtr temp = cosmoV_getTop(state, 0); // that should be the object
-            uint16_t ident = READUINT();           // use for the key
-
-            // sanity check
-            if (IS_REF(*temp)) {
-                if (!cosmoV_rawget(state, cosmoV_readRef(*temp), constants[ident], &val))
-                    return -1;
-            } else {
-                CObjString *field = cosmoV_toString(state, constants[ident]);
-                cosmoV_error(state, "Couldn't get field '%s' from type %s!", field->str,
-                             cosmoV_typeStr(*temp));
-                return -1;
-            }
-
-            cosmoV_setTop(state, 1);      // pops the object
-            cosmoV_pushValue(state, val); // pushes the field result
-            continue;
-        }
-        case OP_GETMETHOD: {
-            CValue val;                            // to hold our value
-            StkPtr temp = cosmoV_getTop(state, 0); // that should be the object
-            uint16_t ident = READUINT();           // use for the key
-
-            // this is almost identical to GETOBJECT, however cosmoV_getMethod is used instead of
-            // just cosmoV_get
-            if (IS_REF(*temp)) {
-                if (!cosmoV_getMethod(state, cosmoV_readRef(*temp), constants[ident], &val))
-                    return -1;
-            } else {
-                CObjString *field = cosmoV_toString(state, constants[ident]);
-                cosmoV_error(state, "Couldn't get field '%s' from type %s!", field->str,
-                             cosmoV_typeStr(*temp));
-                return -1;
-            }
-
-            cosmoV_setTop(state, 1);      // pops the object
-            cosmoV_pushValue(state, val); // pushes the field result
-            continue;
-        }
-        case OP_INVOKE: {
-            uint8_t args = READBYTE();
-            uint8_t nres = READBYTE();
-            uint16_t ident = READUINT();
-            StkPtr temp = cosmoV_getTop(state, args); // grabs object from stack
-            CValue val;                               // to hold our value
-
-            // sanity check
-            if (IS_REF(*temp)) {
-                // get the field from the object
-                if (!cosmoV_rawget(state, cosmoV_readRef(*temp), constants[ident], &val))
-                    return -1;
-
-                // now invoke the method!
-                invokeMethod(state, cosmoV_readRef(*temp), val, args, nres, 1);
-            } else {
-                cosmoV_error(state, "Couldn't get from type %s!", cosmoV_typeStr(*temp));
-                return -1;
-            }
-
-            continue;
-        }
-        case OP_ITER: {
-            StkPtr temp = cosmoV_getTop(state, 0); // should be the object/table
-
-            if (!IS_REF(*temp)) {
-                cosmoV_error(state, "Couldn't iterate over non-iterator type %s!",
-                             cosmoV_typeStr(*temp));
-                return -1;
-            }
-
-            CObj *obj = cosmoV_readRef(*temp);
-            CObjObject *proto = cosmoO_grabProto(obj);
-            CValue val;
-
-            if (proto != NULL) {
-                // grab __iter & call it
-                if (cosmoO_getIString(state, proto, ISTRING_ITER, &val)) {
-                    cosmoV_pop(state); // pop the object from the stack
-                    cosmoV_pushValue(state, val);
-                    cosmoV_pushRef(state, (CObj *)obj);
-                    if (cosmoV_call(state, 1, 1) !=
-                        COSMOVM_OK) // we expect 1 return value on the stack, the iterable object
-                        return -1;
-
-                    StkPtr iObj = cosmoV_getTop(state, 0);
-
-                    if (!IS_OBJECT(*iObj)) {
-                        cosmoV_error(
-                            state,
-                            "Expected iterable object! '__iter' returned %s, expected <object>!",
-                            cosmoV_typeStr(*iObj));
-                        return -1;
+                for (int i = 0; i < closure->upvalueCount; i++) {
+                    uint8_t encoding = READBYTE(frame);
+                    uint8_t index = READBYTE(frame);
+                    if (encoding == OP_GETUPVAL) {
+                        // capture upvalue from current frame's closure
+                        closure->upvalues[i] = frame->closure->upvalues[index];
+                    } else {
+                        // capture local
+                        closure->upvalues[i] = captureUpvalue(state, frame->base + index);
                     }
-
-                    // get __next method and place it at the top of the stack
-                    cosmoV_getMethod(state, cosmoV_readRef(*iObj),
-                                     cosmoV_newRef(state->iStrings[ISTRING_NEXT]), iObj);
-                } else {
-                    cosmoV_error(state, "Expected iterable object! '__iter' not defined!");
-                    return -1;
                 }
-            } else if (obj->type == COBJ_TABLE) {
-                CObjTable *tbl = (CObjTable *)obj;
-
-                cosmoV_pushRef(state, (CObj *)state->iStrings[ISTRING_RESERVED]); // key
-                cosmoV_pushRef(state, (CObj *)tbl);                               // value
-
-                cosmoV_pushString(state, "__next"); // key
-                CObjCFunction *tbl_next = cosmoO_newCFunction(state, _tbl__next);
-                cosmoV_pushRef(state, (CObj *)tbl_next); // value
-
-                CObjObject *obj = cosmoV_makeObject(state, 2); // pushes the new object to the stack
-                cosmoO_setUserI(obj, 0);                       // increment for iterator
-
-                // make our CObjMethod for OP_NEXT to call
-                CObjMethod *method = cosmoO_newMethod(state, cosmoV_newRef(tbl_next), (CObj *)obj);
-
-                cosmoV_setTop(state, 2);               // pops the object & the tbl
-                cosmoV_pushRef(state, (CObj *)method); // pushes the method for OP_NEXT
-            } else {
-                cosmoV_error(state, "No proto defined! Couldn't get from type %s",
-                             cosmoO_typeStr(obj));
-                return -1;
             }
-
-            continue;
-        }
-        case OP_NEXT: {
-            uint8_t nresults = READBYTE();
-            uint16_t jump = READUINT();
-            StkPtr temp = cosmoV_getTop(state, 0); // we don't actually pop this off the stack
-
-            if (!IS_METHOD(*temp)) {
-                cosmoV_error(state, "Expected '__next' to be a method, got type %s!",
-                             cosmoV_typeStr(*temp));
-                return -1;
-            }
-
-            cosmoV_pushValue(state, *temp);
-            if (cosmoV_call(state, 0, nresults) != COSMOVM_OK)
-                return -1;
-
-            if (IS_NIL(*(cosmoV_getTop(
-                    state, 0)))) { // __next returned a nil, which means to exit the loop
-                cosmoV_setTop(state, nresults); // pop the return values
-                frame->pc += jump;
-            }
-            continue;
-        }
-        case OP_ADD: { // pop 2 values off the stack & try to add them together
-            NUMBEROP(cosmoV_newNumber, +);
-            continue;
-        }
-        case OP_SUB: { // pop 2 values off the stack & try to subtracts them
-            NUMBEROP(cosmoV_newNumber, -)
-            continue;
-        }
-        case OP_MULT: { // pop 2 values off the stack & try to multiplies them together
-            NUMBEROP(cosmoV_newNumber, *)
-            continue;
-        }
-        case OP_DIV: { // pop 2 values off the stack & try to divides them
-            NUMBEROP(cosmoV_newNumber, /)
-            continue;
-        }
-        case OP_MOD: {
-            StkPtr valA = cosmoV_getTop(state, 1);
-            StkPtr valB = cosmoV_getTop(state, 0);
-            if (IS_NUMBER(*valA) && IS_NUMBER(*valB)) {
-                cosmoV_setTop(state, 2); /* pop the 2 values */
-                cosmoV_pushValue(state, cosmoV_newNumber(fmod(cosmoV_readNumber(*valA),
-                                                              cosmoV_readNumber(*valB))));
-            } else {
-                cosmoV_error(state, "Expected numbers, got %s and %s!", cosmoV_typeStr(*valA),
-                             cosmoV_typeStr(*valB));
-                return -1;
-            }
-            continue;
-        }
-        case OP_POW: {
-            StkPtr valA = cosmoV_getTop(state, 1);
-            StkPtr valB = cosmoV_getTop(state, 0);
-            if (IS_NUMBER(*valA) && IS_NUMBER(*valB)) {
-                cosmoV_setTop(state, 2); /* pop the 2 values */
-                cosmoV_pushValue(state, cosmoV_newNumber(pow(cosmoV_readNumber(*valA),
-                                                             cosmoV_readNumber(*valB))));
-            } else {
-                cosmoV_error(state, "Expected numbers, got %s and %s!", cosmoV_typeStr(*valA),
-                             cosmoV_typeStr(*valB));
-                return -1;
-            }
-            continue;
-        }
-        case OP_NOT: {
-            cosmoV_pushBoolean(state, isFalsey(cosmoV_pop(state)));
-            continue;
-        }
-        case OP_NEGATE: { // pop 1 value off the stack & try to negate
-            StkPtr val = cosmoV_getTop(state, 0);
-
-            if (IS_NUMBER(*val)) {
+            CASE(OP_CLOSE) :
+            {
+                closeUpvalues(state, state->top - 1);
                 cosmoV_pop(state);
-                cosmoV_pushNumber(state, -(cosmoV_readNumber(*val)));
-            } else {
-                cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
-                return -1;
             }
-            continue;
-        }
-        case OP_COUNT: {
-            StkPtr temp = cosmoV_getTop(state, 0);
-
-            if (!IS_REF(*temp)) {
-                cosmoV_error(state, "Expected non-primitive, got %s!", cosmoV_typeStr(*temp));
-                return -1;
+            CASE(OP_NEWTABLE) :
+            {
+                uint16_t pairs = READUINT(frame);
+                cosmoV_makeTable(state, pairs);
             }
+            CASE(OP_NEWARRAY) :
+            {
+                uint16_t pairs = READUINT(frame);
+                StkPtr val;
+                CObjTable *newObj = cosmoO_newTable(state);
+                cosmoV_pushRef(state, (CObj *)newObj); // so our GC doesn't free our new table
 
-            int count = cosmoO_count(state, cosmoV_readRef(*temp));
-            cosmoV_pop(state);
+                for (int i = 0; i < pairs; i++) {
+                    val = cosmoV_getTop(state, i + 1);
 
-            cosmoV_pushNumber(state, count); // pushes the count onto the stack
-            continue;
-        }
-        case OP_CONCAT: {
-            uint8_t vals = READBYTE();
-            cosmoV_concat(state, vals);
-            continue;
-        }
-        case OP_INCLOCAL: {                // this leaves the value on the stack
-            int8_t inc = READBYTE() - 128; // amount we're incrementing by
-            uint8_t indx = READBYTE();
-            StkPtr val = &frame->base[indx];
+                    // set key/value pair
+                    CValue *newVal =
+                        cosmoT_insert(state, &newObj->tbl, cosmoV_newNumber(pairs - i - 1));
+                    *newVal = *val;
+                }
 
-            // check that it's a number value
-            if (IS_NUMBER(*val)) {
-                cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
-                *val = cosmoV_newNumber(cosmoV_readNumber(*val) + inc);
-            } else {
-                cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
-                return -1;
+                // once done, pop everything off the stack + push new table
+                cosmoV_setTop(state, pairs + 1); // + 1 for our table
+                cosmoV_pushRef(state, (CObj *)newObj);
             }
+            CASE(OP_INDEX) :
+            {
+                StkPtr key = cosmoV_getTop(state, 0);  // key should be the top of the stack
+                StkPtr temp = cosmoV_getTop(state, 1); // after that should be the table
 
-            continue;
-        }
-        case OP_INCGLOBAL: {
-            int8_t inc = READBYTE() - 128; // amount we're incrementing by
-            uint16_t indx = READUINT();
-            CValue ident = constants[indx]; // grabs identifier
-            CValue *val = cosmoT_insert(state, &state->globals->tbl, ident);
+                // sanity check
+                if (!IS_REF(*temp)) {
+                    cosmoV_error(state, "Couldn't index type %s!", cosmoV_typeStr(*temp));
+                    return -1;
+                }
 
-            // check that it's a number value
-            if (IS_NUMBER(*val)) {
-                cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
-                *val = cosmoV_newNumber(cosmoV_readNumber(*val) + inc);
-            } else {
-                cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
-                return -1;
+                CObj *obj = cosmoV_readRef(*temp);
+                CObjObject *proto = cosmoO_grabProto(obj);
+                CValue val; // to hold our value
+
+                if (proto != NULL) {
+                    // check for __index metamethod
+                    if (!cosmoO_indexObject(state, proto, *key,
+                                            &val)) // if returns false, cosmoV_error was called
+                        return -1;
+                } else if (obj->type == COBJ_TABLE) {
+                    CObjTable *tbl = (CObjTable *)obj;
+
+                    cosmoT_get(state, &tbl->tbl, *key, &val);
+                } else {
+                    cosmoV_error(state, "No proto defined! Couldn't __index from type %s",
+                                 cosmoV_typeStr(*temp));
+                    return -1;
+                }
+
+                cosmoV_setTop(state, 2);      // pops the table & the key
+                cosmoV_pushValue(state, val); // pushes the field result
             }
+            CASE(OP_NEWINDEX) :
+            {
+                StkPtr value = cosmoV_getTop(state, 0); // value is at the top of the stack
+                StkPtr key = cosmoV_getTop(state, 1);
+                StkPtr temp = cosmoV_getTop(state, 2); // table is after the key
 
-            continue;
-        }
-        case OP_INCUPVAL: {
-            int8_t inc = READBYTE() - 128; // amount we're incrementing by
-            uint8_t indx = READBYTE();
-            CValue *val = frame->closure->upvalues[indx]->val;
+                // sanity check
+                if (!IS_REF(*temp)) {
+                    cosmoV_error(state, "Couldn't set index with type %s!", cosmoV_typeStr(*temp));
+                    return -1;
+                }
 
-            // check that it's a number value
-            if (IS_NUMBER(*val)) {
-                cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
-                *val = cosmoV_newNumber(cosmoV_readNumber(*val) + inc);
-            } else {
-                cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
-                return -1;
+                CObj *obj = cosmoV_readRef(*temp);
+                CObjObject *proto = cosmoO_grabProto(obj);
+
+                if (proto != NULL) {
+                    if (!cosmoO_newIndexObject(
+                            state, proto, *key,
+                            *value)) // if it returns false, cosmoV_error was called
+                        return -1;
+                } else if (obj->type == COBJ_TABLE) {
+                    CObjTable *tbl = (CObjTable *)obj;
+                    CValue *newVal = cosmoT_insert(state, &tbl->tbl, *key);
+
+                    *newVal = *value; // set the index
+                } else {
+                    cosmoV_error(state, "No proto defined! Couldn't __newindex from type %s",
+                                 cosmoV_typeStr(*temp));
+                    return -1;
+                }
+
+                // pop everything off the stack
+                cosmoV_setTop(state, 3);
             }
-
-            continue;
-        }
-        case OP_INCINDEX: {
-            int8_t inc = READBYTE() - 128;         // amount we're incrementing by
-            StkPtr temp = cosmoV_getTop(state, 1); // object should be above the key
-            StkPtr key = cosmoV_getTop(state, 0);  // grabs key
-
-            if (!IS_REF(*temp)) {
-                cosmoV_error(state, "Couldn't index non-indexable type %s!", cosmoV_typeStr(*temp));
-                return -1;
+            CASE(OP_NEWOBJECT) :
+            {
+                uint16_t pairs = READUINT(frame);
+                cosmoV_makeObject(state, pairs);
             }
+            CASE(OP_SETOBJECT) :
+            {
+                StkPtr value = cosmoV_getTop(state, 0); // value is at the top of the stack
+                StkPtr temp = cosmoV_getTop(state, 1);  // object is after the value
+                uint16_t ident = READUINT(frame);       // use for the key
 
-            CObj *obj = cosmoV_readRef(*temp);
-            CObjObject *proto = cosmoO_grabProto(obj);
-            CValue val;
+                // sanity check
+                if (IS_REF(*temp)) {
+                    if (!cosmoV_rawset(state, cosmoV_readRef(*temp), constants[ident], *value))
+                        return -1;
+                } else {
+                    CObjString *field = cosmoV_toString(state, constants[ident]);
+                    cosmoV_error(state, "Couldn't set field '%s' on type %s!", field->str,
+                                 cosmoV_typeStr(*temp));
+                    return -1;
+                }
 
-            // call __index if the proto was found
-            if (proto != NULL) {
-                if (cosmoO_indexObject(state, proto, *key, &val)) {
-                    if (!IS_NUMBER(val)) {
-                        cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(val));
+                // pop everything off the stack
+                cosmoV_setTop(state, 2);
+            }
+            CASE(OP_GETOBJECT) :
+            {
+                CValue val;                            // to hold our value
+                StkPtr temp = cosmoV_getTop(state, 0); // that should be the object
+                uint16_t ident = READUINT(frame);      // use for the key
+
+                // sanity check
+                if (IS_REF(*temp)) {
+                    if (!cosmoV_rawget(state, cosmoV_readRef(*temp), constants[ident], &val))
+                        return -1;
+                } else {
+                    CObjString *field = cosmoV_toString(state, constants[ident]);
+                    cosmoV_error(state, "Couldn't get field '%s' from type %s!", field->str,
+                                 cosmoV_typeStr(*temp));
+                    return -1;
+                }
+
+                cosmoV_setTop(state, 1);      // pops the object
+                cosmoV_pushValue(state, val); // pushes the field result
+            }
+            CASE(OP_GETMETHOD) :
+            {
+                CValue val;                            // to hold our value
+                StkPtr temp = cosmoV_getTop(state, 0); // that should be the object
+                uint16_t ident = READUINT(frame);      // use for the key
+
+                // this is almost identical to GETOBJECT, however cosmoV_getMethod is used instead
+                // of just cosmoV_get
+                if (IS_REF(*temp)) {
+                    if (!cosmoV_getMethod(state, cosmoV_readRef(*temp), constants[ident], &val))
+                        return -1;
+                } else {
+                    CObjString *field = cosmoV_toString(state, constants[ident]);
+                    cosmoV_error(state, "Couldn't get field '%s' from type %s!", field->str,
+                                 cosmoV_typeStr(*temp));
+                    return -1;
+                }
+
+                cosmoV_setTop(state, 1);      // pops the object
+                cosmoV_pushValue(state, val); // pushes the field result
+            }
+            CASE(OP_INVOKE) :
+            {
+                uint8_t args = READBYTE(frame);
+                uint8_t nres = READBYTE(frame);
+                uint16_t ident = READUINT(frame);
+                StkPtr temp = cosmoV_getTop(state, args); // grabs object from stack
+                CValue val;                               // to hold our value
+
+                // sanity check
+                if (IS_REF(*temp)) {
+                    // get the field from the object
+                    if (!cosmoV_rawget(state, cosmoV_readRef(*temp), constants[ident], &val))
+                        return -1;
+
+                    // now invoke the method!
+                    invokeMethod(state, cosmoV_readRef(*temp), val, args, nres, 1);
+                } else {
+                    cosmoV_error(state, "Couldn't get from type %s!", cosmoV_typeStr(*temp));
+                    return -1;
+                }
+            }
+            CASE(OP_ITER) :
+            {
+                StkPtr temp = cosmoV_getTop(state, 0); // should be the object/table
+
+                if (!IS_REF(*temp)) {
+                    cosmoV_error(state, "Couldn't iterate over non-iterator type %s!",
+                                 cosmoV_typeStr(*temp));
+                    return -1;
+                }
+
+                CObj *obj = cosmoV_readRef(*temp);
+                CObjObject *proto = cosmoO_grabProto(obj);
+                CValue val;
+
+                if (proto != NULL) {
+                    // grab __iter & call it
+                    if (cosmoO_getIString(state, proto, ISTRING_ITER, &val)) {
+                        cosmoV_pop(state); // pop the object from the stack
+                        cosmoV_pushValue(state, val);
+                        cosmoV_pushRef(state, (CObj *)obj);
+                        if (cosmoV_call(state, 1, 1) !=
+                            COSMOVM_OK) // we expect 1 return value on the stack, the iterable
+                                        // object
+                            return -1;
+
+                        StkPtr iObj = cosmoV_getTop(state, 0);
+
+                        if (!IS_OBJECT(*iObj)) {
+                            cosmoV_error(state,
+                                         "Expected iterable object! '__iter' returned %s, expected "
+                                         "<object>!",
+                                         cosmoV_typeStr(*iObj));
+                            return -1;
+                        }
+
+                        // get __next method and place it at the top of the stack
+                        cosmoV_getMethod(state, cosmoV_readRef(*iObj),
+                                         cosmoV_newRef(state->iStrings[ISTRING_NEXT]), iObj);
+                    } else {
+                        cosmoV_error(state, "Expected iterable object! '__iter' not defined!");
                         return -1;
                     }
+                } else if (obj->type == COBJ_TABLE) {
+                    CObjTable *tbl = (CObjTable *)obj;
 
-                    cosmoV_pushValue(state, val); // pushes old value onto the stack :)
+                    cosmoV_pushRef(state, (CObj *)state->iStrings[ISTRING_RESERVED]); // key
+                    cosmoV_pushRef(state, (CObj *)tbl);                               // value
 
-                    // call __newindex
-                    if (!cosmoO_newIndexObject(state, proto, *key,
-                                               cosmoV_newNumber(cosmoV_readNumber(val) + inc)))
-                        return -1;
-                } else
-                    return -1; // cosmoO_indexObject failed and threw an error
-            } else if (obj->type == COBJ_TABLE) {
-                CObjTable *tbl = (CObjTable *)obj;
-                CValue *val = cosmoT_insert(state, &tbl->tbl, *key);
+                    cosmoV_pushString(state, "__next"); // key
+                    CObjCFunction *tbl_next = cosmoO_newCFunction(state, _tbl__next);
+                    cosmoV_pushRef(state, (CObj *)tbl_next); // value
 
-                if (!IS_NUMBER(*val)) {
+                    CObjObject *obj =
+                        cosmoV_makeObject(state, 2); // pushes the new object to the stack
+                    cosmoO_setUserI(obj, 0);         // increment for iterator
+
+                    // make our CObjMethod for OP_NEXT to call
+                    CObjMethod *method =
+                        cosmoO_newMethod(state, cosmoV_newRef(tbl_next), (CObj *)obj);
+
+                    cosmoV_setTop(state, 2);               // pops the object & the tbl
+                    cosmoV_pushRef(state, (CObj *)method); // pushes the method for OP_NEXT
+                } else {
+                    cosmoV_error(state, "No proto defined! Couldn't get from type %s",
+                                 cosmoO_typeStr(obj));
+                    return -1;
+                }
+            }
+            CASE(OP_NEXT) :
+            {
+                uint8_t nresults = READBYTE(frame);
+                uint16_t jump = READUINT(frame);
+                StkPtr temp = cosmoV_getTop(state, 0); // we don't actually pop this off the stack
+
+                if (!IS_METHOD(*temp)) {
+                    cosmoV_error(state, "Expected '__next' to be a method, got type %s!",
+                                 cosmoV_typeStr(*temp));
+                    return -1;
+                }
+
+                cosmoV_pushValue(state, *temp);
+                if (cosmoV_call(state, 0, nresults) != COSMOVM_OK)
+                    return -1;
+
+                if (IS_NIL(*(cosmoV_getTop(
+                        state, 0)))) { // __next returned a nil, which means to exit the loop
+                    cosmoV_setTop(state, nresults); // pop the return values
+                    frame->pc += jump;
+                }
+            }
+            CASE(OP_ADD) :
+            {
+                // pop 2 values off the stack & try to add them together
+                NUMBEROP(cosmoV_newNumber, +);
+            }
+            CASE(OP_SUB) :
+            {
+                // pop 2 values off the stack & try to subtracts them
+                NUMBEROP(cosmoV_newNumber, -);
+            }
+            CASE(OP_MULT) :
+            {
+                // pop 2 values off the stack & try to multiplies them together
+                NUMBEROP(cosmoV_newNumber, *);
+            }
+            CASE(OP_DIV) :
+            {
+                // pop 2 values off the stack & try to divides them
+                NUMBEROP(cosmoV_newNumber, /);
+            }
+            CASE(OP_MOD) :
+            {
+                StkPtr valA = cosmoV_getTop(state, 1);
+                StkPtr valB = cosmoV_getTop(state, 0);
+                if (IS_NUMBER(*valA) && IS_NUMBER(*valB)) {
+                    cosmoV_setTop(state, 2); /* pop the 2 values */
+                    cosmoV_pushValue(state, cosmoV_newNumber(fmod(cosmoV_readNumber(*valA),
+                                                                  cosmoV_readNumber(*valB))));
+                } else {
+                    cosmoV_error(state, "Expected numbers, got %s and %s!", cosmoV_typeStr(*valA),
+                                 cosmoV_typeStr(*valB));
+                    return -1;
+                }
+            }
+            CASE(OP_POW) :
+            {
+                StkPtr valA = cosmoV_getTop(state, 1);
+                StkPtr valB = cosmoV_getTop(state, 0);
+                if (IS_NUMBER(*valA) && IS_NUMBER(*valB)) {
+                    cosmoV_setTop(state, 2); /* pop the 2 values */
+                    cosmoV_pushValue(state, cosmoV_newNumber(pow(cosmoV_readNumber(*valA),
+                                                                 cosmoV_readNumber(*valB))));
+                } else {
+                    cosmoV_error(state, "Expected numbers, got %s and %s!", cosmoV_typeStr(*valA),
+                                 cosmoV_typeStr(*valB));
+                    return -1;
+                }
+            }
+            CASE(OP_NOT) :
+            {
+                cosmoV_pushBoolean(state, isFalsey(cosmoV_pop(state)));
+            }
+            CASE(OP_NEGATE) :
+            { // pop 1 value off the stack & try to negate
+                StkPtr val = cosmoV_getTop(state, 0);
+
+                if (IS_NUMBER(*val)) {
+                    cosmoV_pop(state);
+                    cosmoV_pushNumber(state, -(cosmoV_readNumber(*val)));
+                } else {
                     cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
                     return -1;
                 }
-
-                // pops tbl & key from stack
-                cosmoV_setTop(state, 2);
-                cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
-                *val = cosmoV_newNumber(cosmoV_readNumber(*val) + inc); // sets table index
-            } else {
-                cosmoV_error(state, "No proto defined! Couldn't __index from type %s",
-                             cosmoV_typeStr(*temp));
-                return -1;
             }
+            CASE(OP_COUNT) :
+            {
+                StkPtr temp = cosmoV_getTop(state, 0);
 
-            continue;
-        }
-        case OP_INCOBJECT: {
-            int8_t inc = READBYTE() - 128; // amount we're incrementing by
-            uint16_t indx = READUINT();
-            StkPtr temp = cosmoV_getTop(state, 0); // object should be at the top of the stack
-            CValue ident = constants[indx];        // grabs identifier
-
-            // sanity check
-            if (IS_REF(*temp)) {
-                CObj *obj = cosmoV_readRef(*temp);
-                CValue val;
-
-                if (!cosmoV_rawget(state, obj, ident, &val))
-                    return -1;
-
-                // pop the object off the stack
-                cosmoV_pop(state);
-
-                // check that it's a number value
-                if (IS_NUMBER(val)) {
-                    cosmoV_pushValue(state, val); // pushes old value onto the stack :)
-                    if (!cosmoV_rawset(state, obj, ident,
-                                       cosmoV_newNumber(cosmoV_readNumber(val) + inc)))
-                        return -1;
-                } else {
-                    cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(val));
+                if (!IS_REF(*temp)) {
+                    cosmoV_error(state, "Expected non-primitive, got %s!", cosmoV_typeStr(*temp));
                     return -1;
                 }
-            } else {
-                cosmoV_error(state, "Couldn't set a field on type %s!", cosmoV_typeStr(*temp));
-                return -1;
+
+                int count = cosmoO_count(state, cosmoV_readRef(*temp));
+                cosmoV_pop(state);
+
+                cosmoV_pushNumber(state, count); // pushes the count onto the stack
             }
+            CASE(OP_CONCAT) :
+            {
+                uint8_t vals = READBYTE(frame);
+                cosmoV_concat(state, vals);
+            }
+            CASE(OP_INCLOCAL) :
+            {                                       // this leaves the value on the stack
+                int8_t inc = READBYTE(frame) - 128; // amount we're incrementing by
+                uint8_t indx = READBYTE(frame);
+                StkPtr val = &frame->base[indx];
 
-            continue;
-        }
-        case OP_EQUAL: {
-            // pop vals
-            StkPtr valB = cosmoV_pop(state);
-            StkPtr valA = cosmoV_pop(state);
+                // check that it's a number value
+                if (IS_NUMBER(*val)) {
+                    cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
+                    *val = cosmoV_newNumber(cosmoV_readNumber(*val) + inc);
+                } else {
+                    cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
+                    return -1;
+                }
+            }
+            CASE(OP_INCGLOBAL) :
+            {
+                int8_t inc = READBYTE(frame) - 128; // amount we're incrementing by
+                uint16_t indx = READUINT(frame);
+                CValue ident = constants[indx]; // grabs identifier
+                CValue *val = cosmoT_insert(state, &state->globals->tbl, ident);
 
-            // compare & push
-            cosmoV_pushBoolean(state, cosmoV_equal(state, *valA, *valB));
-            continue;
-        }
-        case OP_GREATER: {
-            NUMBEROP(cosmoV_newBoolean, >)
-            continue;
-        }
-        case OP_LESS: {
-            NUMBEROP(cosmoV_newBoolean, <)
-            continue;
-        }
-        case OP_GREATER_EQUAL: {
-            NUMBEROP(cosmoV_newBoolean, >=)
-            continue;
-        }
-        case OP_LESS_EQUAL: {
-            NUMBEROP(cosmoV_newBoolean, <=)
-            continue;
-        }
-        case OP_TRUE:
-            cosmoV_pushBoolean(state, true);
-            continue;
-        case OP_FALSE:
-            cosmoV_pushBoolean(state, false);
-            continue;
-        case OP_NIL:
-            cosmoV_pushValue(state, cosmoV_newNil());
-            continue;
-        case OP_RETURN: {
-            uint8_t res = READBYTE();
-            return res;
-        }
-        default:
-            CERROR("unknown opcode!");
-            exit(0);
+                // check that it's a number value
+                if (IS_NUMBER(*val)) {
+                    cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
+                    *val = cosmoV_newNumber(cosmoV_readNumber(*val) + inc);
+                } else {
+                    cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
+                    return -1;
+                }
+            }
+            CASE(OP_INCUPVAL) :
+            {
+                int8_t inc = READBYTE(frame) - 128; // amount we're incrementing by
+                uint8_t indx = READBYTE(frame);
+                CValue *val = frame->closure->upvalues[indx]->val;
+
+                // check that it's a number value
+                if (IS_NUMBER(*val)) {
+                    cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
+                    *val = cosmoV_newNumber(cosmoV_readNumber(*val) + inc);
+                } else {
+                    cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
+                    return -1;
+                }
+            }
+            CASE(OP_INCINDEX) :
+            {
+                int8_t inc = READBYTE(frame) - 128;    // amount we're incrementing by
+                StkPtr temp = cosmoV_getTop(state, 1); // object should be above the key
+                StkPtr key = cosmoV_getTop(state, 0);  // grabs key
+
+                if (!IS_REF(*temp)) {
+                    cosmoV_error(state, "Couldn't index non-indexable type %s!",
+                                 cosmoV_typeStr(*temp));
+                    return -1;
+                }
+
+                CObj *obj = cosmoV_readRef(*temp);
+                CObjObject *proto = cosmoO_grabProto(obj);
+                CValue val;
+
+                // call __index if the proto was found
+                if (proto != NULL) {
+                    if (cosmoO_indexObject(state, proto, *key, &val)) {
+                        if (!IS_NUMBER(val)) {
+                            cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(val));
+                            return -1;
+                        }
+
+                        cosmoV_pushValue(state, val); // pushes old value onto the stack :)
+
+                        // call __newindex
+                        if (!cosmoO_newIndexObject(state, proto, *key,
+                                                   cosmoV_newNumber(cosmoV_readNumber(val) + inc)))
+                            return -1;
+                    } else
+                        return -1; // cosmoO_indexObject failed and threw an error
+                } else if (obj->type == COBJ_TABLE) {
+                    CObjTable *tbl = (CObjTable *)obj;
+                    CValue *val = cosmoT_insert(state, &tbl->tbl, *key);
+
+                    if (!IS_NUMBER(*val)) {
+                        cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(*val));
+                        return -1;
+                    }
+
+                    // pops tbl & key from stack
+                    cosmoV_setTop(state, 2);
+                    cosmoV_pushValue(state, *val); // pushes old value onto the stack :)
+                    *val = cosmoV_newNumber(cosmoV_readNumber(*val) + inc); // sets table index
+                } else {
+                    cosmoV_error(state, "No proto defined! Couldn't __index from type %s",
+                                 cosmoV_typeStr(*temp));
+                    return -1;
+                }
+            }
+            CASE(OP_INCOBJECT) :
+            {
+                int8_t inc = READBYTE(frame) - 128; // amount we're incrementing by
+                uint16_t indx = READUINT(frame);
+                StkPtr temp = cosmoV_getTop(state, 0); // object should be at the top of the stack
+                CValue ident = constants[indx];        // grabs identifier
+
+                // sanity check
+                if (IS_REF(*temp)) {
+                    CObj *obj = cosmoV_readRef(*temp);
+                    CValue val;
+
+                    if (!cosmoV_rawget(state, obj, ident, &val))
+                        return -1;
+
+                    // pop the object off the stack
+                    cosmoV_pop(state);
+
+                    // check that it's a number value
+                    if (IS_NUMBER(val)) {
+                        cosmoV_pushValue(state, val); // pushes old value onto the stack :)
+                        if (!cosmoV_rawset(state, obj, ident,
+                                           cosmoV_newNumber(cosmoV_readNumber(val) + inc)))
+                            return -1;
+                    } else {
+                        cosmoV_error(state, "Expected number, got %s!", cosmoV_typeStr(val));
+                        return -1;
+                    }
+                } else {
+                    cosmoV_error(state, "Couldn't set a field on type %s!", cosmoV_typeStr(*temp));
+                    return -1;
+                }
+            }
+            CASE(OP_EQUAL) :
+            {
+                // pop vals
+                StkPtr valB = cosmoV_pop(state);
+                StkPtr valA = cosmoV_pop(state);
+
+                // compare & push
+                cosmoV_pushBoolean(state, cosmoV_equal(state, *valA, *valB));
+            }
+            CASE(OP_GREATER) :
+            {
+                NUMBEROP(cosmoV_newBoolean, >);
+            }
+            CASE(OP_LESS) :
+            {
+                NUMBEROP(cosmoV_newBoolean, <);
+            }
+            CASE(OP_GREATER_EQUAL) :
+            {
+                NUMBEROP(cosmoV_newBoolean, >=);
+            }
+            CASE(OP_LESS_EQUAL)
+                : {NUMBEROP(cosmoV_newBoolean, <=)} CASE(OP_TRUE) : cosmoV_pushBoolean(state, true);
+            CASE(OP_FALSE) : cosmoV_pushBoolean(state, false);
+            CASE(OP_NIL) : cosmoV_pushValue(state, cosmoV_newNil());
+            CASE(OP_RETURN) :
+            {
+                uint8_t res = READBYTE(frame);
+                return res;
+            }
+            DEFAULT;
         }
     }
 
-#undef READBYTE
-#undef READUINT
-
-    // we'll only reach this is state->panic is true
+    // we'll only reach this if state->panic is true
     return -1;
 }
 
