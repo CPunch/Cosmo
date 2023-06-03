@@ -14,7 +14,15 @@
    performance, however this will produce undefined behavior as you reach the stack limit (and may
    cause a seg fault!). It is recommended to keep this enabled.
 */
-#define SAFE_STACK
+// #define SAFE_STACK
+
+/*
+    NAN_BOXXED:
+        if undefined, the interpreter will use a tagged union to store values. This is the default.
+    Note that even though the sizeof(CValue) is 8 bytes for NAN_BOXXED (as opposed to 16 bytes for
+   the tagged union) no performance benefits were measured. I recommend keeping this undefined for
+   now.
+*/
 // #define NAN_BOXXED
 
 // forward declare *most* stuff so our headers are cleaner

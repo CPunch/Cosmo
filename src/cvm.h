@@ -8,6 +8,19 @@
 
 // #define VM_DEBUG
 
+/*
+    if we're using GNUC or clang, we can use computed gotos which speeds up
+    cosmoV_execute by about 20% from benchmarking. of course, if you know
+    your compiler supports computed gotos, you can define VM_JUMPTABLE
+
+    BTW: be weary of maliciously crafted cosmo dumps!! it's very easy to crash
+    cosmo with this enabled and reading invalid opcodes due to us just using the
+    opcode as an index into the jump table
+*/
+#if defined(__GNUC__) || defined(__clang__)
+#    define VM_JUMPTABLE
+#endif
+
 typedef enum
 {
     COSMOVM_OK,

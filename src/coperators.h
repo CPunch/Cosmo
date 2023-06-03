@@ -64,7 +64,7 @@ typedef enum
     OP_FALSE,
     OP_NIL,
 
-    OP_RETURN
+    OP_RETURN,
 } COPCODE; // there can be a max of 256 instructions
 
 #endif
