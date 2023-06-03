@@ -150,7 +150,7 @@ static bool match(CLexState *state, char expected)
     return true;
 }
 
-char peek(CLexState *state)
+static char peek(CLexState *state)
 {
     return *state->currentChar;
 }
@@ -163,7 +163,7 @@ static char peekNext(CLexState *state)
     return state->currentChar[1];
 }
 
-char next(CLexState *state)
+static char next(CLexState *state)
 {
     if (isEnd(state))
         return '\0'; // return a null terminator
@@ -171,12 +171,12 @@ char next(CLexState *state)
     return state->currentChar[-1];
 }
 
-bool isHex(char c)
+static bool isHex(char c)
 {
     return isNumerical(c) || ('A' <= c && 'F' >= c) || ('a' <= c && 'f' >= c);
 }
 
-CTokenType identifierType(CLexState *state)
+static CTokenType identifierType(CLexState *state)
 {
     int length = state->currentChar - state->startChar;
 
@@ -192,7 +192,7 @@ CTokenType identifierType(CLexState *state)
     return TOKEN_IDENTIFIER;
 }
 
-void skipWhitespace(CLexState *state)
+static void skipWhitespace(CLexState *state)
 {
     while (true) {
         char c = peek(state);
@@ -235,7 +235,7 @@ void skipWhitespace(CLexState *state)
     }
 }
 
-CToken parseString(CLexState *state)
+static CToken parseString(CLexState *state)
 {
     makeBuffer(state); // buffer mode
     while (peek(state) != '"' && !isEnd(state)) {
@@ -341,7 +341,7 @@ CToken parseString(CLexState *state)
     return makeToken(state, TOKEN_STRING);
 }
 
-CToken parseNumber(CLexState *state)
+static CToken parseNumber(CLexState *state)
 {
     switch (peek(state)) {
     case 'x': // hexadecimal number
@@ -380,7 +380,7 @@ CToken parseNumber(CLexState *state)
     return makeToken(state, TOKEN_NUMBER);
 }
 
-CToken parseIdentifier(CLexState *state)
+static CToken parseIdentifier(CLexState *state)
 {
     // read literal
     while ((isAlpha(peek(state)) || isNumerical(peek(state))) && !isEnd(state))

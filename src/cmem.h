@@ -67,6 +67,7 @@ COSMO_API void cosmoM_collectGarbage(CState *state);
 COSMO_API void cosmoM_updateThreshhold(CState *state);
 
 // lets the VM know you are holding a reference to a CObj and to not free it
+// NOTE: prefer to use the stack when possible
 COSMO_API void cosmoM_addRoot(CState *state, CObj *newRoot);
 
 // lets the VM know this root is no longer held in a reference and is able to be freed

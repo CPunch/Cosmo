@@ -51,10 +51,10 @@ COSMO_API bool cosmoM_checkGarbage(CState *state, size_t needed)
     return false;
 }
 
-void markObject(CState *state, CObj *obj);
-void markValue(CState *state, CValue val);
+static void markObject(CState *state, CObj *obj);
+static void markValue(CState *state, CValue val);
 
-void markTable(CState *state, CTable *tbl)
+static void markTable(CState *state, CTable *tbl)
 {
     if (tbl->table == NULL) // table is still being initialized
         return;
@@ -68,7 +68,7 @@ void markTable(CState *state, CTable *tbl)
 }
 
 // frees white members from the table
-void tableRemoveWhite(CState *state, CTable *tbl)
+static void tableRemoveWhite(CState *state, CTable *tbl)
 {
     if (tbl->table == NULL) // table is still being initialized
         return;
@@ -86,7 +86,7 @@ void tableRemoveWhite(CState *state, CTable *tbl)
     cosmoT_checkShrink(state, tbl); // recovers the memory we're no longer using
 }
 
-void markArray(CState *state, CValueArray *array)
+static void markArray(CState *state, CValueArray *array)
 {
     for (size_t i = 0; i < array->count; i++) {
         markValue(state, array->values[i]);
@@ -95,7 +95,7 @@ void markArray(CState *state, CValueArray *array)
 
 // mark all references associated with the object
 // black = keep, white = discard
-void blackenObject(CState *state, CObj *obj)
+static void blackenObject(CState *state, CObj *obj)
 {
     markObject(state, (CObj *)obj->proto);
     switch (obj->type) {
@@ -161,7 +161,7 @@ void blackenObject(CState *state, CObj *obj)
     }
 }
 
-void markObject(CState *state, CObj *obj)
+static void markObject(CState *state, CObj *obj)
 {
     if (obj == NULL || obj->isMarked) // skip if NULL or already marked
         return;
@@ -185,14 +185,14 @@ void markObject(CState *state, CObj *obj)
     state->grayStack.array[state->grayStack.count++] = obj;
 }
 
-void markValue(CState *state, CValue val)
+static void markValue(CState *state, CValue val)
 {
     if (IS_REF(val))
         markObject(state, cosmoV_readRef(val));
 }
 
 // trace our gray references
-void traceGrays(CState *state)
+static void traceGrays(CState *state)
 {
     while (state->grayStack.count > 0) {
         CObj *obj = state->grayStack.array[--state->grayStack.count];
@@ -200,7 +200,7 @@ void traceGrays(CState *state)
     }
 }
 
-void sweep(CState *state)
+static void sweep(CState *state)
 {
     CObj *prev = NULL;
     CObj *object = state->objects;
@@ -224,7 +224,7 @@ void sweep(CState *state)
     }
 }
 
-void markUserRoots(CState *state)
+static void markUserRoots(CState *state)
 {
     CObj *root = state->userRoots;
 
@@ -235,7 +235,7 @@ void markUserRoots(CState *state)
     }
 }
 
-void markRoots(CState *state)
+static void markRoots(CState *state)
 {
     // mark all values on the stack
     for (StkPtr value = state->stack; value < state->top; value++) {
