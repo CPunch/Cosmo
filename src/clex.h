@@ -93,7 +93,7 @@ typedef struct
     char *currentChar;
     char *startChar;
     char *buffer; // if non-NULL & bufCount > 0, token->start & token->length will be set to buffer
-                  // & bufCount respectively
+                  // & bufCount respectively. used exclusively for string literals
     size_t bufCount;
     size_t bufCap;
     int line;     // current line

@@ -9,53 +9,53 @@ void printIndent(int indent)
         printf("\t");
 }
 
-int simpleInstruction(const char *name, int offset)
+static int simpleInstruction(const char *name, int offset)
 {
     printf("%s", name);
     return offset + 1; // consume opcode
 }
 
-int u8OperandInstruction(const char *name, CChunk *chunk, int offset)
+static int u8OperandInstruction(const char *name, CChunk *chunk, int offset)
 {
     printf("%-16s [%03d]", name, readu8Chunk(chunk, offset + 1));
     return offset + 2;
 }
 
-int u16OperandInstruction(const char *name, CChunk *chunk, int offset)
+static int u16OperandInstruction(const char *name, CChunk *chunk, int offset)
 {
     printf("%-16s [%05d]", name, readu16Chunk(chunk, offset + 1));
     return offset + 1 + (sizeof(uint16_t) / sizeof(INSTRUCTION));
 }
 
-int JumpInstruction(const char *name, CChunk *chunk, int offset, int dir)
+static int JumpInstruction(const char *name, CChunk *chunk, int offset, int dir)
 {
     int jmp = ((int)readu16Chunk(chunk, offset + 1)) * dir;
     printf("%-16s [%05d] - jumps to %04d", name, jmp, offset + 3 + jmp);
     return offset + 1 + (sizeof(uint16_t) / sizeof(INSTRUCTION));
 }
 
-int u8u8OperandInstruction(const char *name, CChunk *chunk, int offset)
+static int u8u8OperandInstruction(const char *name, CChunk *chunk, int offset)
 {
     printf("%-16s [%03d] [%03d]", name, readu8Chunk(chunk, offset + 1),
            readu8Chunk(chunk, offset + 2));
     return offset + 3; // op + u8 + u8
 }
 
-int u8u16OperandInstruction(const char *name, CChunk *chunk, int offset)
+static int u8u16OperandInstruction(const char *name, CChunk *chunk, int offset)
 {
     printf("%-16s [%03d] [%05d]", name, readu8Chunk(chunk, offset + 1),
            readu16Chunk(chunk, offset + 2));
     return offset + 4; // op + u8 + u16
 }
 
-int u8u8u16OperandInstruction(const char *name, CChunk *chunk, int offset)
+static int u8u8u16OperandInstruction(const char *name, CChunk *chunk, int offset)
 {
     printf("%-16s [%03d] [%03d] [%05d]", name, readu8Chunk(chunk, offset + 1),
            readu8Chunk(chunk, offset + 2), readu16Chunk(chunk, offset + 3));
     return offset + 5; // op + u8 + u8 + u16
 }
 
-int constInstruction(const char *name, CChunk *chunk, int offset)
+static int constInstruction(const char *name, CChunk *chunk, int offset)
 {
     int index = readu16Chunk(chunk, offset + 1);
     printf("%-16s [%05d] - ", name, index);

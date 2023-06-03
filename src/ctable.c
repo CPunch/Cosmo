@@ -11,7 +11,7 @@
 #define MIN_TABLE_CAPACITY ARRAY_START
 
 // bit-twiddling hacks, gets the next power of 2
-unsigned int nextPow2(unsigned int x)
+static unsigned int nextPow2(unsigned int x)
 {
     if (x <= ARRAY_START - 1)
         return ARRAY_START; // sanity check
@@ -46,13 +46,14 @@ void cosmoT_initTable(CState *state, CTable *tbl, int startCap)
 
 void cosmoT_addTable(CState *state, CTable *from, CTable *to)
 {
+    CTableEntry *entry;
     int cap = from->capacityMask + 1;
+
     for (int i = 0; i < cap; i++) {
-        CTableEntry *entry = &from->table[i];
+        entry = &from->table[i];
 
         if (!(IS_NIL(entry->key))) {
-            CValue *newVal = cosmoT_insert(state, to, entry->key);
-            *newVal = entry->val;
+            *cosmoT_insert(state, to, entry->key) = entry->val;
         }
     }
 }
@@ -62,7 +63,7 @@ void cosmoT_clearTable(CState *state, CTable *tbl)
     cosmoM_freearray(state, CTableEntry, tbl->table, (tbl->capacityMask + 1));
 }
 
-uint32_t getObjectHash(CObj *obj)
+static uint32_t getObjectHash(CObj *obj)
 {
     switch (obj->type) {
     case COBJ_STRING:
@@ -72,7 +73,7 @@ uint32_t getObjectHash(CObj *obj)
     }
 }
 
-uint32_t getValueHash(CValue *val)
+static uint32_t getValueHash(CValue *val)
 {
     switch (GET_TYPE(*val)) {
     case COSMO_TREF:
