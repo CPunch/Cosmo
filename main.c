@@ -49,9 +49,8 @@ static bool interpret(CState *state, const char *script, const char *mod)
 
     // cosmoV_compileString pushes the result onto the stack (COBJ_ERROR or COBJ_CLOSURE)
     if (cosmoV_compileString(state, script, mod)) {
-        COSMOVMRESULT res = cosmoV_call(state, 0, 0); // 0 args being passed, 0 results expected
-
-        if (res == COSMOVM_RUNTIME_ERR)
+        // 0 args being passed, 0 results expected
+        if (!cosmoV_call(state, 0, 0))
             cosmoV_printError(state, state->error);
     } else {
         cosmoV_pop(state); // pop the error off the stack
@@ -171,9 +170,7 @@ void compileScript(CState *state, const char *in, const char *out)
 
 void loadScript(CState *state, const char *in)
 {
-    FILE *file;
-
-    file = fopen(in, "rb");
+    FILE *file = fopen(in, "rb");
     if (!cosmoV_undump(state, fileReader, file)) {
         cosmoV_pop(state); // pop the error off the stack
         cosmoV_printError(state, state->error);
@@ -181,9 +178,7 @@ void loadScript(CState *state, const char *in)
     };
 
     printf("[!] loaded %s!\n", in);
-    COSMOVMRESULT res = cosmoV_call(state, 0, 0); // 0 args being passed, 0 results expected
-
-    if (res == COSMOVM_RUNTIME_ERR)
+    if (!cosmoV_call(state, 0, 0))
         cosmoV_printError(state, state->error);
 
     fclose(file);
@@ -203,7 +198,7 @@ int main(int argc, char *const argv[])
 {
     CState *state = cosmoV_newState();
     cosmoB_loadLibrary(state);
-    cosmoB_loadOSLib(state);
+    cosmoB_loadOS(state);
     cosmoB_loadVM(state);
 
     int opt;

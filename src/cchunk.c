@@ -49,9 +49,10 @@ int addConstant(CState *state, CChunk *chunk, CValue value)
             return i; // we already have a matching constant!
     }
 
-    cosmoM_freezeGC(state); // so our GC doesn't free it
+    cosmoV_pushValue(state, value); // push the value to the stack so our GC can see it
     appendValArray(state, &chunk->constants, value);
-    cosmoM_unfreezeGC(state);
+    cosmoV_pop(state);
+
     return chunk->constants.count - 1; // return the index of the new constants
 }
 

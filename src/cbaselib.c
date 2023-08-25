@@ -68,17 +68,12 @@ int cosmoB_pcall(CState *state, int nargs, CValue *args)
         return 0;
     }
 
-    // unfreeze the state GC before calling the function
-    cosmoM_unfreezeGC(state);
-
-    // call the passed callable
-    COSMOVMRESULT res = cosmoV_pcall(state, nargs - 1, 1);
+    // call the passed callable, the passed arguments are already in the
+    // proper order lol, so we can just call it
+    bool res = cosmoV_pcall(state, nargs - 1, 1);
 
     // insert false before the result
-    cosmo_insert(state, 0, cosmoV_newBoolean(res == COSMOVM_OK));
-
-    // refreeze the state GC so it can be properly unfrozen
-    cosmoM_freezeGC(state);
+    cosmo_insert(state, 0, cosmoV_newBoolean(res));
     return 2;
 }
 
@@ -332,7 +327,7 @@ int cosmoB_osSystem(CState *state, int nargs, CValue *args)
     return 1;
 }
 
-COSMO_API void cosmoB_loadOSLib(CState *state)
+COSMO_API void cosmoB_loadOS(CState *state)
 {
     const char *identifiers[] = {"read", "time", "system"};
 
