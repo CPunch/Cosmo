@@ -21,16 +21,9 @@
 #    define VM_JUMPTABLE
 #endif
 
-typedef enum
-{
-    COSMOVM_OK,
-    COSMOVM_RUNTIME_ERR,
-    COSMOVM_BUILDTIME_ERR
-} COSMOVMRESULT;
-
 // args = # of pass parameters, nresults = # of expected results
-COSMO_API COSMOVMRESULT cosmoV_call(CState *state, int args, int nresults);
-COSMO_API COSMOVMRESULT cosmoV_pcall(CState *state, int args, int nresults);
+COSMO_API bool cosmoV_call(CState *state, int args, int nresults);
+COSMO_API bool cosmoV_pcall(CState *state, int args, int nresults);
 
 // pushes new object onto the stack & returns a pointer to the new object
 COSMO_API CObjObject *cosmoV_makeObject(CState *state, int pairs);

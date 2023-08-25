@@ -145,7 +145,6 @@ static inline bool isObjType(CValue val, CObjType type)
     return IS_REF(val) && cosmoV_readRef(val)->type == type;
 }
 
-// just protects against macro expansion
 static inline bool IS_CALLABLE(CValue val)
 {
     return IS_CLOSURE(val) || IS_CFUNCTION(val) || IS_METHOD(val);

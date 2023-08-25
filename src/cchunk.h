@@ -21,6 +21,8 @@ void cleanChunk(CState *state, CChunk *chunk); // frees everything but the struc
 void freeChunk(CState *state, CChunk *chunk);  // frees everything including the struct
 int addConstant(CState *state, CChunk *chunk, CValue value);
 
+bool validateChunk(CState *state, CChunk *chunk);
+
 // write to chunk
 void writeu8Chunk(CState *state, CChunk *chunk, INSTRUCTION i, int line);
 void writeu16Chunk(CState *state, CChunk *chunk, uint16_t i, int line);

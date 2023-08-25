@@ -346,6 +346,7 @@ static bool rawCall(CState *state, CObjClosure *closure, int args, int nresults,
     return true;
 }
 
+// returns true if successful, false if error
 bool callCValue(CState *state, CValue func, int args, int nresults, int offset)
 {
 #ifdef VM_DEBUG
@@ -418,7 +419,8 @@ bool invokeMethod(CState *state, CObj *obj, CValue func, int args, int nresults,
 
 // wraps cosmoV_call in a protected state, CObjError will be pushed onto the stack if function call
 // failed, else return values are passed
-COSMOVMRESULT cosmoV_pcall(CState *state, int args, int nresults)
+// returns false if function call failed, true if function call succeeded
+bool cosmoV_pcall(CState *state, int args, int nresults)
 {
     StkPtr base = cosmoV_getTop(state, args);
 
@@ -434,25 +436,20 @@ COSMOVMRESULT cosmoV_pcall(CState *state, int args, int nresults)
                 cosmoV_pushValue(state, cosmoV_newNil());
         }
 
-        return COSMOVM_RUNTIME_ERR;
+        return false;
     }
 
-    return COSMOVM_OK;
+    return true;
 }
 
-/*
-    calls a callable object at stack->top - args - 1, passing the # of args to the callable, and
-   ensuring nresults are returned
-
-    returns:
-        COSMOVM_OK: callable object exited normally
-        COSMOVM_RUNTIME_ERR: an error occurred, grab the error from state->error
-*/
-COSMOVMRESULT cosmoV_call(CState *state, int args, int nresults)
+// calls a callable object at stack->top - args - 1, passing the # of args to the callable, and
+// ensuring nresults are returned
+// returns false if an error was thrown, else true if successful
+bool cosmoV_call(CState *state, int args, int nresults)
 {
     StkPtr val = cosmoV_getTop(state, args); // function will always be right above the args
 
-    return callCValue(state, *val, args, nresults, 0) ? COSMOVM_OK : COSMOVM_RUNTIME_ERR;
+    return callCValue(state, *val, args, nresults, 0);
 }
 
 static inline bool isFalsey(StkPtr val)
@@ -813,7 +810,7 @@ int cosmoV_execute(CState *state)
             {
                 uint8_t args = READBYTE(frame);
                 uint8_t nres = READBYTE(frame);
-                if (cosmoV_call(state, args, nres) != COSMOVM_OK) {
+                if (!cosmoV_call(state, args, nres)) {
                     return -1;
                 }
             }
@@ -1040,9 +1037,7 @@ int cosmoV_execute(CState *state)
                         cosmoV_pop(state); // pop the object from the stack
                         cosmoV_pushValue(state, val);
                         cosmoV_pushRef(state, (CObj *)obj);
-                        if (cosmoV_call(state, 1, 1) !=
-                            COSMOVM_OK) // we expect 1 return value on the stack, the iterable
-                                        // object
+                        if (!cosmoV_call(state, 1, 1)) // we expect 1 return value on the stack, the iterable object
                             return -1;
 
                         StkPtr iObj = cosmoV_getTop(state, 0);
@@ -1101,7 +1096,7 @@ int cosmoV_execute(CState *state)
                 }
 
                 cosmoV_pushValue(state, *temp);
-                if (cosmoV_call(state, 0, nresults) != COSMOVM_OK)
+                if (!cosmoV_call(state, 0, nresults))
                     return -1;
 
                 if (IS_NIL(*(cosmoV_getTop(
@@ -1332,20 +1327,23 @@ int cosmoV_execute(CState *state)
                 // compare & push
                 cosmoV_pushBoolean(state, cosmoV_equal(state, *valA, *valB));
             }
+            CASE(OP_LESS) :
+            {
+                NUMBEROP(cosmoV_newBoolean, <);
+            }
             CASE(OP_GREATER) :
             {
                 NUMBEROP(cosmoV_newBoolean, >);
             }
-            CASE(OP_LESS) :
+            CASE(OP_LESS_EQUAL) :
             {
-                NUMBEROP(cosmoV_newBoolean, <);
+                NUMBEROP(cosmoV_newBoolean, <=);
             }
             CASE(OP_GREATER_EQUAL) :
             {
                 NUMBEROP(cosmoV_newBoolean, >=);
             }
-            CASE(OP_LESS_EQUAL)
-                : {NUMBEROP(cosmoV_newBoolean, <=)} CASE(OP_TRUE) : cosmoV_pushBoolean(state, true);
+            CASE(OP_TRUE) : cosmoV_pushBoolean(state, true);
             CASE(OP_FALSE) : cosmoV_pushBoolean(state, false);
             CASE(OP_NIL) : cosmoV_pushValue(state, cosmoV_newNil());
             CASE(OP_RETURN) :

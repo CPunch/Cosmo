@@ -22,7 +22,7 @@ COSMO_API void cosmoB_loadObjLib(CState *state);
     - os.system()
     - os.time()
 */
-COSMO_API void cosmoB_loadOSLib(CState *state);
+COSMO_API void cosmoB_loadOS(CState *state);
 
 /* loads the base string library, including:
     - string.sub & <string>:sub()

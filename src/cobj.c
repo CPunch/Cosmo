@@ -166,7 +166,7 @@ _eqFail:
         cosmoV_pushValue(state, eq1);
         cosmoV_pushRef(state, obj1);
         cosmoV_pushRef(state, obj2);
-        if (cosmoV_call(state, 2, 1) != COSMOVM_OK)
+        if (!cosmoV_call(state, 2, 1))
             return false;
 
         // check return value and make sure it's a boolean
@@ -411,7 +411,7 @@ bool cosmoO_getRawObject(CState *state, CObjObject *proto, CValue key, CValue *v
             cosmoT_get(state, &cosmoV_readTable(*val)->tbl, key, val)) {
             cosmoV_pushValue(state, *val);              // push function
             cosmoV_pushRef(state, (CObj *)obj);         // push object
-            if (cosmoV_call(state, 1, 1) != COSMOVM_OK) // call the function with the 1 argument
+            if (!cosmoV_call(state, 1, 1)) // call the function with the 1 argument
                 return false;
             *val = *cosmoV_pop(state); // set value to the return value of __index
             return true;
@@ -532,7 +532,7 @@ bool cosmoO_indexObject(CState *state, CObjObject *object, CValue key, CValue *v
         cosmoV_pushValue(state, *val);              // push function
         cosmoV_pushRef(state, (CObj *)object);      // push object
         cosmoV_pushValue(state, key);               // push key
-        if (cosmoV_call(state, 2, 1) != COSMOVM_OK) // call the function with the 2 arguments
+        if (!cosmoV_call(state, 2, 1)) // call the function with the 2 arguments
             return false;
         *val = *cosmoV_pop(state); // set value to the return value of __index
         return true;
@@ -552,7 +552,7 @@ bool cosmoO_newIndexObject(CState *state, CObjObject *object, CValue key, CValue
         cosmoV_pushRef(state, (CObj *)object); // push object
         cosmoV_pushValue(state, key);          // push key & value pair
         cosmoV_pushValue(state, val);
-        return cosmoV_call(state, 3, 0) == COSMOVM_OK;
+        return cosmoV_call(state, 3, 0);
     } else { // there's no __newindex function defined
         cosmoV_error(state, "Couldn't set index on object without __newindex function!");
     }
@@ -569,7 +569,7 @@ CObjString *cosmoO_toString(CState *state, CObj *obj)
     if (protoObject != NULL && cosmoO_getIString(state, protoObject, ISTRING_TOSTRING, &res)) {
         cosmoV_pushValue(state, res);
         cosmoV_pushRef(state, (CObj *)obj);
-        if (cosmoV_call(state, 1, 1) != COSMOVM_OK)
+        if (!cosmoV_call(state, 1, 1))
             return cosmoO_copyString(state, "<err>", 5);
 
         // make sure the __tostring function returned a string
@@ -635,7 +635,7 @@ cosmo_Number cosmoO_toNumber(CState *state, CObj *obj)
     if (proto != NULL && cosmoO_getIString(state, proto, ISTRING_TONUMBER, &res)) {
         cosmoV_pushValue(state, res);
         cosmoV_pushRef(state, (CObj *)obj);
-        if (cosmoV_call(state, 1, 1) != COSMOVM_OK) // call res, expect 1 return val of <number>
+        if (!cosmoV_call(state, 1, 1)) // call res, expect 1 return val of <number>
             return 0;
 
         StkPtr temp = cosmoV_getTop(state, 0);
@@ -668,8 +668,7 @@ int cosmoO_count(CState *state, CObj *obj)
     if (proto != NULL && cosmoO_getIString(state, proto, ISTRING_COUNT, &res)) {
         cosmoV_pushValue(state, res);
         cosmoV_pushRef(state, (CObj *)obj);
-        if (cosmoV_call(state, 1, 1) !=
-            COSMOVM_OK) // call res, we expect 1 return value of type <number>
+        if (!cosmoV_call(state, 1, 1)) // call res, we expect 1 return value of type <number>
             return 0;
 
         StkPtr ret = cosmoV_getTop(state, 0);
