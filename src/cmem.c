@@ -11,17 +11,20 @@
 void *cosmoM_reallocate(CState *state, void *buf, size_t oldSize, size_t newSize)
 {
 #ifdef GC_DEBUG
+    printf("old allocated bytes: %ld\n", state->allocatedBytes);
     if (buf) {
         if (newSize == 0) {
             printf("freeing %p, reclaiming %ld bytes...\n", buf, oldSize);
         } else {
             printf("realloc %p, byte difference: %ld\n", buf, newSize - oldSize);
         }
-    } else {
-        printf("allocating new buffer of size %ld\n", newSize - oldSize);
     }
 #endif
     state->allocatedBytes += newSize - oldSize;
+#ifdef GC_DEBUG
+    printf("new allocated bytes: %ld\n", state->allocatedBytes);
+    fflush(stdout);
+#endif
 
     if (newSize == 0) { // it needs to be freed
         free(buf);
@@ -43,6 +46,11 @@ void *cosmoM_reallocate(CState *state, void *buf, size_t oldSize, size_t newSize
 
     // if NULL is passed, realloc() acts like malloc()
     void *newBuf = realloc(buf, newSize);
+
+#ifdef GC_DEBUG
+    printf("allocating new buffer of size %ld at %p\n", newSize - oldSize, newBuf);
+    fflush(stdout);
+#endif
 
     if (newBuf == NULL) {
         CERROR("failed to allocate memory!");

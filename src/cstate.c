@@ -26,7 +26,7 @@ CState *cosmoV_newState()
     state->grayStack.count = 0;
     state->grayStack.capacity = 2;
     state->grayStack.array = NULL;
-    state->allocatedBytes = sizeof(CState);
+    state->allocatedBytes = 0;
     state->nextGC = 1024 * 8; // threshhold starts at 8kb
 
     // init stack
@@ -86,6 +86,12 @@ void cosmoV_freeState(CState *state)
     CObj *objs = state->objects;
     while (objs != NULL) {
         CObj *next = objs->next;
+
+#ifdef GC_DEBUG
+        printf("STATE FREEING %p\n", objs);
+        fflush(stdout);
+#endif
+
         cosmoO_free(state, objs);
         objs = next;
     }
@@ -100,13 +106,13 @@ void cosmoV_freeState(CState *state)
     // free our gray stack & finally free the state structure
     cosmoM_freearray(state, CObj *, state->grayStack.array, state->grayStack.capacity);
 
-    // TODO: yeah idk, it looks like im missing 520 bytes somewhere? i'll look into it later
-    /*#ifdef GC_DEBUG
-        if (state->allocatedBytes != sizeof(CState)) {
-            printf("state->allocatedBytes doesn't match expected value (%lu), got %lu!",
-    sizeof(CState), state->allocatedBytes); exit(0);
-        }
-    #endif*/
+    // TODO: yeah idk, it looks like im missing 688 bytes somewhere? i'll look into it later
+#ifdef GC_DEBUG
+    if (state->allocatedBytes != 0) {
+        printf("state->allocatedBytes doesn't match, got %lu\n", state->allocatedBytes);
+    }
+#endif
+
     free(state);
 }
 
