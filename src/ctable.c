@@ -34,6 +34,7 @@ void cosmoT_initTable(CState *state, CTable *tbl, int startCap)
     tbl->capacityMask = startCap - 1;
     tbl->count = 0;
     tbl->tombstones = 0;
+    tbl->tombThreshold = 32;
     tbl->table = NULL; // to let out GC know we're initalizing
     tbl->table = cosmoM_xmalloc(state, sizeof(CTableEntry) * startCap);
 
@@ -47,7 +48,7 @@ void cosmoT_initTable(CState *state, CTable *tbl, int startCap)
 void cosmoT_addTable(CState *state, CTable *from, CTable *to)
 {
     CTableEntry *entry;
-    int cap = from->capacityMask + 1;
+    int cap = cosmoT_getCapacity(from);
 
     for (int i = 0; i < cap; i++) {
         entry = &from->table[i];
@@ -60,7 +61,7 @@ void cosmoT_addTable(CState *state, CTable *from, CTable *to)
 
 void cosmoT_clearTable(CState *state, CTable *tbl)
 {
-    cosmoM_freearray(state, CTableEntry, tbl->table, (tbl->capacityMask + 1));
+    cosmoM_freearray(state, CTableEntry, tbl->table, cosmoT_getCapacity(tbl));
 }
 
 static uint32_t getObjectHash(CObj *obj)
@@ -113,10 +114,10 @@ static CTableEntry *findEntry(CState *state, CTableEntry *entries, int mask, CVa
             if (IS_NIL(entry->val)) {
                 // it's empty! if we found a tombstone, return that so it'll be reused
                 return tomb != NULL ? tomb : entry;
-            } else {
-                // its a tombstone!
-                tomb = entry;
             }
+
+            // its a tombstone!
+            tomb = entry;
         } else if (cosmoV_equal(state, entry->key, key)) {
             return entry;
         }
@@ -141,7 +142,7 @@ static void resizeTbl(CState *state, CTable *tbl, int newCapacity, bool canShrin
         return;
 
     CTableEntry *entries = cosmoM_xmalloc(state, size);
-    oldCap = tbl->capacityMask + 1;
+    oldCap = cosmoT_getCapacity(tbl);
     newCount = 0;
 
     // set all nodes as NIL : NIL
@@ -176,10 +177,10 @@ bool cosmoT_checkShrink(CState *state, CTable *tbl)
 {
     // if count > 8 and active entries < tombstones
     if (tbl->count > MIN_TABLE_CAPACITY &&
-        (tbl->count - tbl->tombstones < tbl->tombstones ||
-         tbl->tombstones > 50)) { // TODO: 50 should be a threshhold
-        resizeTbl(state, tbl, nextPow2(tbl->count - tbl->tombstones) * GROW_FACTOR,
-                  false); // shrink based on active entries to the next pow of 2
+        (tbl->count - tbl->tombstones < tbl->tombstones || tbl->tombstones > tbl->tombThreshold)) {
+        // shrink based on active entries to the next pow of 2
+        resizeTbl(state, tbl, nextPow2(tbl->count - tbl->tombstones) * GROW_FACTOR, false);
+        tbl->tombThreshold = tbl->count / 4;
         return true;
     }
 
@@ -190,7 +191,7 @@ bool cosmoT_checkShrink(CState *state, CTable *tbl)
 COSMO_API CValue *cosmoT_insert(CState *state, CTable *tbl, CValue key)
 {
     // make sure we have enough space allocated
-    int cap = tbl->capacityMask + 1;
+    int cap = cosmoT_getCapacity(tbl);
     if (tbl->count + 1 > (int)(cap * MAX_TABLE_FILL)) {
         // grow table
         int newCap = cap * GROW_FACTOR;
@@ -198,8 +199,7 @@ COSMO_API CValue *cosmoT_insert(CState *state, CTable *tbl, CValue key)
     }
 
     // insert into the table
-    CTableEntry *entry =
-        findEntry(state, tbl->table, tbl->capacityMask, key); // -1 for our capacity mask
+    CTableEntry *entry = findEntry(state, tbl->table, tbl->capacityMask, key);
 
     if (IS_NIL(entry->key)) {
         if (IS_NIL(entry->val)) // is it empty?
@@ -255,9 +255,10 @@ CObjString *cosmoT_lookupString(CTable *tbl, const char *str, int length, uint32
 {
     if (tbl->count == 0)
         return 0; // sanity check
-    uint32_t indx =
-        hash & tbl->capacityMask; // since we know the capacity will *always* be a power of 2, we
-                                  // can use bitwise & to perform a MUCH faster mod operation
+
+    // since we know the capacity will *always* be a power of 2, we
+    // can use bitwise & to perform a MUCH faster mod operation
+    uint32_t indx = hash & tbl->capacityMask;
 
     // keep looking for an open slot in the entries array
     while (true) {
@@ -280,7 +281,7 @@ CObjString *cosmoT_lookupString(CTable *tbl, const char *str, int length, uint32
 void cosmoT_printTable(CTable *tbl, const char *name)
 {
     printf("==== [[%s]] ====\n", name);
-    int cap = tbl->capacityMask + 1;
+    int cap = cosmoT_getCapacity(tbl);
     for (int i = 0; i < cap; i++) {
         CTableEntry *entry = &tbl->table[i];
         if (!(IS_NIL(entry->key))) {

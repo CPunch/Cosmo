@@ -18,8 +18,11 @@ typedef struct CTable
     int count;
     int capacityMask; // +1 to get the capacity
     int tombstones;
+    int tombThreshold;
     CTableEntry *table;
 } CTable;
+
+#define cosmoT_getCapacity(tbl) ((tbl)->capacityMask + 1)
 
 COSMO_API void cosmoT_initTable(CState *state, CTable *tbl, int startCap);
 COSMO_API void cosmoT_clearTable(CState *state, CTable *tbl);
