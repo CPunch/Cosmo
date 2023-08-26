@@ -10,7 +10,9 @@
 // realloc wrapper
 void *cosmoM_reallocate(CState *state, void *buf, size_t oldSize, size_t newSize)
 {
-    if (buf == NULL) oldSize = 0;
+    if (buf == NULL)
+        oldSize = 0;
+
 #ifdef GC_DEBUG
     printf("old allocated bytes: %ld\n", state->allocatedBytes);
     if (buf) {

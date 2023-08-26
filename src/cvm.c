@@ -764,7 +764,6 @@ int cosmoV_execute(CState *state)
             {
                 uint8_t indx = READBYTE(frame);
                 cosmoV_pushValue(state, frame->base[indx]);
-                continue;
             }
             CASE(OP_GETUPVAL) :
             {

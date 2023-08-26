@@ -188,10 +188,10 @@ CObjObject *cosmoO_newObject(CState *state)
     obj->userP = NULL; // reserved for C API
     obj->userT = 0;
     obj->isLocked = false;
+
     cosmoV_pushRef(state, (CObj *)obj); // so our GC can keep track of it
     cosmoT_initTable(state, &obj->tbl, ARRAY_START);
     cosmoV_pop(state);
-
     return obj;
 }
 
