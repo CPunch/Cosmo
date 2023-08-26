@@ -33,7 +33,7 @@ CObj *cosmoO_allocateBase(CState *state, size_t sz, CObjType type)
 
     obj->nextRoot = NULL;
 #ifdef GC_DEBUG
-    printf("allocated %p with OBJ_TYPE %d\n", obj, type);
+    printf("allocated %s %p\n", cosmoO_typeStr(obj), obj);
 #endif
     return obj;
 }
@@ -41,9 +41,7 @@ CObj *cosmoO_allocateBase(CState *state, size_t sz, CObjType type)
 void cosmoO_free(CState *state, CObj *obj)
 {
 #ifdef GC_DEBUG
-    printf("freeing %p [", obj);
-    printObject(obj);
-    printf("]\n");
+    printf("freeing %s %p\n", cosmoO_typeStr(obj), obj);
 #endif
     switch (obj->type) {
     case COBJ_STRING: {
