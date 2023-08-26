@@ -948,16 +948,8 @@ int cosmoB_vnewindexBProto(CState *state, int nargs, CValue *args)
 // vm.collect()
 int cosmoB_vcollect(CState *state, int nargs, CValue *args)
 {
-    // first, unfreeze the state (we start frozen on entry to any C Function)
-    cosmoM_unfreezeGC(state);
-
-    // now force a garbage collection
+    // force a garbage collection
     cosmoM_collectGarbage(state);
-
-    // and re-freeze the state
-    cosmoM_freezeGC(state);
-
-    // the end!
     return 0;
 }
 
