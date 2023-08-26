@@ -409,9 +409,9 @@ bool cosmoO_getRawObject(CState *state, CObjObject *proto, CValue key, CValue *v
                     val)) { // if the field doesn't exist in the object, check the proto
         if (cosmoO_getIString(state, proto, ISTRING_GETTER, val) && IS_TABLE(*val) &&
             cosmoT_get(state, &cosmoV_readTable(*val)->tbl, key, val)) {
-            cosmoV_pushValue(state, *val);              // push function
-            cosmoV_pushRef(state, (CObj *)obj);         // push object
-            if (!cosmoV_call(state, 1, 1)) // call the function with the 1 argument
+            cosmoV_pushValue(state, *val);      // push function
+            cosmoV_pushRef(state, (CObj *)obj); // push object
+            if (!cosmoV_call(state, 1, 1))      // call the function with the 1 argument
                 return false;
             *val = *cosmoV_pop(state); // set value to the return value of __index
             return true;
@@ -529,10 +529,10 @@ bool cosmoO_getIString(CState *state, CObjObject *object, int flag, CValue *val)
 bool cosmoO_indexObject(CState *state, CObjObject *object, CValue key, CValue *val)
 {
     if (cosmoO_getIString(state, object, ISTRING_INDEX, val)) {
-        cosmoV_pushValue(state, *val);              // push function
-        cosmoV_pushRef(state, (CObj *)object);      // push object
-        cosmoV_pushValue(state, key);               // push key
-        if (!cosmoV_call(state, 2, 1)) // call the function with the 2 arguments
+        cosmoV_pushValue(state, *val);         // push function
+        cosmoV_pushRef(state, (CObj *)object); // push object
+        cosmoV_pushValue(state, key);          // push key
+        if (!cosmoV_call(state, 2, 1))         // call the function with the 2 arguments
             return false;
         *val = *cosmoV_pop(state); // set value to the return value of __index
         return true;

@@ -640,7 +640,7 @@ int _tbl__next(CState *state, int nargs, CValue *args)
     CObjTable *table = (CObjTable *)cosmoV_readRef(val);
 
     // while the entry is invalid, go to the next entry
-    int cap = table->tbl.capacityMask + 1;
+    int cap = cosmoT_getCapacity(&table->tbl);
     CTableEntry *entry;
     do {
         entry = &table->tbl.table[index++];
@@ -1037,7 +1037,9 @@ int cosmoV_execute(CState *state)
                         cosmoV_pop(state); // pop the object from the stack
                         cosmoV_pushValue(state, val);
                         cosmoV_pushRef(state, (CObj *)obj);
-                        if (!cosmoV_call(state, 1, 1)) // we expect 1 return value on the stack, the iterable object
+                        if (!cosmoV_call(
+                                state, 1,
+                                1)) // we expect 1 return value on the stack, the iterable object
                             return -1;
 
                         StkPtr iObj = cosmoV_getTop(state, 0);

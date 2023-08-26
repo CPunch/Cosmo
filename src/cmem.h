@@ -73,10 +73,13 @@ COSMO_API void cosmoM_addRoot(CState *state, CObj *newRoot);
 // lets the VM know this root is no longer held in a reference and is able to be freed
 COSMO_API void cosmoM_removeRoot(CState *state, CObj *oldRoot);
 
-// wrapper for cosmoM_reallocate so we can track our memory usage (it's also safer :P)
+// wrapper for cosmoM_reallocate so we can track our memory usage
 static inline void *cosmoM_xmalloc(CState *state, size_t sz)
 {
     return cosmoM_reallocate(state, NULL, 0, sz);
 }
+
+// #define cosmoM_xmalloc(state, sz) \
+//         (printf("allocating new buffer at %s:%d of size %ld\n", __FILE__, __LINE__, sz), cosmoM_reallocate(state, NULL, 0, sz))
 
 #endif

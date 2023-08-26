@@ -10,6 +10,17 @@
 // realloc wrapper
 void *cosmoM_reallocate(CState *state, void *buf, size_t oldSize, size_t newSize)
 {
+#ifdef GC_DEBUG
+    if (buf) {
+        if (newSize == 0) {
+            printf("freeing %p, reclaiming %ld bytes...\n", buf, oldSize);
+        } else {
+            printf("realloc %p, byte difference: %ld\n", buf, newSize - oldSize);
+        }
+    } else {
+        printf("allocating new buffer of size %ld\n", newSize - oldSize);
+    }
+#endif
     state->allocatedBytes += newSize - oldSize;
 
     if (newSize == 0) { // it needs to be freed
@@ -59,7 +70,7 @@ static void markTable(CState *state, CTable *tbl)
     if (tbl->table == NULL) // table is still being initialized
         return;
 
-    int cap = tbl->capacityMask + 1;
+    int cap = cosmoT_getCapacity(tbl);
     for (int i = 0; i < cap; i++) {
         CTableEntry *entry = &tbl->table[i];
         markValue(state, entry->key);
@@ -67,13 +78,18 @@ static void markTable(CState *state, CTable *tbl)
     }
 }
 
-// frees white members from the table
+// removes white members from the table
 static void tableRemoveWhite(CState *state, CTable *tbl)
 {
     if (tbl->table == NULL) // table is still being initialized
         return;
 
-    int cap = tbl->capacityMask + 1;
+    int cap = cosmoT_getCapacity(tbl);
+
+#ifdef GC_DEBUG
+    printf("tableRemoveWhite: %p, cap: %d\n", tbl, cap);
+#endif
+
     for (int i = 0; i < cap; i++) {
         CTableEntry *entry = &tbl->table[i];
         if (IS_REF(entry->key) &&
@@ -295,7 +311,6 @@ COSMO_API void cosmoM_collectGarbage(CState *state)
     printf("-- GC end, reclaimed %ld bytes (started at %ld, ended at %ld), next garbage collection "
            "scheduled at %ld bytes\n",
            start - state->allocatedBytes, start, state->allocatedBytes, state->nextGC);
-    getchar(); // pauses execution
 #endif
 }
 
