@@ -698,60 +698,61 @@ int cosmoO_count(CState *state, CObj *obj)
 
 void printObject(CObj *o)
 {
+    printf("%s ", cosmoO_typeStr(o));
     switch (o->type) {
     case COBJ_STRING: {
         CObjString *objStr = (CObjString *)o;
-        printf("<string> \"%.*s\"", objStr->length, objStr->str);
+        printf("\"%.*s\"", objStr->length, objStr->str);
         break;
     }
     case COBJ_OBJECT: {
-        printf("<obj> %p", (void *)o);
+        printf("%p", (void *)o);
         break;
     }
     case COBJ_TABLE: {
         CObjTable *tbl = (CObjTable *)o;
-        printf("<tbl> %p", (void *)tbl);
+        printf("%p", (void *)tbl);
         break;
     }
     case COBJ_FUNCTION: {
         CObjFunction *objFunc = (CObjFunction *)o;
         if (objFunc->name != NULL)
-            printf("<function> %.*s", objFunc->name->length, objFunc->name->str);
+            printf("%.*s", objFunc->name->length, objFunc->name->str);
         else
-            printf("<function> %s", UNNAMEDCHUNK);
+            printf("%s", UNNAMEDCHUNK);
         break;
     }
     case COBJ_CFUNCTION: {
         CObjCFunction *objCFunc = (CObjCFunction *)o;
-        printf("<c function> %p", (void *)objCFunc->cfunc);
+        printf("%p", (void *)objCFunc->cfunc);
         break;
     }
     case COBJ_ERROR: {
         CObjError *err = (CObjError *)o;
-        printf("<error> %p -> ", (void *)o);
+        printf("%p -> ", (void *)o);
         printValue(err->err);
         break;
     }
     case COBJ_METHOD: {
         CObjMethod *method = (CObjMethod *)o;
-        printf("<method> %p -> ", (void *)method);
+        printf("%p -> ", (void *)method);
         printValue(method->func);
         break;
     }
     case COBJ_CLOSURE: {
         CObjClosure *closure = (CObjClosure *)o;
-        printf("<closure> %p -> ", (void *)closure);
+        printf("%p -> ", (void *)closure);
         printObject((CObj *)closure->function); // just print the function
         break;
     }
     case COBJ_UPVALUE: {
         CObjUpval *upval = (CObjUpval *)o;
-        printf("<upvalue> %p -> ", (void *)upval->val);
+        printf("%p -> ", (void *)upval->val);
         printValue(*upval->val);
         break;
     }
     default:
-        printf("<unkn obj %p>", (void *)o);
+        printf("%p", (void *)o);
     }
 }
 
