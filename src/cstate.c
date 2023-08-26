@@ -106,7 +106,6 @@ void cosmoV_freeState(CState *state)
     // free our gray stack & finally free the state structure
     cosmoM_freearray(state, CObj *, state->grayStack.array, state->grayStack.capacity);
 
-    // TODO: yeah idk, it looks like im missing 688 bytes somewhere? i'll look into it later
 #ifdef GC_DEBUG
     if (state->allocatedBytes != 0) {
         printf("state->allocatedBytes doesn't match, got %lu\n", state->allocatedBytes);
