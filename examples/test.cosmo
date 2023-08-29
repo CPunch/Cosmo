@@ -6,7 +6,7 @@ end
 // instance of test
 let obj = test()
 
-test.__index = function(self, key)
+test.__index = func(self, key)
     print("__index called!")
     if (key == "lol") then
         return 9001
