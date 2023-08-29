@@ -6,6 +6,8 @@
 #include "ctable.h"
 #include "cvalue.h"
 
+#include <setjmp.h>
+
 struct CCallFrame
 {
     CObjClosure *closure;
@@ -38,11 +40,17 @@ typedef struct ArrayCObj
     int capacity;
 } ArrayCObj;
 
+typedef struct CPanic
+{
+    jmp_buf jmp;
+    struct CPanic *prev;
+} CPanic;
+
 struct CState
 {
-    bool panic;
     int freezeGC; // when > 0, GC events will be ignored (for internal use)
     int frameCount;
+    CPanic *panic;
 
     CObjError *error; // NULL, unless panic is true
     CObj *objects;    // tracks all of our allocated objects
@@ -64,10 +72,15 @@ struct CState
     CValue stack[STACK_MAX];            // stack
 };
 
+CPanic *cosmoV_newPanic(CState *state);
+void cosmoV_freePanic(CState *state);
+
 COSMO_API CState *cosmoV_newState();
+COSMO_API void cosmoV_freeState(CState *state);
+
 // expects 2*pairs values on the stack, each pair should consist of 1 key and 1 value
 COSMO_API void cosmoV_register(CState *state, int pairs);
-COSMO_API void cosmoV_freeState(CState *state);
+
 COSMO_API void cosmoV_printStack(CState *state);
 
 #endif

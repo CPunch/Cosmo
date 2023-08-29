@@ -103,8 +103,8 @@ typedef struct
     CState *cstate;
 } CLexState;
 
-CLexState *cosmoL_newLexState(CState *state, const char *source);
-void cosmoL_freeLexState(CState *state, CLexState *lstate);
+void cosmoL_initLexState(CState *cstate, CLexState *state, const char *source);
+void cosmoL_cleanupLexState(CState *state, CLexState *lstate);
 
 CToken cosmoL_scanToken(CLexState *state);
 

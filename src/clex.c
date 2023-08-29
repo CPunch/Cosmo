@@ -389,9 +389,8 @@ static CToken parseIdentifier(CLexState *state)
     return makeToken(state, identifierType(state)); // is it a reserved word?
 }
 
-CLexState *cosmoL_newLexState(CState *cstate, const char *source)
+void cosmoL_initLexState(CState *cstate, CLexState *state, const char *source)
 {
-    CLexState *state = cosmoM_xmalloc(cstate, sizeof(CLexState));
     state->startChar = (char *)source;
     state->currentChar = (char *)source;
     state->line = 1;
@@ -400,13 +399,11 @@ CLexState *cosmoL_newLexState(CState *cstate, const char *source)
     state->cstate = cstate;
 
     resetBuffer(state);
-
-    return state;
 }
 
-void cosmoL_freeLexState(CState *state, CLexState *lstate)
+void cosmoL_cleanupLexState(CState *state, CLexState *lstate)
 {
-    cosmoM_free(state, CLexState, lstate);
+    // stubbed
 }
 
 CToken cosmoL_scanToken(CLexState *state)

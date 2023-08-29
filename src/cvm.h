@@ -31,7 +31,7 @@ COSMO_API void cosmoV_makeTable(CState *state, int pairs);
 COSMO_API void cosmoV_concat(CState *state, int vals);
 COSMO_API void cosmoV_pushFString(CState *state, const char *format, ...);
 COSMO_API void cosmoV_printError(CState *state, CObjError *err);
-COSMO_API CObjError *cosmoV_throw(CState *state);
+COSMO_API void cosmoV_throw(CState *state);
 COSMO_API void cosmoV_error(CState *state, const char *format, ...);
 COSMO_API void cosmo_insert(CState *state, int indx, CValue val);
 
