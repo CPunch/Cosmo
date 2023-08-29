@@ -229,13 +229,12 @@ CObjCFunction *cosmoO_newCFunction(CState *state, CosmoCFunction func)
 
 CObjError *cosmoO_newError(CState *state, CValue err)
 {
+    CCallFrame *frames = cosmoM_xmalloc(state, sizeof(CCallFrame) * state->frameCount);
     CObjError *cerror = (CObjError *)cosmoO_allocateBase(state, sizeof(CObjError), COBJ_ERROR);
     cerror->err = err;
     cerror->frameCount = state->frameCount;
+    cerror->frames = frames;
     cerror->parserError = false;
-
-    // allocate the callframe
-    cerror->frames = cosmoM_xmalloc(state, sizeof(CCallFrame) * cerror->frameCount);
 
     // clone the call frame
     for (int i = 0; i < state->frameCount; i++)
@@ -762,6 +761,8 @@ const char *cosmoO_typeStr(CObj *obj)
         return "<function>";
     case COBJ_CFUNCTION:
         return "<c function>";
+    case COBJ_ERROR:
+        return "<error>";
     case COBJ_METHOD:
         return "<method>";
     case COBJ_CLOSURE:

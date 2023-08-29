@@ -10,6 +10,8 @@
 CPanic *cosmoV_newPanic(CState *state)
 {
     CPanic *panic = cosmoM_xmalloc(state, sizeof(CPanic));
+    panic->top = state->top;
+    panic->frameCount = state->frameCount;
     panic->prev = state->panic;
     state->panic = panic;
 
@@ -95,7 +97,6 @@ void cosmoV_freeState(CState *state)
 #ifdef GC_DEBUG
     printf("state %p is being free'd!\n", state);
 #endif
-    cosmoM_freezeGC(state);
 
     // frees all the objects
     CObj *objs = state->objects;
