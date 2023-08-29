@@ -13,16 +13,19 @@
     cosmoV_execute by about 20% from benchmarking. of course, if you know
     your compiler supports computed gotos, you can define VM_JUMPTABLE
 
+    although, this is disabled when VM_DEBUG is defined, since it can cause
+    issues with debugging
+
     BTW: be weary of maliciously crafted cosmo dumps!! it's very easy to crash
     cosmo with this enabled and reading invalid opcodes due to us just using the
     opcode as an index into the jump table
 */
-#if defined(__GNUC__) || defined(__clang__)
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(VM_DEBUG)
 #    define VM_JUMPTABLE
 #endif
 
 // args = # of pass parameters, nresults = # of expected results
-COSMO_API bool cosmoV_call(CState *state, int args, int nresults);
+COSMO_API void cosmoV_call(CState *state, int args, int nresults);
 COSMO_API bool cosmoV_pcall(CState *state, int args, int nresults);
 
 // pushes new object onto the stack & returns a pointer to the new object
@@ -97,13 +100,6 @@ static inline void cosmoV_pushValue(CState *state, CValue val)
 
     // we reserve 8 slots for the error string and whatever c api we might be in
     if (stackSize >= STACK_MAX - 8) {
-        if (state->panic) { // we're in a panic state, let the 8 reserved slots be filled
-            if (stackSize < STACK_MAX)
-                *(state->top++) = val;
-
-            return;
-        }
-
         cosmoV_error(state, "Stack overflow!");
         return;
     }

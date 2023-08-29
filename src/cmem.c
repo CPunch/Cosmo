@@ -288,9 +288,6 @@ static void markRoots(CState *state)
     // mark the user defined roots
     markUserRoots(state);
 
-    // mark other misc. internally reserved objects
-    markObject(state, (CObj *)state->error);
-
     for (int i = 0; i < COBJ_MAX; i++)
         markObject(state, (CObj *)state->protoObjects[i]);
 

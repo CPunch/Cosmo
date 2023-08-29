@@ -10,17 +10,7 @@
 #include <stdarg.h>
 #include <string.h>
 
-bool cosmoV_protect(CState *state)
-{
-    CPanic *panic = cosmoV_newPanic(state);
-
-    if (setjmp(panic->jmp) == 0) {
-        return 1;
-    }
-
-    cosmoV_freePanic(state);
-    return 0;
-}
+#define cosmoV_protect(panic) setjmp(panic->jmp) == 0
 
 COSMO_API void cosmoV_pushFString(CState *state, const char *format, ...)
 {
@@ -48,9 +38,6 @@ COSMO_API bool cosmoV_undump(CState *state, cosmo_Reader reader, const void *ud)
     CObjFunction *func;
 
     if (cosmoD_undump(state, reader, ud, &func)) {
-        // fail recovery
-        state->panic = false;
-        cosmoV_pushRef(state, (CObj *)state->error);
         return false;
     };
 
@@ -65,24 +52,29 @@ COSMO_API bool cosmoV_undump(CState *state, cosmo_Reader reader, const void *ud)
     return true;
 }
 
+// returns false if failed, error will be on the top of the stack. true if successful, closure will
+// be on the top of the stack
 COSMO_API bool cosmoV_compileString(CState *state, const char *src, const char *name)
 {
     CObjFunction *func;
 
-    if (cosmoV_protect(state)) {
-        if ((func = cosmoP_compileString(state, src, name)) != NULL) {
-            // success
+    CPanic *panic = cosmoV_newPanic(state);
+
+    if (cosmoV_protect(panic)) {
+        func = cosmoP_compileString(state, src, name);
 #ifdef VM_DEBUG
-            disasmChunk(&func->chunk, func->module->str, 0);
+        disasmChunk(&func->chunk, func->module->str, 0);
 #endif
-            // push function onto the stack so it doesn't it cleaned up by the GC, at the same stack
-            // location put our closure
-            cosmoV_pushRef(state, (CObj *)func);
-            *(cosmoV_getTop(state, 0)) = cosmoV_newRef(cosmoO_newClosure(state, func));
-            return true;
-        }
+        cosmoV_freePanic(state);
+
+        // push function onto the stack so it doesn't it cleaned up by the GC, at the same stack
+        // location put our closure
+        cosmoV_pushRef(state, (CObj *)func);
+        *(cosmoV_getTop(state, 0)) = cosmoV_newRef(cosmoO_newClosure(state, func));
+        return true;
     }
 
+    cosmoV_freePanic(state);
     return false;
 }
 
@@ -244,18 +236,16 @@ void cosmoV_concat(CState *state, int vals)
 }
 
 int cosmoV_execute(CState *state);
-bool invokeMethod(CState *state, CObj *obj, CValue func, int args, int nresults, int offset);
+void invokeMethod(CState *state, CObj *obj, CValue func, int args, int nresults, int offset);
 
 /*
     calls a native C Function with # args on the stack, nresults are pushed onto the stack upon
-   return.
+    return.
 
-    returns:
-        false: state paniced during C Function, error is at state->error
-        true: state->top is moved to base + offset + nresults, with nresults pushed onto the stack
-   from base + offset
+    state->top is moved to base + offset + nresults, with nresults pushed onto the stack
+    from base + offset
 */
-static bool callCFunction(CState *state, CosmoCFunction cfunc, int args, int nresults, int offset)
+static void callCFunction(CState *state, CosmoCFunction cfunc, int args, int nresults, int offset)
 {
     StkPtr savedBase = cosmoV_getTop(state, args);
 
@@ -267,12 +257,7 @@ static bool callCFunction(CState *state, CosmoCFunction cfunc, int args, int nre
 
     // remember where the return values are
     StkPtr results = cosmoV_getTop(state, nres - 1);
-
     state->top = savedBase + offset; // set stack
-
-    // if the state paniced during the c function, return false
-    if (state->panic)
-        return false;
 
     // push the return value back onto the stack
     memmove(state->top, results,
@@ -282,20 +267,16 @@ static bool callCFunction(CState *state, CosmoCFunction cfunc, int args, int nre
     // now, if the caller function expected more return values, push nils onto the stack
     for (int i = nres; i < nresults; i++)
         cosmoV_pushValue(state, cosmoV_newNil());
-
-    return true;
 }
 
 /*
     calls a raw closure object with # args on the stack, nresults are pushed onto the stack upon
-   return.
+    return.
 
-    returns:
-        false: state paniced, error is at state->error
-        true: stack->top is moved to base + offset + nresults, with nresults pushed onto the stack
-   from base + offset
+    stack->top is moved to base + offset + nresults, with nresults pushed onto the stack
+    from base + offset
 */
-static bool rawCall(CState *state, CObjClosure *closure, int args, int nresults, int offset)
+static void rawCall(CState *state, CObjClosure *closure, int args, int nresults, int offset)
 {
     CObjFunction *func = closure->function;
 
@@ -319,7 +300,6 @@ static bool rawCall(CState *state, CObjClosure *closure, int args, int nresults,
         cosmoV_error(state, "Expected %d arguments for %s, got %d!", closure->function->args,
                      closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str,
                      args);
-        return false;
     } else {
         // load function into callframe
         pushCallFrame(state, closure, func->args);
@@ -337,9 +317,6 @@ static bool rawCall(CState *state, CObjClosure *closure, int args, int nresults,
     // pop the callframe and return results :)
     popCallFrame(state, offset);
 
-    if (state->panic) // panic state
-        return false;
-
     // push the return values back onto the stack
     for (int i = 0; i < nres; i++) {
         state->top[i] = results[i];
@@ -349,12 +326,10 @@ static bool rawCall(CState *state, CObjClosure *closure, int args, int nresults,
     // now, if the caller function expected more return values, push nils onto the stack
     for (int i = nres; i < nresults; i++)
         cosmoV_pushValue(state, cosmoV_newNil());
-
-    return true;
 }
 
 // returns true if successful, false if error
-bool callCValue(CState *state, CValue func, int args, int nresults, int offset)
+void callCValue(CState *state, CValue func, int args, int nresults, int offset)
 {
 #ifdef VM_DEBUG
     printf("\n");
@@ -365,17 +340,19 @@ bool callCValue(CState *state, CValue func, int args, int nresults, int offset)
 
     if (!IS_REF(func)) {
         cosmoV_error(state, "Cannot call non-callable type %s!", cosmoV_typeStr(func));
-        return false;
     }
 
     switch (cosmoV_readRef(func)->type) {
     case COBJ_CLOSURE:
-        return rawCall(state, cosmoV_readClosure(func), args, nresults, offset);
+        rawCall(state, cosmoV_readClosure(func), args, nresults, offset);
+        break;
     case COBJ_CFUNCTION:
-        return callCFunction(state, cosmoV_readCFunction(func), args, nresults, offset);
+        callCFunction(state, cosmoV_readCFunction(func), args, nresults, offset);
+        break;
     case COBJ_METHOD: {
         CObjMethod *method = (CObjMethod *)cosmoV_readRef(func);
-        return invokeMethod(state, method->obj, method->func, args, nresults, offset + 1);
+        invokeMethod(state, method->obj, method->func, args, nresults, offset + 1);
+        break;
     }
     case COBJ_OBJECT: { // object is being instantiated, making another object
         CObjObject *protoObj = (CObjObject *)cosmoV_readRef(func);
@@ -388,12 +365,10 @@ bool callCValue(CState *state, CValue func, int args, int nresults, int offset)
 
         // check if they defined an initializer (we accept 0 return values)
         if (cosmoO_getIString(state, protoObj, ISTRING_INIT, &ret)) {
-            if (!invokeMethod(state, (CObj *)newObj, ret, args, 0, offset + 1))
-                return false;
+            invokeMethod(state, (CObj *)newObj, ret, args, 0, offset + 1);
         } else {
             // no default initializer
             cosmoV_error(state, "Expected __init() in proto, object cannot be instantiated!");
-            return false;
         }
 
         if (nresults > 0) {
@@ -409,19 +384,16 @@ bool callCValue(CState *state, CValue func, int args, int nresults, int offset)
     }
     default:
         cosmoV_error(state, "Cannot call non-callable type %s!", cosmoV_typeStr(func));
-        return false;
     }
-
-    return true;
 }
 
-bool invokeMethod(CState *state, CObj *obj, CValue func, int args, int nresults, int offset)
+void invokeMethod(CState *state, CObj *obj, CValue func, int args, int nresults, int offset)
 {
     // first, set the first argument to the object
     StkPtr temp = cosmoV_getTop(state, args);
     *temp = cosmoV_newRef(obj);
 
-    return callCValue(state, func, args + 1, nresults, offset);
+    callCValue(state, func, args + 1, nresults, offset);
 }
 
 // wraps cosmoV_call in a protected state, CObjError will be pushed onto the stack if function call
@@ -429,22 +401,22 @@ bool invokeMethod(CState *state, CObj *obj, CValue func, int args, int nresults,
 // returns false if function call failed, true if function call succeeded
 bool cosmoV_pcall(CState *state, int args, int nresults)
 {
-    if (cosmoV_protect(state)) {
+    CPanic *panic = cosmoV_newPanic(state);
+
+    if (cosmoV_protect(panic)) {
         cosmoV_call(state, args, nresults);
+        cosmoV_freePanic(state);
         return true;
     } else {
-        printf("caught panic!\n");
-        // restore panic state
-        state->panic = false;
+        // if cosmoV_protect returns false, the error is already on the top of the stack
 
         if (nresults > 0) {
-            cosmoV_pushRef(state, (CObj *)state->error);
-
             // push other expected results onto the stack
             for (int i = 0; i < nresults - 1; i++)
                 cosmoV_pushValue(state, cosmoV_newNil());
         }
 
+        cosmoV_freePanic(state);
         return false;
     }
 }
@@ -452,11 +424,11 @@ bool cosmoV_pcall(CState *state, int args, int nresults)
 // calls a callable object at stack->top - args - 1, passing the # of args to the callable, and
 // ensuring nresults are returned
 // returns false if an error was thrown, else true if successful
-bool cosmoV_call(CState *state, int args, int nresults)
+void cosmoV_call(CState *state, int args, int nresults)
 {
     StkPtr val = cosmoV_getTop(state, args); // function will always be right above the args
 
-    return callCValue(state, *val, args, nresults, 0);
+    callCValue(state, *val, args, nresults, 0);
 }
 
 static inline bool isFalsey(StkPtr val)
@@ -732,7 +704,7 @@ int cosmoV_execute(CState *state)
     CCallFrame *frame = &state->callFrame[state->frameCount - 1];         // grabs the current frame
     CValue *constants = frame->closure->function->chunk.constants.values; // cache the pointer :)
 
-    while (!state->panic) {
+    for (;;) {
 #ifdef VM_DEBUG
         cosmoV_printStack(state);
         disasmInstr(&frame->closure->function->chunk,
@@ -816,9 +788,7 @@ int cosmoV_execute(CState *state)
             {
                 uint8_t args = READBYTE(frame);
                 uint8_t nres = READBYTE(frame);
-                if (!cosmoV_call(state, args, nres)) {
-                    return -1;
-                }
+                cosmoV_call(state, args, nres);
             }
             CASE(OP_CLOSURE) :
             {
@@ -1043,10 +1013,9 @@ int cosmoV_execute(CState *state)
                         cosmoV_pop(state); // pop the object from the stack
                         cosmoV_pushValue(state, val);
                         cosmoV_pushRef(state, (CObj *)obj);
-                        if (!cosmoV_call(
-                                state, 1,
-                                1)) // we expect 1 return value on the stack, the iterable object
-                            return -1;
+                        cosmoV_call(
+                            state, 1,
+                            1); // we expect 1 return value on the stack, the iterable object
 
                         StkPtr iObj = cosmoV_getTop(state, 0);
 
@@ -1104,8 +1073,7 @@ int cosmoV_execute(CState *state)
                 }
 
                 cosmoV_pushValue(state, *temp);
-                if (!cosmoV_call(state, 0, nresults))
-                    return -1;
+                cosmoV_call(state, 0, nresults);
 
                 if (IS_NIL(*(cosmoV_getTop(
                         state, 0)))) { // __next returned a nil, which means to exit the loop
@@ -1363,7 +1331,6 @@ int cosmoV_execute(CState *state)
         }
     }
 
-    // we'll only reach this if state->panic is true
     return -1;
 }
 

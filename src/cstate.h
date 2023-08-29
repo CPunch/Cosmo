@@ -52,7 +52,6 @@ struct CState
     int frameCount;
     CPanic *panic;
 
-    CObjError *error; // NULL, unless panic is true
     CObj *objects;    // tracks all of our allocated objects
     CObj *userRoots;  // user definable roots, this holds CObjs that should be considered "roots",
                       // lets the VM know you are holding a reference to a CObj in your code
