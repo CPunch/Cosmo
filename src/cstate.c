@@ -7,6 +7,21 @@
 
 #include <string.h>
 
+CPanic *cosmoV_newPanic(CState *state)
+{
+    CPanic *panic = cosmoM_xmalloc(state, sizeof(CPanic));
+    panic->prev = state->panic;
+    state->panic = panic;
+    return panic;
+}
+
+void cosmoV_freePanic(CState *state)
+{
+    CPanic *panic = state->panic;
+    state->panic = panic->prev;
+    cosmoM_free(state, CPanic, panic);
+}
+
 CState *cosmoV_newState()
 {
     // we use C's malloc because we don't want to trigger a GC with an invalid state
@@ -19,6 +34,7 @@ CState *cosmoV_newState()
 
     state->panic = false;
     state->freezeGC = 1; // we start frozen
+    state->panic = NULL;
 
     // GC
     state->objects = NULL;

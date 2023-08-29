@@ -10,6 +10,18 @@
 #include <stdarg.h>
 #include <string.h>
 
+bool cosmoV_protect(CState *state)
+{
+    CPanic *panic = cosmoV_newPanic(state);
+
+    if (setjmp(panic->jmp) == 0) {
+        return 1;
+    }
+
+    cosmoV_freePanic(state);
+    return 0;
+}
+
 COSMO_API void cosmoV_pushFString(CState *state, const char *format, ...)
 {
     va_list args;
@@ -57,21 +69,20 @@ COSMO_API bool cosmoV_compileString(CState *state, const char *src, const char *
 {
     CObjFunction *func;
 
-    if ((func = cosmoP_compileString(state, src, name)) != NULL) {
-        // success
+    if (cosmoV_protect(state)) {
+        if ((func = cosmoP_compileString(state, src, name)) != NULL) {
+            // success
 #ifdef VM_DEBUG
-        disasmChunk(&func->chunk, func->module->str, 0);
+            disasmChunk(&func->chunk, func->module->str, 0);
 #endif
-        // push function onto the stack so it doesn't it cleaned up by the GC, at the same stack
-        // location put our closure
-        cosmoV_pushRef(state, (CObj *)func);
-        *(cosmoV_getTop(state, 0)) = cosmoV_newRef(cosmoO_newClosure(state, func));
-        return true;
+            // push function onto the stack so it doesn't it cleaned up by the GC, at the same stack
+            // location put our closure
+            cosmoV_pushRef(state, (CObj *)func);
+            *(cosmoV_getTop(state, 0)) = cosmoV_newRef(cosmoO_newClosure(state, func));
+            return true;
+        }
     }
 
-    // fail recovery
-    state->panic = false;
-    cosmoV_pushRef(state, (CObj *)state->error);
     return false;
 }
 
@@ -109,30 +120,26 @@ COSMO_API void cosmoV_printError(CState *state, CObjError *err)
 }
 
 /*
-    takes value on top of the stack and wraps an CObjError around it, state->error is set to that
-   value the value on the stack is *expected* to be a string, but not required, so yes, this means
-   you could throw a nil value if you really wanted too..
+    takes value on top of the stack and wraps an CObjError around it, then throws it
 */
-CObjError *cosmoV_throw(CState *state)
+void cosmoV_throw(CState *state)
 {
     StkPtr temp = cosmoV_getTop(state, 0);
-
     CObjError *error = cosmoO_newError(state, *temp);
-    state->error = error;
-    state->panic = true;
 
-    cosmoV_pop(state); // pops thrown value off the stack
-    return error;
+    // replace the value on the stack with the error
+    *temp = cosmoV_newRef((CObj *)cosmoO_newError(state, *temp));
+    if (state->panic) {
+        longjmp(state->panic->jmp, 1);
+    } else {
+        fprintf(stderr, "Unhandled panic! ");
+        cosmoV_printError(state, error);
+        exit(1);
+    }
 }
 
 void cosmoV_error(CState *state, const char *format, ...)
 {
-    if (state->panic)
-        return;
-
-    // i set panic before calling cosmoO_pushVFString, since that can also call cosmoV_error
-    state->panic = true;
-
     // format the error string and push it onto the stack
     va_list args;
     va_start(args, format);
@@ -422,9 +429,11 @@ bool invokeMethod(CState *state, CObj *obj, CValue func, int args, int nresults,
 // returns false if function call failed, true if function call succeeded
 bool cosmoV_pcall(CState *state, int args, int nresults)
 {
-    StkPtr base = cosmoV_getTop(state, args);
-
-    if (!callCValue(state, *base, args, nresults, 0)) {
+    if (cosmoV_protect(state)) {
+        cosmoV_call(state, args, nresults);
+        return true;
+    } else {
+        printf("caught panic!\n");
         // restore panic state
         state->panic = false;
 
@@ -438,8 +447,6 @@ bool cosmoV_pcall(CState *state, int args, int nresults)
 
         return false;
     }
-
-    return true;
 }
 
 // calls a callable object at stack->top - args - 1, passing the # of args to the callable, and

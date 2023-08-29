@@ -59,14 +59,12 @@ typedef struct CCompilerState
 
 typedef struct
 {
+    CLexState lex;
     CState *state;
-    CLexState *lex;
     CCompilerState *compiler;
     CObjString *module; // name of the module
     CToken current;
     CToken previous; // token right after the current token
-    bool hadError;
-    bool panic;
 } CParseState;
 
 typedef enum
@@ -124,6 +122,8 @@ static void initCompilerState(CParseState *pstate, CCompilerState *ccstate, Func
     ccstate->function = cosmoO_newFunction(pstate->state);
     ccstate->function->module = pstate->module;
 
+    cosmoV_pushRef(pstate->state, (CObj *)ccstate->function);
+
     ccstate->loop.scope = -1; // there is no loop yet
 
     if (type != FTYPE_SCRIPT) {
@@ -146,11 +146,9 @@ static void initCompilerState(CParseState *pstate, CCompilerState *ccstate, Func
 static void initParseState(CParseState *pstate, CCompilerState *ccstate, CState *s,
                            const char *source, const char *module)
 {
-    pstate->lex = cosmoL_newLexState(s, source);
+    cosmoL_initLexState(s, &pstate->lex, source);
 
     pstate->state = s;
-    pstate->hadError = false;
-    pstate->panic = false;
     pstate->compiler = ccstate;
     pstate->module = cosmoO_copyString(s, module, strlen(module));
 
@@ -159,14 +157,11 @@ static void initParseState(CParseState *pstate, CCompilerState *ccstate, CState 
 
 static void freeParseState(CParseState *pstate)
 {
-    cosmoL_freeLexState(pstate->state, pstate->lex);
+    cosmoL_cleanupLexState(pstate->state, &pstate->lex);
 }
 
 static void errorAt(CParseState *pstate, CToken *token, const char *format, va_list args)
 {
-    if (pstate->hadError)
-        return;
-
     if (token->type == TOKEN_EOF) {
         cosmoV_pushString(pstate->state, "At end: ");
     } else if (!(token->type == TOKEN_ERROR)) {
@@ -177,14 +172,9 @@ static void errorAt(CParseState *pstate, CToken *token, const char *format, va_l
 
     cosmoO_pushVFString(pstate->state, format, args);
 
-    cosmoV_concat(pstate->state, 2); // concats the two strings together
-
-    CObjError *err = cosmoV_throw(pstate->state);
-    err->line = token->line;
-    err->parserError = true;
-
-    pstate->hadError = true;
-    pstate->panic = true;
+    // throw complete error string
+    cosmoV_concat(pstate->state, 2);
+    cosmoV_throw(pstate->state);
 }
 
 static void errorAtCurrent(CParseState *pstate, const char *format, ...)
@@ -206,7 +196,7 @@ static void error(CParseState *pstate, const char *format, ...)
 static void advance(CParseState *pstate)
 {
     pstate->previous = pstate->current;
-    pstate->current = cosmoL_scanToken(pstate->lex);
+    pstate->current = cosmoL_scanToken(&pstate->lex);
 
     if (pstate->current.type == TOKEN_ERROR) {
         errorAtCurrent(pstate, pstate->current.start);
@@ -280,7 +270,6 @@ uint16_t makeConstant(CParseState *pstate, CValue val)
     int indx = addConstant(pstate->state, getChunk(pstate), val);
     if (indx > UINT16_MAX) {
         error(pstate, "UInt overflow! Too many constants in one chunk!");
-        return 0;
     }
 
     return (uint16_t)indx;
@@ -350,7 +339,6 @@ static void addLocal(CParseState *pstate, CToken name)
 {
     if (pstate->compiler->localCount > UINT8_MAX) {
         error(pstate, "UInt overflow! Too many locals in scope!");
-        return;
     }
 
     Local *local = &pstate->compiler->locals[pstate->compiler->localCount++];
@@ -365,7 +353,6 @@ static int addUpvalue(CParseState *pstate, CCompilerState *ccstate, uint8_t indx
 
     if (upvals > UINT8_MAX) {
         error(pstate, "UInt overflow! Too many upvalues in scope!");
-        return -1;
     }
 
     // check and make sure we haven't already captured it
@@ -768,7 +755,6 @@ static void table(CParseState *pstate, bool canAssign, Precedence prec)
                 tblType = 1; // array-like
             } else {
                 error(pstate, "Can't change table description type mid-definition!");
-                return;
             }
 
             entries++;
@@ -818,7 +804,7 @@ static void object(CParseState *pstate, bool canAssign, Precedence prec)
             // "pop" the 1 value
             valuePopped(pstate, 1);
             entries++;
-        } while (match(pstate, TOKEN_COMMA) && !pstate->hadError);
+        } while (match(pstate, TOKEN_COMMA));
 
         consume(pstate, TOKEN_RIGHT_BRACE, "Expected '}' to end object definition.");
     }
@@ -1158,9 +1144,6 @@ static uint16_t parseVariable(CParseState *pstate, const char *errorMessage, boo
 
 static void defineVariable(CParseState *pstate, uint16_t global, bool forceLocal)
 {
-    if (pstate->hadError)
-        return;
-
     if (pstate->compiler->scopeDepth > 0 || forceLocal) {
         markInitialized(pstate, global);
         valuePopped(pstate, 1); // the local stays on the stack!
@@ -1177,7 +1160,7 @@ static void _proto(CParseState *pstate)
 {
     int entries = 0;
 
-    while (!match(pstate, TOKEN_END) && !match(pstate, TOKEN_EOF) && !pstate->hadError) {
+    while (!match(pstate, TOKEN_END) && !match(pstate, TOKEN_EOF)) {
         if (match(pstate, TOKEN_FUNC)) {
             // define method
             consume(pstate, TOKEN_IDENTIFIER, "Expected identifier for method!");
@@ -1224,9 +1207,6 @@ static void localProto(CParseState *pstate)
 
 static void popLocals(CParseState *pstate, int toScope)
 {
-    if (pstate->hadError)
-        return;
-
     // count the locals in scope to pop
     int localsToPop = 0;
 
@@ -1686,18 +1666,6 @@ static void continueStatement(CParseState *pstate)
     writeJmpBack(pstate, pstate->compiler->loop.startBytecode);
 }
 
-static void synchronize(CParseState *pstate)
-{
-    pstate->panic = false;
-
-    while (pstate->current.type != TOKEN_EOF) {
-        if (pstate->previous.type == TOKEN_EOS)
-            return;
-
-        advance(pstate);
-    }
-}
-
 static int expressionPrecedence(CParseState *pstate, int needed, Precedence prec, bool forceNeeded)
 {
     int lastExpected = pstate->compiler->expectedValues;
@@ -1787,10 +1755,6 @@ static void statement(CParseState *pstate)
 static void declaration(CParseState *pstate)
 {
     statement(pstate);
-
-    // if we paniced, skip the whole statement!
-    if (pstate->panic)
-        synchronize(pstate);
 }
 
 static CObjFunction *endCompiler(CParseState *pstate)
@@ -1812,7 +1776,6 @@ CObjFunction *cosmoP_compileString(CState *state, const char *source, const char
 {
     CParseState parser;
     CCompilerState compiler;
-    cosmoM_freezeGC(state); // ignore all GC events while compiling
     initParseState(&parser, &compiler, state, source, module);
 
     advance(&parser);
@@ -1825,24 +1788,10 @@ CObjFunction *cosmoP_compileString(CState *state, const char *source, const char
 
     popLocals(&parser, 0);
 
-    if (parser.hadError) { // we don't free the function, the state already has a reference to it in
-                           // it's linked list of objects!
-        endCompiler(&parser);
-        freeParseState(&parser);
-
-        cosmoM_unfreezeGC(state);
-        return NULL;
-    }
-
     CObjFunction *resFunc = compiler.function;
 
     // finally free out parser states
     endCompiler(&parser);
     freeParseState(&parser);
-
-    // push the funciton onto the stack so if we cause an GC event, it won't be free'd
-    cosmoV_pushRef(state, (CObj *)resFunc);
-    cosmoM_unfreezeGC(state);
-    cosmoV_pop(state);
     return resFunc;
 }
