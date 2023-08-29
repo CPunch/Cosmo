@@ -118,11 +118,14 @@ void cosmoV_throw(CState *state)
     StkPtr temp = cosmoV_getTop(state, 0);
     CObjError *error = cosmoO_newError(state, *temp);
 
-    // replace the value on the stack with the error
-    *temp = cosmoV_newRef((CObj *)cosmoO_newError(state, *temp));
+    CValue val = cosmoV_newRef((CObj *)cosmoO_newError(state, *temp));
     if (state->panic) {
+        state->top = state->panic->top;
+        state->frameCount = state->panic->frameCount;
+        cosmoV_pushValue(state, val);
         longjmp(state->panic->jmp, 1);
     } else {
+        cosmoV_pushValue(state, val);
         fprintf(stderr, "Unhandled panic! ");
         cosmoV_printError(state, error);
         exit(1);

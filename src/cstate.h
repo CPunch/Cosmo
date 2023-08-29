@@ -43,6 +43,8 @@ typedef struct ArrayCObj
 typedef struct CPanic
 {
     jmp_buf jmp;
+    StkPtr top;
+    int frameCount;
     struct CPanic *prev;
 } CPanic;
 
