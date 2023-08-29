@@ -65,6 +65,8 @@ typedef struct
     CObjString *module; // name of the module
     CToken current;
     CToken previous; // token right after the current token
+    int workingStackCount;  // we push CValues of objects we need onto the stack so the garbage collector can see them.
+                            // this is the count of those values so we'll know how many to pop off when we're done
 } CParseState;
 
 typedef enum
@@ -107,6 +109,12 @@ static CObjFunction *endCompiler(CParseState *pstate);
 
 // ================================================================ [FRONT END/TALK TO LEXER]
 
+static void keepTrackOf(CParseState *pstate, CValue val)
+{
+    pstate->workingStackCount++;
+    cosmoV_pushValue(pstate->state, val);
+}
+
 static void initCompilerState(CParseState *pstate, CCompilerState *ccstate, FunctionType type,
                               CCompilerState *enclosing)
 {
@@ -122,7 +130,7 @@ static void initCompilerState(CParseState *pstate, CCompilerState *ccstate, Func
     ccstate->function = cosmoO_newFunction(pstate->state);
     ccstate->function->module = pstate->module;
 
-    cosmoV_pushRef(pstate->state, (CObj *)ccstate->function);
+    keepTrackOf(pstate, cosmoV_newRef((CObj *)ccstate->function));
 
     ccstate->loop.scope = -1; // there is no loop yet
 
@@ -151,13 +159,18 @@ static void initParseState(CParseState *pstate, CCompilerState *ccstate, CState 
     pstate->state = s;
     pstate->compiler = ccstate;
     pstate->module = cosmoO_copyString(s, module, strlen(module));
+    pstate->workingStackCount = 0;
 
+    keepTrackOf(pstate, cosmoV_newRef((CObj *)pstate->module));
     initCompilerState(pstate, ccstate, FTYPE_SCRIPT, NULL); // enclosing starts as NULL
 }
 
 static void freeParseState(CParseState *pstate)
 {
     cosmoL_cleanupLexState(pstate->state, &pstate->lex);
+
+    // pop our working values off the stack
+    cosmoV_setTop(pstate->state, pstate->workingStackCount);
 }
 
 static void errorAt(CParseState *pstate, CToken *token, const char *format, va_list args)

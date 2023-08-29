@@ -57,7 +57,6 @@ COSMO_API bool cosmoV_undump(CState *state, cosmo_Reader reader, const void *ud)
 COSMO_API bool cosmoV_compileString(CState *state, const char *src, const char *name)
 {
     CObjFunction *func;
-
     CPanic *panic = cosmoV_newPanic(state);
 
     if (cosmoV_protect(panic)) {
