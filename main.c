@@ -45,21 +45,20 @@ int cosmoB_input(CState *state, int nargs, CValue *args)
 
 static bool interpret(CState *state, const char *script, const char *mod)
 {
-    bool ret;
 
     // cosmoV_compileString pushes the result onto the stack (COBJ_ERROR or COBJ_CLOSURE)
     if (cosmoV_compileString(state, script, mod)) {
         // 0 args being passed, 0 results expected
-        if (!cosmoV_call(state, 0, 0))
-            cosmoV_printError(state, state->error);
+        if (!cosmoV_pcall(state, 0, 0)) {
+            cosmoV_printError(state, cosmoV_readError(*cosmoV_pop(state)));
+            return false;
+        }
     } else {
-        cosmoV_pop(state); // pop the error off the stack
-        cosmoV_printError(state, state->error);
+        cosmoV_printError(state, cosmoV_readError(*cosmoV_pop(state)));
+        return false;
     }
 
-    ret = state->panic;
-    state->panic = false; // so our repl isn't broken
-    return !ret;
+    return true;
 }
 
 static void repl(CState *state)
@@ -158,8 +157,7 @@ void compileScript(CState *state, const char *in, const char *out)
         CObjFunction *func = cosmoV_readClosure(*cosmoV_getTop(state, 0))->function;
         cosmoD_dump(state, func, fileWriter, (void *)fout);
     } else {
-        cosmoV_pop(state); // pop the error off the stack
-        cosmoV_printError(state, state->error);
+        cosmoV_printError(state, cosmoV_readError(*cosmoV_pop(state)));
     }
 
     free(script);
@@ -172,14 +170,13 @@ void loadScript(CState *state, const char *in)
 {
     FILE *file = fopen(in, "rb");
     if (!cosmoV_undump(state, fileReader, file)) {
-        cosmoV_pop(state); // pop the error off the stack
-        cosmoV_printError(state, state->error);
+        cosmoV_printError(state, cosmoV_readError(*cosmoV_pop(state)));
         return;
     };
 
     printf("[!] loaded %s!\n", in);
-    if (!cosmoV_call(state, 0, 0))
-        cosmoV_printError(state, state->error);
+    if (!cosmoV_pcall(state, 0, 0))
+        cosmoV_printError(state, cosmoV_readError(*cosmoV_pop(state)));
 
     fclose(file);
 }

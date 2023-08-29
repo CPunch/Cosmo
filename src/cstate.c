@@ -12,6 +12,7 @@ CPanic *cosmoV_newPanic(CState *state)
     CPanic *panic = cosmoM_xmalloc(state, sizeof(CPanic));
     panic->prev = state->panic;
     state->panic = panic;
+
     return panic;
 }
 
@@ -19,6 +20,7 @@ void cosmoV_freePanic(CState *state)
 {
     CPanic *panic = state->panic;
     state->panic = panic->prev;
+
     cosmoM_free(state, CPanic, panic);
 }
 
@@ -32,7 +34,6 @@ CState *cosmoV_newState()
         exit(1);
     }
 
-    state->panic = false;
     state->freezeGC = 1; // we start frozen
     state->panic = NULL;
 
@@ -49,8 +50,6 @@ CState *cosmoV_newState()
     state->top = state->stack;
     state->frameCount = 0;
     state->openUpvalues = NULL;
-
-    state->error = NULL;
 
     // set default proto objects
     for (int i = 0; i < COBJ_MAX; i++)

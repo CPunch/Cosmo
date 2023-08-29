@@ -136,6 +136,7 @@ struct CObjUpval
 #define cosmoV_readCFunction(x) (((CObjCFunction *)cosmoV_readRef(x))->cfunc)
 #define cosmoV_readMethod(x)    ((CObjMethod *)cosmoV_readRef(x))
 #define cosmoV_readClosure(x)   ((CObjClosure *)cosmoV_readRef(x))
+#define cosmoV_readError(x)     ((CObjError *)cosmoV_readRef(x))
 
 #define cosmoO_readCString(x)   ((CObjString *)x)->str
 #define cosmoO_readType(x)      ((CObj *)x)->type
