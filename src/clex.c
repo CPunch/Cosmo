@@ -54,7 +54,7 @@ static void resetBuffer(CLexState *state)
 // cancels the token heap buffer and frees it
 static void freeBuffer(CLexState *state)
 {
-    cosmoM_freearray(state->cstate, char, state->buffer, state->bufCap);
+    cosmoM_freeArray(state->cstate, char, state->buffer, state->bufCap);
 
     resetBuffer(state);
 }
@@ -62,7 +62,7 @@ static void freeBuffer(CLexState *state)
 // adds character to buffer
 static void appendBuffer(CLexState *state, char c)
 {
-    cosmoM_growarray(state->cstate, char, state->buffer, state->bufCount, state->bufCap);
+    cosmoM_growArray(state->cstate, char, state->buffer, state->bufCount, state->bufCap);
 
     state->buffer[state->bufCount++] = c;
 }
@@ -90,7 +90,7 @@ static char *cutBuffer(CLexState *state, int *length)
     resetBuffer(state);
 
     // shrink the buffer to only use what we need
-    return cosmoM_reallocate(state->cstate, buf, cap, count);
+    return cosmoM_reallocate(state->cstate, buf, cap, count, true);
 }
 
 static CToken makeToken(CLexState *state, CTokenType type)

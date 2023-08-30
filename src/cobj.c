@@ -46,7 +46,7 @@ void cosmoO_free(CState *state, CObj *obj)
     switch (obj->type) {
     case COBJ_STRING: {
         CObjString *objStr = (CObjString *)obj;
-        cosmoM_freearray(state, char, objStr->str, objStr->length + 1);
+        cosmoM_freeArray(state, char, objStr->str, objStr->length + 1);
         cosmoM_free(state, CObjString, objStr);
         break;
     }
@@ -82,13 +82,13 @@ void cosmoO_free(CState *state, CObj *obj)
     }
     case COBJ_ERROR: {
         CObjError *err = (CObjError *)obj;
-        cosmoM_freearray(state, CCallFrame, err->frames, err->frameCount);
+        cosmoM_freeArray(state, CCallFrame, err->frames, err->frameCount);
         cosmoM_free(state, CObjError, obj);
         break;
     }
     case COBJ_CLOSURE: {
         CObjClosure *closure = (CObjClosure *)obj;
-        cosmoM_freearray(state, CObjUpval *, closure->upvalues, closure->upvalueCount);
+        cosmoM_freeArray(state, CObjUpval *, closure->upvalues, closure->upvalueCount);
         cosmoM_free(state, CObjClosure, closure);
         break;
     }
@@ -305,7 +305,7 @@ CObjString *cosmoO_takeString(CState *state, char *str, size_t length)
 
     // have we already interned this string?
     if (lookup != NULL) {
-        cosmoM_freearray(state, char, str,
+        cosmoM_freeArray(state, char, str,
                          length + 1); // free our passed character array, it's unneeded!
         return lookup;
     }

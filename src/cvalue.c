@@ -13,12 +13,12 @@ void initValArray(CState *state, CValueArray *val, size_t startCapacity)
 
 void cleanValArray(CState *state, CValueArray *array)
 {
-    cosmoM_freearray(state, CValue, array->values, array->capacity);
+    cosmoM_freeArray(state, CValue, array->values, array->capacity);
 }
 
 void appendValArray(CState *state, CValueArray *array, CValue val)
 {
-    cosmoM_growarray(state, CValue, array->values, array->count, array->capacity);
+    cosmoM_growArray(state, CValue, array->values, array->count, array->capacity);
 
     array->values[array->count++] = val;
 }
