@@ -8,7 +8,7 @@
 #include "cvalue.h"
 
 // realloc wrapper
-void *cosmoM_reallocate(CState *state, void *buf, size_t oldSize, size_t newSize, bool isGC)
+void *cosmoM_reallocate(CState *state, void *buf, size_t oldSize, size_t newSize)
 {
     if (buf == NULL)
         oldSize = 0;
@@ -34,20 +34,18 @@ void *cosmoM_reallocate(CState *state, void *buf, size_t oldSize, size_t newSize
         return NULL;
     }
 
-    if (isGC) {
 #ifdef GC_STRESS
-        if (!(cosmoM_isFrozen(state)) && newSize > oldSize) {
-            cosmoM_collectGarbage(state);
-        }
+    if (!(cosmoM_isFrozen(state)) && newSize > oldSize) {
+        cosmoM_collectGarbage(state);
+    }
 #    ifdef GC_DEBUG
-        else {
-            printf("GC event ignored! state frozen! [%d]\n", state->freezeGC);
-        }
+    else {
+        printf("GC event ignored! state frozen! [%d]\n", state->freezeGC);
+    }
 #    endif
 #else
-        cosmoM_checkGarbage(state, 0);
+    cosmoM_checkGarbage(state, 0);
 #endif
-    }
 
     // if NULL is passed, realloc() acts like malloc()
     void *newBuf = realloc(buf, newSize);
@@ -208,8 +206,8 @@ static void markObject(CState *state, CObj *obj)
         return;
 
     // we can use cosmoM_growarray because we lock the GC when we entered in cosmoM_collectGarbage
-    cosmoM_growArrayNonGC(state, CObj *, state->grayStack.array, state->grayStack.count,
-                          state->grayStack.capacity);
+    cosmoM_growArray(state, CObj *, state->grayStack.array, state->grayStack.count,
+                     state->grayStack.capacity);
 
     state->grayStack.array[state->grayStack.count++] = obj;
 }
@@ -298,6 +296,7 @@ static void markRoots(CState *state)
 
 COSMO_API void cosmoM_collectGarbage(CState *state)
 {
+    cosmoM_freezeGC(state);
 #ifdef GC_DEBUG
     printf("-- GC start\n");
     size_t start = state->allocatedBytes;
@@ -317,6 +316,7 @@ COSMO_API void cosmoM_collectGarbage(CState *state)
            "scheduled at %ld bytes\n",
            start - state->allocatedBytes, start, state->allocatedBytes, state->nextGC);
 #endif
+    cosmoM_unfreezeGC(state);
 }
 
 COSMO_API void cosmoM_updateThreshhold(CState *state)

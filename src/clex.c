@@ -90,7 +90,7 @@ static char *cutBuffer(CLexState *state, int *length)
     resetBuffer(state);
 
     // shrink the buffer to only use what we need
-    return cosmoM_reallocate(state->cstate, buf, cap, count, true);
+    return cosmoM_reallocate(state->cstate, buf, cap, count);
 }
 
 static CToken makeToken(CLexState *state, CTokenType type)
