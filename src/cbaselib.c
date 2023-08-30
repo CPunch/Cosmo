@@ -30,7 +30,6 @@ int cosmoB_assert(CState *state, int nargs, CValue *args)
 {
     if (nargs < 1 || nargs > 2) {
         cosmoV_error(state, "assert() expected 1 or 2 arguments, got %d!", nargs);
-        return 0; // nothing pushed onto the stack to return
     }
 
     if (!IS_BOOLEAN(args[0]) || (nargs == 2 && !IS_STRING(args[1]))) {
@@ -40,7 +39,6 @@ int cosmoB_assert(CState *state, int nargs, CValue *args)
         } else {
             cosmoV_typeError(state, "assert()", "<boolean>", "%s", cosmoV_typeStr(args[0]));
         }
-        return 0;
     }
 
     if (!cosmoV_readBoolean(args[0])) // expression passed was false, error!
@@ -53,7 +51,6 @@ int cosmoB_type(CState *state, int nargs, CValue *args)
 {
     if (nargs != 1) {
         cosmoV_error(state, "type() expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     // push the type string to the stack
@@ -65,7 +62,6 @@ int cosmoB_pcall(CState *state, int nargs, CValue *args)
 {
     if (nargs < 1) {
         cosmoV_error(state, "pcall() expected at least 1 argument!");
-        return 0;
     }
 
     // call the passed callable, the passed arguments are already in the
@@ -81,7 +77,6 @@ int cosmoB_tonumber(CState *state, int nargs, CValue *args)
 {
     if (nargs != 1) {
         cosmoV_error(state, "tonumber() expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     cosmoV_pushNumber(state, cosmoV_toNumber(state, args[0]));
@@ -90,10 +85,8 @@ int cosmoB_tonumber(CState *state, int nargs, CValue *args)
 
 int cosmoB_tostring(CState *state, int nargs, CValue *args)
 {
-    if (nargs != 1) {
+    if (nargs != 1)
         cosmoV_error(state, "tostring() expected 1 argument, got %d!", nargs);
-        return 0;
-    }
 
     cosmoV_pushRef(state, (CObj *)cosmoV_toString(state, args[0]));
     return 1;
@@ -103,12 +96,10 @@ int cosmoB_loadstring(CState *state, int nargs, CValue *args)
 {
     if (nargs != 1) {
         cosmoV_error(state, "loadstring() expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_STRING(args[0])) {
         cosmoV_typeError(state, "loadstring()", "<string>", "%s", cosmoV_typeStr(args[0]));
-        return 0;
     }
 
     CObjString *str = cosmoV_readString(args[0]);
@@ -122,12 +113,10 @@ int cosmoB_error(CState *state, int nargs, CValue *args)
 {
     if (nargs != 1) {
         cosmoV_error(state, "error() expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_STRING(args[0])) {
         cosmoV_typeError(state, "error()", "<string>", "%s", cosmoV_typeStr(args[0]));
-        return 0;
     }
 
     cosmoV_error(state, "%s", cosmoV_readCString(args[0]));
@@ -176,10 +165,8 @@ int cosmoB_osetProto(CState *state, int nargs, CValue *args)
 
 int cosmoB_ogetProto(CState *state, int nargs, CValue *args)
 {
-    if (nargs != 1) {
+    if (nargs != 1)
         cosmoV_error(state, "Expected 1 argument, got %d!", nargs);
-        return 0;
-    }
 
     cosmoV_pushRef(state, (CObj *)cosmoV_readObject(args[0])->_obj.proto); // just return the proto
 
@@ -190,13 +177,11 @@ int cosmoB_oisChild(CState *state, int nargs, CValue *args)
 {
     if (nargs != 2) {
         cosmoV_error(state, "object.ischild() expected 2 arguments, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_REF(args[0]) || !IS_OBJECT(args[1])) {
         cosmoV_typeError(state, "object.ischild()", "<reference obj>, <object>", "%s, %s",
                          cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
-        return 0;
     }
 
     CObj *obj = cosmoV_readRef(args[0]);
@@ -255,12 +240,10 @@ int cosmoB_osRead(CState *state, int nargs, CValue *args)
 {
     if (nargs != 1) {
         cosmoV_error(state, "os.read() expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_STRING(args[0])) {
         cosmoV_typeError(state, "os.read()", "<string>", "%s", cosmoV_typeStr(args[0]));
-        return 0;
     }
 
     CObjString *str = cosmoV_readString(args[0]);
@@ -301,7 +284,6 @@ int cosmoB_osTime(CState *state, int nargs, CValue *args)
     struct timeval time;
     if (nargs > 0) {
         cosmoV_error(state, "os.time() expected no arguments, got %d!", nargs);
-        return 0;
     }
 
     gettimeofday(&time, NULL);
@@ -314,12 +296,10 @@ int cosmoB_osSystem(CState *state, int nargs, CValue *args)
 {
     if (nargs != 1) {
         cosmoV_error(state, "os.system() expects 1 argument, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_STRING(args[0])) {
         cosmoV_typeError(state, "os.system()", "<string>", "%s", cosmoV_typeStr(args[0]));
-        return 0;
     }
 
     // run the command and return the exit code
@@ -354,7 +334,6 @@ int cosmoB_sSub(CState *state, int nargs, CValue *args)
         if (!IS_STRING(args[0]) || !IS_NUMBER(args[1])) {
             cosmoV_typeError(state, "string.sub()", "<string>, <number>", "%s, %s",
                              cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
-            return 0;
         }
 
         CObjString *str = cosmoV_readString(args[0]);
@@ -364,7 +343,6 @@ int cosmoB_sSub(CState *state, int nargs, CValue *args)
         if (indx < 0 || indx >= str->length) {
             cosmoV_error(state, "string.sub() expected index to be 0-%d, got %d!", str->length - 1,
                          indx);
-            return 0;
         }
 
         cosmoV_pushLString(state, str->str + ((int)indx), str->length - ((int)indx));
@@ -373,7 +351,6 @@ int cosmoB_sSub(CState *state, int nargs, CValue *args)
             cosmoV_typeError(state, "string.sub()", "<string>, <number>, <number>", "%s, %s, %s",
                              cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]),
                              cosmoV_typeStr(args[2]));
-            return 0;
         }
 
         CObjString *str = cosmoV_readString(args[0]);
@@ -385,13 +362,11 @@ int cosmoB_sSub(CState *state, int nargs, CValue *args)
             cosmoV_error(
                 state, "string.sub() expected subbed string goes out of bounds, max length is %d!",
                 str->length);
-            return 0;
         }
 
         cosmoV_pushLString(state, str->str + ((int)indx), ((int)length));
     } else {
         cosmoV_error(state, "string.sub() expected 2 or 3 arguments, got %d!", nargs);
-        return 0;
     }
 
     return 1;
@@ -404,7 +379,6 @@ int cosmoB_sFind(CState *state, int nargs, CValue *args)
         if (!IS_STRING(args[0]) || !IS_STRING(args[1])) {
             cosmoV_typeError(state, "string.find()", "<string>, <string>", "%s, %s",
                              cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
-            return 0;
         }
 
         CObjString *str = cosmoV_readString(args[0]);
@@ -425,7 +399,6 @@ int cosmoB_sFind(CState *state, int nargs, CValue *args)
             cosmoV_typeError(state, "string.find()", "<string>, <string>, <number>", "%s, %s, %s",
                              cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]),
                              cosmoV_typeStr(args[2]));
-            return 0;
         }
 
         CObjString *str = cosmoV_readString(args[0]);
@@ -444,7 +417,6 @@ int cosmoB_sFind(CState *state, int nargs, CValue *args)
         cosmoV_pushNumber(state, (cosmo_Number)(indx - str->str));
     } else {
         cosmoV_error(state, "string.find() expected 2 or 3 arguments, got %d!", nargs);
-        return 0;
     }
 
     return 1;
@@ -455,13 +427,11 @@ int cosmoB_sSplit(CState *state, int nargs, CValue *args)
 {
     if (nargs != 2) {
         cosmoV_error(state, "string.split() expected 2 arguments, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_STRING(args[0]) || !IS_STRING(args[1])) {
         cosmoV_typeError(state, "string.split()", "<string>, <string>", "%s, %s",
                          cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
-        return 0;
     }
 
     CObjString *str = cosmoV_readString(args[0]);
@@ -492,12 +462,10 @@ int cosmoB_sByte(CState *state, int nargs, CValue *args)
 {
     if (nargs != 1) {
         cosmoV_error(state, "string.byte() expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_STRING(args[0])) {
         cosmoV_typeError(state, "string.byte", "<string>", "%s", cosmoV_typeStr(args[0]));
-        return 0;
     }
 
     CObjString *str = cosmoV_readString(args[0]);
@@ -518,12 +486,10 @@ int cosmoB_sChar(CState *state, int nargs, CValue *args)
 {
     if (nargs != 1) {
         cosmoV_error(state, "string.char() expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_NUMBER(args[0])) {
         cosmoV_typeError(state, "string.char", "<number>", "%s", cosmoV_typeStr(args[0]));
-        return 0;
     }
 
     // small side effect of truncating the number, but ignoring the decimal instead of throwing an
@@ -533,7 +499,6 @@ int cosmoB_sChar(CState *state, int nargs, CValue *args)
 
     if (num > 255 || num < 0) {
         cosmoV_error(state, "Character expected to be in range 0-255, got %d!", num);
-        return 0;
     }
 
     // basically, treat the character value on the C stack as an """"array"""" with a length of 1
@@ -545,12 +510,10 @@ int cosmoB_sLen(CState *state, int nargs, CValue *args)
 {
     if (nargs < 1) {
         cosmoV_error(state, "string.len() expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_STRING(args[0])) {
         cosmoV_typeError(state, "string.len", "<string>", "%s", cosmoV_typeStr(args[0]));
-        return 0;
     }
 
     cosmoV_pushNumber(state, (cosmo_Number)strlen(cosmoV_readCString(args[0])));
@@ -562,14 +525,12 @@ int cosmoB_sRep(CState *state, int nargs, CValue *args)
 {
     if (nargs != 2) {
         cosmoV_error(state, "string.rep() expected 2 arguments, got %d!", nargs);
-        return 0;
     }
 
     // expects <string>, <number>
     if (!IS_STRING(args[0]) || !IS_NUMBER(args[1])) {
         cosmoV_typeError(state, "string.rep", "<string>, <number>", "%s, %s",
                          cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
-        return 0;
     }
 
     CObjString *str = cosmoV_readString(args[0]);
@@ -627,12 +588,10 @@ int cosmoB_mAbs(CState *state, int nargs, CValue *args)
 {
     if (nargs != 1) {
         cosmoV_error(state, "math.abs() expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_NUMBER(args[0])) {
         cosmoV_typeError(state, "math.abs", "<number>", "%s", cosmoV_typeStr(args[0]));
-        return 0;
     }
 
     cosmoV_pushNumber(state, fabs(cosmoV_readNumber(args[0])));
@@ -644,12 +603,10 @@ int cosmoB_mFloor(CState *state, int nargs, CValue *args)
 {
     if (nargs != 1) {
         cosmoV_error(state, "math.floor() expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_NUMBER(args[0])) {
         cosmoV_typeError(state, "math.floor", "<number>", "%s", cosmoV_typeStr(args[0]));
-        return 0;
     }
 
     cosmoV_pushNumber(state, (int)cosmoV_readNumber(args[0]));
@@ -661,12 +618,10 @@ int cosmoB_mCeil(CState *state, int nargs, CValue *args)
 {
     if (nargs != 1) {
         cosmoV_error(state, "math.ceil() expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_NUMBER(args[0])) {
         cosmoV_typeError(state, "math.ceil", "<number>", "%s", cosmoV_typeStr(args[0]));
-        return 0;
     }
 
     int roundedDown = (int)cosmoV_readNumber(args[0]);
@@ -685,12 +640,10 @@ int cosmoB_mSin(CState *state, int nargs, CValue *args)
 {
     if (nargs != 1) {
         cosmoV_error(state, "math.sin() expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_NUMBER(args[0])) {
         cosmoV_typeError(state, "math.sin", "<number>", "%s", cosmoV_typeStr(args[0]));
-        return 0;
     }
 
     cosmoV_pushNumber(state, sin(cosmoV_readNumber(args[0])));
@@ -701,12 +654,10 @@ int cosmoB_mCos(CState *state, int nargs, CValue *args)
 {
     if (nargs != 1) {
         cosmoV_error(state, "math.cos() expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_NUMBER(args[0])) {
         cosmoV_typeError(state, "math.cos", "<number>", "%s", cosmoV_typeStr(args[0]));
-        return 0;
     }
 
     cosmoV_pushNumber(state, cos(cosmoV_readNumber(args[0])));
@@ -717,12 +668,10 @@ int cosmoB_mTan(CState *state, int nargs, CValue *args)
 {
     if (nargs != 1) {
         cosmoV_error(state, "math.tan() expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_NUMBER(args[0])) {
         cosmoV_typeError(state, "math.tan", "<number>", "%s", cosmoV_typeStr(args[0]));
-        return 0;
     }
 
     cosmoV_pushNumber(state, tan(cosmoV_readNumber(args[0])));
@@ -733,12 +682,10 @@ int cosmoB_mASin(CState *state, int nargs, CValue *args)
 {
     if (nargs != 1) {
         cosmoV_error(state, "math.asin() expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_NUMBER(args[0])) {
         cosmoV_typeError(state, "math.asin", "<number>", "%s", cosmoV_typeStr(args[0]));
-        return 0;
     }
 
     cosmoV_pushNumber(state, asin(cosmoV_readNumber(args[0])));
@@ -749,12 +696,10 @@ int cosmoB_mACos(CState *state, int nargs, CValue *args)
 {
     if (nargs != 1) {
         cosmoV_error(state, "math.acos() expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_NUMBER(args[0])) {
         cosmoV_typeError(state, "math.acos", "<number>", "%s", cosmoV_typeStr(args[0]));
-        return 0;
     }
 
     cosmoV_pushNumber(state, acos(cosmoV_readNumber(args[0])));
@@ -765,12 +710,10 @@ int cosmoB_mATan(CState *state, int nargs, CValue *args)
 {
     if (nargs != 1) {
         cosmoV_error(state, "math.atan() expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_NUMBER(args[0])) {
         cosmoV_typeError(state, "math.atan", "<number>", "%s", cosmoV_typeStr(args[0]));
-        return 0;
     }
 
     cosmoV_pushNumber(state, atan(cosmoV_readNumber(args[0])));
@@ -781,12 +724,10 @@ int cosmoB_mRad(CState *state, int nargs, CValue *args)
 {
     if (nargs != 1) {
         cosmoV_error(state, "math.rad() expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_NUMBER(args[0])) {
         cosmoV_typeError(state, "math.rad", "<number>", "%s", cosmoV_typeStr(args[0]));
-        return 0;
     }
 
     // convert the degree to radians
@@ -798,12 +739,10 @@ int cosmoB_mDeg(CState *state, int nargs, CValue *args)
 {
     if (nargs != 1) {
         cosmoV_error(state, "math.deg() expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_NUMBER(args[0])) {
         cosmoV_typeError(state, "math.deg", "<number>", "%s", cosmoV_typeStr(args[0]));
-        return 0;
     }
 
     // convert the degree to radians
@@ -852,13 +791,11 @@ int cosmoB_vsetGlobal(CState *state, int nargs, CValue *args)
 {
     if (nargs != 2) {
         cosmoV_error(state, "Expected 2 argumenst, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_TABLE(args[1])) {
         cosmoV_typeError(state, "vm.__setter[\"globals\"]", "<object>, <table>", "%s, %s",
                          cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
-        return 0;
     }
 
     // this makes me very nervous ngl
@@ -874,13 +811,11 @@ int cosmoB_vdisassemble(CState *state, int nargs, CValue *args)
 
     if (nargs != 1) {
         cosmoV_error(state, "Expected 1 argument, got %d!", nargs);
-        return 0;
     }
 
     // get the closure
     if (!IS_CLOSURE(args[0])) {
         cosmoV_typeError(state, "vm.disassemble", "<closure>", "%s", cosmoV_typeStr(args[0]));
-        return 0;
     }
 
     closure = cosmoV_readClosure(args[0]);
@@ -895,13 +830,11 @@ int cosmoB_vindexBProto(CState *state, int nargs, CValue *args)
 {
     if (nargs != 2) {
         cosmoV_error(state, "Expected 2 arguments, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_NUMBER(args[1])) {
         cosmoV_typeError(state, "baseProtos.__index", "<object>, <number>", "%s, %s",
                          cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
-        return 0;
     }
 
     int indx = (int)cosmoV_readNumber(args[1]);
@@ -923,14 +856,12 @@ int cosmoB_vnewindexBProto(CState *state, int nargs, CValue *args)
 {
     if (nargs != 3) {
         cosmoV_error(state, "Expected 3 arguments, got %d!", nargs);
-        return 0;
     }
 
     if (!IS_NUMBER(args[1]) || !IS_OBJECT(args[2])) {
         cosmoV_typeError(state, "baseProtos.__newindex", "<object>, <number>, <object>",
                          "%s, %s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]),
                          cosmoV_typeStr(args[2]));
-        return 0;
     }
 
     int indx = (int)cosmoV_readNumber(args[1]);
@@ -938,7 +869,6 @@ int cosmoB_vnewindexBProto(CState *state, int nargs, CValue *args)
 
     if (indx >= COBJ_MAX || indx < 0) {
         cosmoV_error(state, "index out of range! expected 0 - %d, got %d!", COBJ_MAX, indx);
-        return 0;
     }
 
     cosmoV_registerProtoObject(state, indx, proto);
