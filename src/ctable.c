@@ -61,7 +61,7 @@ void cosmoT_addTable(CState *state, CTable *from, CTable *to)
 
 void cosmoT_clearTable(CState *state, CTable *tbl)
 {
-    cosmoM_freearray(state, CTableEntry, tbl->table, cosmoT_getCapacity(tbl));
+    cosmoM_freeArray(state, CTableEntry, tbl->table, cosmoT_getCapacity(tbl));
 }
 
 static uint32_t getObjectHash(CObj *obj)
@@ -165,7 +165,7 @@ static void resizeTbl(CState *state, CTable *tbl, int newCapacity, bool canShrin
     }
 
     // free the old table
-    cosmoM_freearray(state, CTableEntry, tbl->table, oldCap);
+    cosmoM_freeArray(state, CTableEntry, tbl->table, oldCap);
 
     tbl->table = entries;
     tbl->capacityMask = newCapacity - 1;

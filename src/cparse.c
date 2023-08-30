@@ -64,9 +64,10 @@ typedef struct
     CCompilerState *compiler;
     CObjString *module; // name of the module
     CToken current;
-    CToken previous; // token right after the current token
-    int workingStackCount;  // we push CValues of objects we need onto the stack so the garbage collector can see them.
-                            // this is the count of those values so we'll know how many to pop off when we're done
+    CToken previous;       // token right after the current token
+    int workingStackCount; // we push CValues of objects we need onto the stack so the garbage
+                           // collector can see them. this is the count of those values so we'll
+                           // know how many to pop off when we're done
 } CParseState;
 
 typedef enum
@@ -1370,7 +1371,7 @@ static void endLoop(CParseState *pstate)
         patchJmp(pstate, pstate->compiler->loop.breaks[--pstate->compiler->loop.breakCount]);
     }
 
-    cosmoM_freearray(pstate->state, int, pstate->compiler->loop.breaks,
+    cosmoM_freeArray(pstate->state, int, pstate->compiler->loop.breaks,
                      pstate->compiler->loop.breakCapacity);
 }
 
@@ -1659,7 +1660,7 @@ static void breakStatement(CParseState *pstate)
     pstate->compiler->localCount = savedLocals;
 
     // add break to loop
-    cosmoM_growarray(pstate->state, int, pstate->compiler->loop.breaks,
+    cosmoM_growArray(pstate->state, int, pstate->compiler->loop.breaks,
                      pstate->compiler->loop.breakCount, pstate->compiler->loop.breakCapacity);
     pstate->compiler->loop.breaks[pstate->compiler->loop.breakCount++] = writeJmp(pstate, OP_JMP);
 }

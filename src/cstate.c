@@ -120,7 +120,7 @@ void cosmoV_freeState(CState *state)
     cosmoT_clearTable(state, &state->strings);
 
     // free our gray stack & finally free the state structure
-    cosmoM_freearray(state, CObj *, state->grayStack.array, state->grayStack.capacity);
+    cosmoM_freeArray(state, CObj *, state->grayStack.array, state->grayStack.capacity);
 
 #ifdef GC_DEBUG
     if (state->allocatedBytes != 0) {

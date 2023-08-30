@@ -27,9 +27,9 @@ void initChunk(CState *state, CChunk *chunk, size_t startCapacity)
 void cleanChunk(CState *state, CChunk *chunk)
 {
     // first, free the chunk buffer
-    cosmoM_freearray(state, INSTRUCTION, chunk->buf, chunk->capacity);
+    cosmoM_freeArray(state, INSTRUCTION, chunk->buf, chunk->capacity);
     // then the line info
-    cosmoM_freearray(state, int, chunk->lineInfo, chunk->capacity);
+    cosmoM_freeArray(state, int, chunk->lineInfo, chunk->capacity);
     // free the constants
     cleanValArray(state, &chunk->constants);
 }
@@ -61,8 +61,8 @@ int addConstant(CState *state, CChunk *chunk, CValue value)
 void writeu8Chunk(CState *state, CChunk *chunk, INSTRUCTION i, int line)
 {
     // does the buffer need to be reallocated?
-    cosmoM_growarray(state, INSTRUCTION, chunk->buf, chunk->count, chunk->capacity);
-    cosmoM_growarray(state, int, chunk->lineInfo, chunk->count, chunk->lineCapacity);
+    cosmoM_growArray(state, INSTRUCTION, chunk->buf, chunk->count, chunk->capacity);
+    cosmoM_growArray(state, int, chunk->lineInfo, chunk->count, chunk->lineCapacity);
 
     // write data to the chunk :)
     chunk->lineInfo[chunk->count] = line;
