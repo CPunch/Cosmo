@@ -321,8 +321,7 @@ CObjString *cosmoO_allocateString(CState *state, const char *str, size_t sz, uin
     strObj->length = sz;
     strObj->hash = hash;
 
-    // we push & pop the string so our GC can find it (we don't use freezeGC/unfreezeGC because we
-    // *want* a GC event to happen)
+    // push/pop to make sure GC doesn't collect it
     cosmoV_pushRef(state, (CObj *)strObj);
     cosmoT_insert(state, &state->strings, cosmoV_newRef((CObj *)strObj));
     cosmoV_pop(state);
