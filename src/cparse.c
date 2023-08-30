@@ -481,6 +481,7 @@ static void string(CParseState *pstate, bool canAssign, Precedence prec)
 {
     CObjString *strObj =
         cosmoO_takeString(pstate->state, pstate->previous.start, pstate->previous.length);
+    keepTrackOf(pstate, cosmoV_newRef((CObj *)strObj));
     writeConstant(pstate, cosmoV_newRef((CObj *)strObj));
 }
 
