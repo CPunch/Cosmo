@@ -302,8 +302,6 @@ COSMO_API void cosmoM_collectGarbage(CState *state)
     printf("-- GC start\n");
     size_t start = state->allocatedBytes;
 #endif
-    cosmoM_freezeGC(state); // we don't want a recursive garbage collection event!
-
     markRoots(state);
 
     tableRemoveWhite(
@@ -314,9 +312,6 @@ COSMO_API void cosmoM_collectGarbage(CState *state)
 
     // set our next GC event
     cosmoM_updateThreshhold(state);
-
-    state->freezeGC--; // we don't want to use cosmoM_unfreezeGC because that might trigger a GC
-                       // event (if GC_STRESS is defined)
 #ifdef GC_DEBUG
     printf("-- GC end, reclaimed %ld bytes (started at %ld, ended at %ld), next garbage collection "
            "scheduled at %ld bytes\n",
