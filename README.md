@@ -1,5 +1,5 @@
 # Cosmo
-[![AppVeyor](https://ci.appveyor.com/api/projects/status/github/CPunch/Cosmo?svg=true)](https://ci.appveyor.com/project/CPunch/Cosmo)
+[![Check Build](https://github.com/CPunch/Cosmo/actions/workflows/check-build.yaml/badge.svg?branch=main)](https://github.com/CPunch/Cosmo/actions/workflows/check-build.yaml)
 
 ## Usage
 
