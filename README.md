@@ -1,5 +1,5 @@
 # Cosmo
-[![Check Build](https://github.com/CPunch/Cosmo/actions/workflows/check-build.yaml/badge.svg?branch=main)](https://github.com/CPunch/Cosmo/actions/workflows/check-build.yaml)
+[![Check Build](https://github.com/CPunch/Cosmo/actions/workflows/check_build.yaml/badge.svg?branch=main)](https://github.com/CPunch/Cosmo/actions/workflows/check_build.yaml)
 
 ## Usage
 
