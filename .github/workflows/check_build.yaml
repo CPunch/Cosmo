@@ -7,7 +7,7 @@ on:
         - main.c
         - Makefile
         - CMakeLists.txt
-        - .github/workflows/check-build.yaml
+        - .github/workflows/check_build.yaml
   workflow_dispatch:
 
 jobs:
