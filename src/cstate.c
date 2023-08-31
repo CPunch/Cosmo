@@ -32,7 +32,7 @@ CState *cosmoV_newState()
     CState *state = malloc(sizeof(CState));
 
     if (state == NULL) {
-        CERROR("failed to allocate memory!");
+        printf("[ERROR] failed to allocate memory!");
         exit(1);
     }
 

@@ -56,7 +56,7 @@ void *cosmoM_reallocate(CState *state, void *buf, size_t oldSize, size_t newSize
 #endif
 
     if (newBuf == NULL) {
-        CERROR("failed to allocate memory!");
+        printf("[ERROR] failed to allocate memory!");
         exit(1);
     }
 

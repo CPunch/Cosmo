@@ -64,6 +64,4 @@ typedef int (*cosmo_Writer)(CState *state, const void *data, size_t size, const 
 #define UNNAMEDCHUNK    "_main"
 #define COSMOASSERT(x)  assert(x)
 
-#define CERROR(err)     printf("%s : %s\n", "[ERROR]", err)
-
 #endif

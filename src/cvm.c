@@ -696,7 +696,7 @@ static inline uint16_t READUINT(CCallFrame *frame)
 #    define SWITCH switch (READBYTE(frame))
 #    define DEFAULT                                                                                \
     default:                                                                                       \
-        CERROR("unknown opcode!");                                                                 \
+        printf("[ERROR] unknown opcode!");                                                                 \
         exit(0)
 #endif
 
