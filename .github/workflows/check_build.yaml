@@ -8,6 +8,7 @@ on:
         - Makefile
         - CMakeLists.txt
         - .github/workflows/check-build.yaml
+  workflow_dispatch:
 
 jobs:
   ubuntu-build:
