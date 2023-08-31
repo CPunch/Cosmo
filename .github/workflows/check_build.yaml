@@ -12,7 +12,7 @@ on:
 
 jobs:
   ubuntu-build:
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
         with:
