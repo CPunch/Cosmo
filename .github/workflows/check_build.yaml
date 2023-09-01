@@ -4,6 +4,7 @@ on:
   push:
     paths:
         - src/**
+        - util/**
         - main.c
         - Makefile
         - CMakeLists.txt
