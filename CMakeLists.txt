@@ -16,7 +16,7 @@ set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT c
 include(FetchContent)
 
 file(GLOB sources CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/src/*.c)
-add_executable(${PROJECT_NAME} main.c)
+add_executable(${PROJECT_NAME} main.c ${PROJECT_SOURCE_DIR}/util/linenoise.c)
 target_sources(${PROJECT_NAME} PRIVATE ${sources})
 
 IF (NOT WIN32)

@@ -21,6 +21,7 @@ CHDR=\
 	src/cbaselib.h\
 	src/cdump.h\
 	src/cundump.h\
+	util/linenoise.h\
 
 CSRC=\
 	src/cchunk.c\
@@ -37,6 +38,7 @@ CSRC=\
 	src/cbaselib.c\
 	src/cdump.c\
 	src/cundump.c\
+	util/linenoise.c\
 	main.c\
 
 COBJ=$(CSRC:.c=.o)

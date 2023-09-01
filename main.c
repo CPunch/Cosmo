@@ -8,6 +8,8 @@
 #include "cundump.h"
 #include "cvm.h"
 
+#include "util/linenoise.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef _WIN32
@@ -63,7 +65,7 @@ static bool interpret(CState *state, const char *script, const char *mod)
 
 static void repl(CState *state)
 {
-    char line[1024];
+    char *line;
     _ACTIVE = true;
 
     // add our custom REPL functions
@@ -76,14 +78,13 @@ static void repl(CState *state)
     cosmoV_register(state, 2);
 
     while (_ACTIVE) {
-        printf("> ");
-
-        if (!fgets(line, sizeof(line), stdin)) { // better than gets()
-            printf("\n> ");
+        if (!(line = linenoise("> "))) { // better than gets()
             break;
         }
 
+        linenoiseHistoryAdd(line);
         interpret(state, line, "REPL");
+        linenoiseFree(line);
     }
 }
 
