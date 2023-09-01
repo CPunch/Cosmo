@@ -84,7 +84,7 @@ static void repl(CState *state)
 
         linenoiseHistoryAdd(line);
         interpret(state, line, "REPL");
-        linenoiseFree(line);
+        free(line);
     }
 }
 
