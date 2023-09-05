@@ -3,6 +3,13 @@
 
 #include "cstate.h"
 
+enum
+{
+    COSMO_USER_NONE, // CObjObject is not a userdata object
+    COSMO_USER_FILE, // CObjObject is a file object (see cosmoB_osOpen)
+    COSMO_USER_START // the first user type for user-defined userdata
+};
+
 /* loads all of the base library, including:
     - base library ("print", "assert", "type", "pcall", "loadstring", etc.)
     - object library

@@ -69,7 +69,7 @@ int cosmoB_pcall(CState *state, int nargs, CValue *args)
     bool res = cosmoV_pcall(state, nargs - 1, 1);
 
     // insert false before the result
-    cosmo_insert(state, 0, cosmoV_newBoolean(res));
+    cosmoV_insert(state, 0, cosmoV_newBoolean(res));
     return 2;
 }
 
@@ -105,7 +105,7 @@ int cosmoB_loadstring(CState *state, int nargs, CValue *args)
     CObjString *str = cosmoV_readString(args[0]);
     bool res = cosmoV_compileString(state, str->str, "");
 
-    cosmo_insert(state, 0, cosmoV_newBoolean(res));
+    cosmoV_insert(state, 0, cosmoV_newBoolean(res));
     return 2; // <boolean>, <closure> or <error>
 }
 
@@ -139,7 +139,7 @@ void cosmoB_loadLibrary(CState *state)
     }
 
     // register all the pushed c functions and the strings as globals
-    cosmoV_register(state, i);
+    cosmoV_addGlobals(state, i);
 
     // load other libraries
     cosmoB_loadObjLib(state);
@@ -230,52 +230,129 @@ COSMO_API void cosmoB_loadObjLib(CState *state)
     cosmoV_registerProtoObject(state, COBJ_OBJECT, obj);
 
     // register "object" to the global table
-    cosmoV_register(state, 1);
+    cosmoV_addGlobals(state, 1);
 }
 
 // ================================================================ [OS.*]
 
-// os.read()
-int cosmoB_osRead(CState *state, int nargs, CValue *args)
+int fileB_read(CState *state, int nargs, CValue *args)
 {
+    if (nargs != 2) {
+        cosmoV_error(state, "file:read() expected 2 arguments, got %d!", nargs);
+    }
+
+    if (!cosmoV_isValueUserType(state, args[0], COSMO_USER_FILE)) {
+        cosmoV_typeError(state, "file:read()", "<file>, <number> or \"a\"", "%s, %s",
+                         cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
+    }
+
+    CObjObject *fileObj = cosmoV_readObject(args[0]);
+    FILE *file = cosmoO_getUserP(fileObj);
+
+    if (IS_NUMBER(args[1])) {
+        cosmo_Number length = cosmoV_readNumber(args[1]);
+
+        // make sure the length is within the bounds of the file
+        if (length < 0) {
+            cosmoV_error(state, "file:read() expected length to be >= 0, got %d!", length);
+        }
+
+        // allocate a buffer for the read data
+        char *buffer = cosmoM_xmalloc(state, length + 1);
+
+        // read the data
+        fread(buffer, sizeof(char), length, file);
+
+        // push the read data
+        CValue temp = cosmoV_newRef(cosmoO_takeString(state, buffer, length));
+        cosmoV_pushValue(state, temp);
+    } else if (IS_STRING(args[1])) {
+        if (strcmp(cosmoV_readCString(args[1]), "a") == 0) {
+            // get the length of the file
+            fseek(file, 0, SEEK_END);
+            long length = ftell(file);
+            fseek(file, 0, SEEK_SET);
+
+            // allocate a buffer for the read data
+            char *buffer = cosmoM_xmalloc(state, length + 1);
+
+            // read the data
+            fread(buffer, sizeof(char), length, file);
+
+            buffer[length] = '\0'; // write the NULL terminator
+
+            // push the read data
+            CValue temp = cosmoV_newRef(cosmoO_takeString(state, buffer, length));
+            cosmoV_pushValue(state, temp);
+        } else {
+            cosmoV_error(state, "file:read() expected \"a\" or <number>, got %s!",
+                         cosmoV_readCString(args[1]));
+        }
+    } else {
+        cosmoV_typeError(state, "file:read()", "<file>, <number> or \"a\"", "%s, %s",
+                         cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
+    }
+
+    return 1;
+}
+
+int fileB_gc(CState *state, int nargs, CValue *args) {
     if (nargs != 1) {
-        cosmoV_error(state, "os.read() expected 1 argument, got %d!", nargs);
+        cosmoV_error(state, "file:read() expected 1 argument, got %d!", nargs);
+    }
+
+    if (!cosmoV_isValueUserType(state, args[0], COSMO_USER_FILE)) {
+        cosmoV_typeError(state, "file:__gc()", "<file>", "%s",
+                         cosmoV_typeStr(args[0]));
+    }
+
+    CObjObject *fileObj = cosmoV_readObject(args[0]);
+    FILE *file = cosmoO_getUserP(fileObj);
+
+    fclose(file);
+    return 0;
+}
+
+CObjObject *pushFileObj(CState *state, FILE *file)
+{
+    CObjObject *fileObj = cosmoO_newObject(state);
+    cosmoV_pushRef(state, (CObj *)fileObj);
+    cosmoO_setUserP(fileObj, file);
+    cosmoO_setUserT(fileObj, COSMO_USER_FILE);
+
+    // grab and set proto
+    cosmoV_pushRef(state, (CObj *)fileObj);
+    cosmoV_pushString(state, "file");
+    cosmoV_getRegistry(state);
+    cosmoV_setProto(state);
+
+    cosmoO_lock(fileObj);
+    return fileObj;
+}
+
+int cosmoB_osOpen(CState *state, int nargs, CValue *args)
+{
+    FILE *file;
+
+    if (nargs != 1) {
+        cosmoV_error(state, "os.open() expected 1 argument, got %d!", nargs);
     }
 
     if (!IS_STRING(args[0])) {
-        cosmoV_typeError(state, "os.read()", "<string>", "%s", cosmoV_typeStr(args[0]));
+        cosmoV_typeError(state, "os.open()", "<string>", "%s", cosmoV_typeStr(args[0]));
     }
 
-    CObjString *str = cosmoV_readString(args[0]);
-
-    // open file
-    FILE *file = fopen(str->str, "rb");
-    char *buf;
-    size_t size, bRead;
-
+    const char *filePath = cosmoV_readCString(args[0]);
+    file = fopen(filePath, "rb");
     if (file == NULL) {
-        // return nil, file doesn't exist
-        return 0;
+        cosmoV_pushBoolean(state, true);
+        cosmoV_pushFString(state, "Failed to open %s!", filePath);
+        return 2;
     }
 
-    // grab the size of the file
-    fseek(file, 0L, SEEK_END);
-    size = ftell(file);
-    rewind(file);
-
-    buf = cosmoM_xmalloc(state, size + 1);        // +1 for the NULL terminator
-    bRead = fread(buf, sizeof(char), size, file); // read the file into the buffer
-
-    if (bRead < size) {
-        // an error occured! we don't need to really throw an error, returning a nil is good enough
-        return 0;
-    }
-
-    buf[bRead] = '\0'; // place the NULL terminator at the end of the buffer
-
-    // push the string to the stack to return
-    cosmoV_pushValue(state, cosmoV_newRef(cosmoO_takeString(state, buf, bRead)));
-    return 1;
+    cosmoV_pushBoolean(state, false);
+    pushFileObj(state, file);
+    return 2;
 }
 
 // os.time()
@@ -309,9 +386,8 @@ int cosmoB_osSystem(CState *state, int nargs, CValue *args)
 
 COSMO_API void cosmoB_loadOS(CState *state)
 {
-    const char *identifiers[] = {"read", "time", "system"};
-
-    CosmoCFunction osLib[] = {cosmoB_osRead, cosmoB_osTime, cosmoB_osSystem};
+    const char *identifiers[] = {"open", "time", "system"};
+    CosmoCFunction osLib[] = {cosmoB_osOpen, cosmoB_osTime, cosmoB_osSystem};
 
     cosmoV_pushString(state, "os");
 
@@ -322,7 +398,25 @@ COSMO_API void cosmoB_loadOS(CState *state)
     }
 
     cosmoV_makeObject(state, i);
-    cosmoV_register(state, 1); // register the os.* object to the global table
+    cosmoV_addGlobals(state, 1); // register the os.* object to the global table
+
+    // make file proto
+    cosmoV_pushString(state, "file");
+
+    CObjObject *fileProto = cosmoO_newObject(state);
+    cosmoV_pushRef(state, (CObj *)fileProto);
+
+    cosmoV_pushRef(state, (CObj *)fileProto);
+    cosmoV_pushString(state, "read");
+    cosmoV_pushCFunction(state, fileB_read);
+    cosmoV_set(state);
+
+    cosmoV_pushRef(state, (CObj *)fileProto);
+    cosmoV_pushString(state, "__gc");
+    cosmoV_pushCFunction(state, fileB_gc);
+    cosmoV_set(state);
+
+    cosmoV_addRegistry(state, 1);
 }
 
 // ================================================================ [STRING.*]
@@ -578,7 +672,7 @@ void cosmoB_loadStrLib(CState *state)
     cosmoV_registerProtoObject(state, COBJ_STRING, obj);
 
     // register "string" to the global table
-    cosmoV_register(state, 1);
+    cosmoV_addGlobals(state, 1);
 }
 
 // ================================================================ [MATH]
@@ -773,7 +867,7 @@ void cosmoB_loadMathLib(CState *state)
 
     // make the object and register it as a global to the state
     cosmoV_makeObject(state, i);
-    cosmoV_register(state, 1);
+    cosmoV_addGlobals(state, 1);
 }
 
 // ================================================================ [VM.*]
@@ -930,5 +1024,5 @@ void cosmoB_loadVM(CState *state)
     cosmoV_makeObject(state, 5); // makes the vm object
 
     // register "vm" to the global table
-    cosmoV_register(state, 1);
+    cosmoV_addGlobals(state, 1);
 }
