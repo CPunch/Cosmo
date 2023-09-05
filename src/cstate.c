@@ -172,9 +172,6 @@ void cosmoV_getRegistry(CState *state) {
         cosmoV_error(state, "failed to grab %s from registry", cosmoV_typeStr(key));
     }
 
-    printf("got %s from registry - ", cosmoV_typeStr(val));
-    printValue(val);
-    printf("\n");
     cosmoV_pushValue(state, val);
 }
 
