@@ -75,7 +75,7 @@ static void repl(CState *state)
     cosmoV_pushString(state, "input");
     cosmoV_pushCFunction(state, cosmoB_input);
 
-    cosmoV_register(state, 2);
+    cosmoV_addGlobals(state, 2);
 
     while (_ACTIVE) {
         if (!(line = linenoise("> "))) { // better than gets()
@@ -130,7 +130,7 @@ static bool runFile(CState *state, const char *fileName)
     cosmoV_pushString(state, "input");
     cosmoV_pushCFunction(state, cosmoB_input);
 
-    cosmoV_register(state, 1);
+    cosmoV_addGlobals(state, 1);
 
     ret = interpret(state, script, fileName);
 

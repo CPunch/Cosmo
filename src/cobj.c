@@ -31,7 +31,6 @@ CObj *cosmoO_allocateBase(CState *state, size_t sz, CObjType type)
     obj->next = state->objects;
     state->objects = obj;
 
-    obj->nextRoot = NULL;
 #ifdef GC_DEBUG
     printf("allocated %s %p\n", cosmoO_typeStr(obj), obj);
 #endif
@@ -51,9 +50,9 @@ void cosmoO_free(CState *state, CObj *obj)
         break;
     }
     case COBJ_OBJECT: {
-        CObjObject *objTbl = (CObjObject *)obj;
-        cosmoT_clearTable(state, &objTbl->tbl);
-        cosmoM_free(state, CObjObject, objTbl);
+        CObjObject *objObj = (CObjObject *)obj;
+        cosmoT_clearTable(state, &objObj->tbl);
+        cosmoM_free(state, CObjObject, objObj);
         break;
     }
     case COBJ_TABLE: {
@@ -492,6 +491,7 @@ void cosmoO_unlock(CObjObject *object)
     object->isLocked = false;
 }
 
+
 bool rawgetIString(CState *state, CObjObject *object, int flag, CValue *val)
 {
     if (readFlag(object->istringFlags, flag))
@@ -511,6 +511,8 @@ bool cosmoO_getIString(CState *state, CObjObject *object, int flag, CValue *val)
     CObjObject *obj = object;
 
     do {
+        printf("getting flag %d from obj: %p\n", flag, obj);
+        fflush(stdout);
         if (rawgetIString(state, obj, flag, val))
             return true;
     } while ((obj = obj->_obj.proto) != NULL); // sets obj to it's proto and compares it to NULL

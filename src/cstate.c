@@ -42,7 +42,6 @@ CState *cosmoV_newState()
 
     // GC
     state->objects = NULL;
-    state->userRoots = NULL;
     state->grayStack.count = 0;
     state->grayStack.capacity = 2;
     state->grayStack.array = NULL;
@@ -62,11 +61,13 @@ CState *cosmoV_newState()
         state->iStrings[i] = NULL;
 
     cosmoT_initTable(state, &state->strings, 16); // init string table
+    cosmoT_initTable(state, &state->registry, 16);
 
     state->globals = cosmoO_newTable(state); // init global table
 
     // setup all strings used by the VM
     state->iStrings[ISTRING_INIT] = cosmoO_copyString(state, "__init", 6);
+    state->iStrings[ISTRING_GC] = cosmoO_copyString(state, "__gc", 4);
     state->iStrings[ISTRING_TOSTRING] = cosmoO_copyString(state, "__tostring", 10);
     state->iStrings[ISTRING_TONUMBER] = cosmoO_copyString(state, "__tonumber", 10);
     state->iStrings[ISTRING_INDEX] = cosmoO_copyString(state, "__index", 7);
@@ -120,6 +121,8 @@ void cosmoV_freeState(CState *state)
     // free our string table (the string table includes the internal VM strings)
     cosmoT_clearTable(state, &state->strings);
 
+    cosmoT_clearTable(state, &state->registry);
+
     // free our gray stack & finally free the state structure
     cosmoM_freeArray(state, CObj *, state->grayStack.array, state->grayStack.capacity);
 
@@ -133,7 +136,7 @@ void cosmoV_freeState(CState *state)
 }
 
 // expects 2*pairs values on the stack, each pair should consist of 1 key and 1 value
-void cosmoV_register(CState *state, int pairs)
+void cosmoV_addGlobals(CState *state, int pairs)
 {
     for (int i = 0; i < pairs; i++) {
         StkPtr key = cosmoV_getTop(state, 1);
@@ -144,6 +147,51 @@ void cosmoV_register(CState *state, int pairs)
 
         cosmoV_setTop(state, 2); // pops the 2 values off the stack
     }
+}
+
+// expects 2*pairs values on the stack, each pair should consist of 1 key and 1 value
+void cosmoV_addRegistry(CState *state, int pairs)
+{
+    for (int i = 0; i < pairs; i++) {
+        StkPtr key = cosmoV_getTop(state, 1);
+        StkPtr val = cosmoV_getTop(state, 0);
+
+        CValue *oldVal = cosmoT_insert(state, &state->registry, *key);
+        *oldVal = *val;
+
+        cosmoV_setTop(state, 2); // pops the 2 values off the stack
+    }
+}
+
+// expects 1 key on the stack, pushes result
+void cosmoV_getRegistry(CState *state) {
+    CValue key = *cosmoV_pop(state);
+    CValue val;
+
+    if (!cosmoT_get(state, &state->registry, key, &val)) {
+        cosmoV_error(state, "failed to grab %s from registry", cosmoV_typeStr(key));
+    }
+
+    printf("got %s from registry - ", cosmoV_typeStr(val));
+    printValue(val);
+    printf("\n");
+    cosmoV_pushValue(state, val);
+}
+
+void cosmoV_setProto(CState *state) {
+    StkPtr objVal = cosmoV_getTop(state, 1);
+    StkPtr protoVal = cosmoV_getTop(state, 0);
+
+    if (!IS_REF(*objVal) || !IS_OBJECT(*protoVal)) {
+        cosmoV_error(state, "cannot set %s to proto of type %s", cosmoV_typeStr(*objVal), cosmoV_typeStr(*protoVal));
+    }
+
+    // actually set the protos
+    CObj *obj = cosmoV_readRef(*objVal);
+    CObjObject *proto = cosmoV_readObject(*protoVal);
+    obj->proto = proto;
+
+    cosmoV_setTop(state, 2);
 }
 
 void cosmoV_printStack(CState *state)

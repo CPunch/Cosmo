@@ -34,7 +34,6 @@ typedef int (*CosmoCFunction)(CState *state, int argCount, CValue *args);
 struct CObj
 {
     struct CObj *next;
-    struct CObj *nextRoot;    // for the root linked list
     struct CObjObject *proto; // protoobject, describes the behavior of the object
     CObjType type;
     bool isMarked; // for the GC

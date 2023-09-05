@@ -36,11 +36,11 @@ COSMO_API void cosmoV_pushFString(CState *state, const char *format, ...);
 COSMO_API void cosmoV_printError(CState *state, CObjError *err);
 COSMO_API void cosmoV_throw(CState *state);
 COSMO_API void cosmoV_error(CState *state, const char *format, ...);
-COSMO_API void cosmo_insert(CState *state, int indx, CValue val);
+COSMO_API void cosmoV_insert(CState *state, int indx, CValue val);
 
 /*
     Sets the default proto objects for the passed objType. Also walks through the object heap and
-   updates protos for the passed objType if that CObj* has no proto.
+    updates protos for the passed objType if that CObj* has no proto.
 
     returns true if replacing a previously registered proto object for this type
 */
@@ -72,12 +72,15 @@ COSMO_API bool cosmoV_undump(CState *state, cosmo_Reader reader, const void *ud)
 COSMO_API void cosmoV_get(CState *state);
 
 /*
-    expects object to be pushed, then the key, and finally the new value. pops the key & object
+    expects object to be pushed, then the key, and finally the new value. pops the object, key & value
 */
 COSMO_API void cosmoV_set(CState *state);
 
 // wraps the closure into a CObjMethod, so the function is called as an invoked method
 COSMO_API void cosmoV_getMethod(CState *state, CObj *obj, CValue key, CValue *val);
+
+// check if the value at the top of the stack is a <obj> user type
+COSMO_API bool cosmoV_isValueUserType(CState *state, CValue val, int userType);
 
 // nice to have wrappers
 

@@ -12,7 +12,7 @@
 
 #define cosmoV_protect(panic) setjmp(panic->jmp) == 0
 
-COSMO_API void cosmoV_pushFString(CState *state, const char *format, ...)
+void cosmoV_pushFString(CState *state, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -21,7 +21,7 @@ COSMO_API void cosmoV_pushFString(CState *state, const char *format, ...)
 }
 
 // inserts val at state->top - indx - 1, moving everything else up
-COSMO_API void cosmo_insert(CState *state, int indx, CValue val)
+void cosmoV_insert(CState *state, int indx, CValue val)
 {
     StkPtr tmp = cosmoV_getTop(state, indx);
 
@@ -33,7 +33,7 @@ COSMO_API void cosmo_insert(CState *state, int indx, CValue val)
     state->top++;
 }
 
-COSMO_API bool cosmoV_undump(CState *state, cosmo_Reader reader, const void *ud)
+bool cosmoV_undump(CState *state, cosmo_Reader reader, const void *ud)
 {
     CObjFunction *func;
 
@@ -54,7 +54,7 @@ COSMO_API bool cosmoV_undump(CState *state, cosmo_Reader reader, const void *ud)
 
 // returns false if failed, error will be on the top of the stack. true if successful, closure will
 // be on the top of the stack
-COSMO_API bool cosmoV_compileString(CState *state, const char *src, const char *name)
+bool cosmoV_compileString(CState *state, const char *src, const char *name)
 {
     CObjFunction *func;
     CPanic *panic = cosmoV_newPanic(state);
@@ -77,7 +77,7 @@ COSMO_API bool cosmoV_compileString(CState *state, const char *src, const char *
     return false;
 }
 
-COSMO_API void cosmoV_printError(CState *state, CObjError *err)
+void cosmoV_printError(CState *state, CObjError *err)
 {
     // print stack trace
     for (int i = 0; i < err->frameCount; i++) {
@@ -439,7 +439,7 @@ static inline bool isFalsey(StkPtr val)
     return IS_NIL(*val) || (IS_BOOLEAN(*val) && !cosmoV_readBoolean(*val));
 }
 
-COSMO_API CObjObject *cosmoV_makeObject(CState *state, int pairs)
+CObjObject *cosmoV_makeObject(CState *state, int pairs)
 {
     StkPtr key, val;
     CObjObject *newObj = cosmoO_newObject(state);
@@ -460,7 +460,7 @@ COSMO_API CObjObject *cosmoV_makeObject(CState *state, int pairs)
     return newObj;
 }
 
-COSMO_API bool cosmoV_registerProtoObject(CState *state, CObjType objType, CObjObject *obj)
+bool cosmoV_registerProtoObject(CState *state, CObjType objType, CObjObject *obj)
 {
     bool replaced = state->protoObjects[objType] != NULL;
     state->protoObjects[objType] = obj;
@@ -469,7 +469,7 @@ COSMO_API bool cosmoV_registerProtoObject(CState *state, CObjType objType, CObjO
     CObj *curr = state->objects;
     while (curr != NULL) {
         // update the proto
-        if (curr->type == objType && curr->proto != NULL) {
+        if (curr != (CObj *)obj && curr->type == objType && curr->proto != NULL) {
             curr->proto = obj;
         }
         curr = curr->next;
@@ -478,7 +478,7 @@ COSMO_API bool cosmoV_registerProtoObject(CState *state, CObjType objType, CObjO
     return replaced;
 }
 
-COSMO_API void cosmoV_makeTable(CState *state, int pairs)
+void cosmoV_makeTable(CState *state, int pairs)
 {
     StkPtr key, val;
     CObjTable *newObj = cosmoO_newTable(state);
@@ -530,7 +530,7 @@ void cosmoV_rawset(CState *state, CObj *_obj, CValue key, CValue val)
     cosmoO_setRawObject(state, object, key, val, _obj);
 }
 
-COSMO_API void cosmoV_get(CState *state)
+void cosmoV_get(CState *state)
 {
     CValue val;
     StkPtr obj = cosmoV_getTop(state, 1); // object was pushed first
@@ -548,7 +548,7 @@ COSMO_API void cosmoV_get(CState *state)
 }
 
 // yes, this would technically make it possible to set fields of types other than <string>. go crazy
-COSMO_API void cosmoV_set(CState *state)
+void cosmoV_set(CState *state)
 {
     StkPtr obj = cosmoV_getTop(state, 2); // object was pushed first
     StkPtr key = cosmoV_getTop(state, 1); // then the key
@@ -564,7 +564,7 @@ COSMO_API void cosmoV_set(CState *state)
     cosmoV_setTop(state, 3);
 }
 
-COSMO_API void cosmoV_getMethod(CState *state, CObj *obj, CValue key, CValue *val)
+void cosmoV_getMethod(CState *state, CObj *obj, CValue key, CValue *val)
 {
     cosmoV_rawget(state, obj, key, val);
 
@@ -576,6 +576,19 @@ COSMO_API void cosmoV_getMethod(CState *state, CObj *obj, CValue key, CValue *va
         cosmoV_pop(state); // pop the object
         *val = cosmoV_newRef(method);
     }
+}
+
+bool cosmoV_isValueUserType(CState *state, CValue val, int userType) {
+    if (!IS_OBJECT(val)) {
+        return false;
+    }
+
+    CObjObject *obj = cosmoV_readObject(val);
+    if (obj->userT != userType) {
+        return false;
+    }
+
+    return true;
 }
 
 int _tbl__next(CState *state, int nargs, CValue *args)
@@ -836,7 +849,8 @@ int cosmoV_execute(CState *state)
 
                 CObj *obj = cosmoV_readRef(*temp);
                 CObjObject *proto = cosmoO_grabProto(obj);
-                CValue val; // to hold our value
+                CValue val = cosmoV_newNil();          // to hold our value
+
 
                 if (proto != NULL) {
                     // check for __index metamethod
@@ -907,7 +921,7 @@ int cosmoV_execute(CState *state)
             }
             CASE(OP_GETOBJECT) :
             {
-                CValue val;                            // to hold our value
+                CValue val = cosmoV_newNil();          // to hold our value
                 StkPtr temp = cosmoV_getTop(state, 0); // that should be the object
                 uint16_t ident = READUINT(frame);      // use for the key
 
@@ -925,7 +939,7 @@ int cosmoV_execute(CState *state)
             }
             CASE(OP_GETMETHOD) :
             {
-                CValue val;                            // to hold our value
+                CValue val = cosmoV_newNil();          // to hold our value
                 StkPtr temp = cosmoV_getTop(state, 0); // that should be the object
                 uint16_t ident = READUINT(frame);      // use for the key
 

@@ -6,6 +6,7 @@
 #include "cstate.h"
 #include "ctable.h"
 #include "cvalue.h"
+#include "cvm.h"
 
 // realloc wrapper
 void *cosmoM_reallocate(CState *state, void *buf, size_t oldSize, size_t newSize)
@@ -246,19 +247,20 @@ static void sweep(CState *state)
                 prev->next = object;
             }
 
+            // call __gc on the object
+            CObjObject *protoObject = cosmoO_grabProto(oldObj);
+            CValue res;
+
+            // use user-defined __gc
+            if (protoObject != NULL && cosmoO_getIString(state, protoObject, ISTRING_GC, &res)) {
+                cosmoV_pushValue(state, res);
+                cosmoV_pushRef(state, (CObj *)oldObj);
+                cosmoV_call(state, 1, 0);
+            }
+
+
             cosmoO_free(state, oldObj);
         }
-    }
-}
-
-static void markUserRoots(CState *state)
-{
-    CObj *root = state->userRoots;
-
-    // traverse userRoots and mark all the object
-    while (root != NULL) {
-        markObject(state, root);
-        root = root->nextRoot;
     }
 }
 
@@ -285,8 +287,7 @@ static void markRoots(CState *state)
     for (int i = 0; i < ISTRING_MAX; i++)
         markObject(state, (CObj *)state->iStrings[i]);
 
-    // mark the user defined roots
-    markUserRoots(state);
+    markTable(state, &state->registry);
 
     for (int i = 0; i < COBJ_MAX; i++)
         markObject(state, (CObj *)state->protoObjects[i]);
@@ -322,45 +323,4 @@ COSMO_API void cosmoM_collectGarbage(CState *state)
 COSMO_API void cosmoM_updateThreshhold(CState *state)
 {
     state->nextGC = state->allocatedBytes * HEAP_GROW_FACTOR;
-}
-
-COSMO_API void cosmoM_addRoot(CState *state, CObj *newRoot)
-{
-    // first, check and make sure this root doesn't already exist in the list
-    CObj *root = state->userRoots;
-    while (root != NULL) {
-        if (root == newRoot) // found in the list, abort
-            return;
-
-        root = root->nextRoot;
-    }
-
-    // adds root to userRoot linked list
-    newRoot->nextRoot = state->userRoots;
-    state->userRoots = newRoot;
-}
-
-COSMO_API void cosmoM_removeRoot(CState *state, CObj *oldRoot)
-{
-    CObj *prev = NULL;
-    CObj *root = state->userRoots;
-
-    // traverse the userRoot linked list
-    while (root != NULL) {
-        if (root == oldRoot) { // found root in list
-
-            // remove from the linked list
-            if (prev == NULL) {
-                state->userRoots = root->nextRoot;
-            } else {
-                prev->nextRoot = root->nextRoot;
-            }
-
-            root->nextRoot = NULL;
-            break;
-        }
-
-        prev = root;
-        root = root->nextRoot;
-    }
 }
