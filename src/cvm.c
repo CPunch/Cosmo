@@ -122,6 +122,7 @@ void cosmoV_throw(CState *state)
     if (state->panic) {
         state->top = state->panic->top;
         state->frameCount = state->panic->frameCount;
+        state->freezeGC = state->panic->freezeGC;
         cosmoV_pushValue(state, val);
         longjmp(state->panic->jmp, 1);
     } else {

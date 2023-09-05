@@ -12,6 +12,7 @@ CPanic *cosmoV_newPanic(CState *state)
     CPanic *panic = cosmoM_xmalloc(state, sizeof(CPanic));
     panic->top = state->top;
     panic->frameCount = state->frameCount;
+    panic->freezeGC = state->freezeGC;
     panic->prev = state->panic;
     state->panic = panic;
 

@@ -46,6 +46,7 @@ typedef struct CPanic
     StkPtr top;
     struct CPanic *prev;
     int frameCount;
+    int freezeGC;
 } CPanic;
 
 struct CState
