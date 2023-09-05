@@ -19,9 +19,9 @@ jobs:
         with:
           submodules: recursive
       - name: CMake
-        run: cmake -B build
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
       - name: Build
-        run: cmake --build build
+        run: cmake --build build --config Release
       - name: Upload build artifact
         uses: actions/upload-artifact@v2
         with:
