@@ -67,27 +67,17 @@ COSMO_API bool cosmoV_compileString(CState *state, const char *src, const char *
 COSMO_API bool cosmoV_undump(CState *state, cosmo_Reader reader, const void *ud);
 
 /*
-    expects object to be pushed, then the key.
-
-    returns false if an error was thrown, returns true if the value was pushed onto the stack and
-   the object and key were popped
+    expects object to be pushed, then the key. pops the key & object and pushes the value
 */
-COSMO_API bool cosmoV_get(CState *state);
+COSMO_API void cosmoV_get(CState *state);
 
 /*
-    expects object to be pushed, then the key, and finally the new value.
-
-    returns false if an error was thrown, returns true if the value was set and the object key, and
-   value were popped
+    expects object to be pushed, then the key, and finally the new value. pops the key & object
 */
-COSMO_API bool cosmoV_set(CState *state);
+COSMO_API void cosmoV_set(CState *state);
 
 // wraps the closure into a CObjMethod, so the function is called as an invoked method
-COSMO_API bool cosmoV_getMethod(CState *state, CObj *obj, CValue key, CValue *val);
-
-// clears the stack, callstack and restores the state into a usable state after a calloverflow or
-// another hard to recover error (keeps the global table intact)
-COSMO_API bool cosmoV_restore(CState *state);
+COSMO_API void cosmoV_getMethod(CState *state, CObj *obj, CValue key, CValue *val);
 
 // nice to have wrappers
 

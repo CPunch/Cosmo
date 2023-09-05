@@ -397,7 +397,7 @@ bool cosmoO_isDescendant(CObj *obj, CObjObject *proto)
 }
 
 // returns false if error thrown
-bool cosmoO_getRawObject(CState *state, CObjObject *proto, CValue key, CValue *val, CObj *obj)
+void cosmoO_getRawObject(CState *state, CObjObject *proto, CValue key, CValue *val, CObj *obj)
 {
     if (!cosmoT_get(state, &proto->tbl, key,
                     val)) { // if the field doesn't exist in the object, check the proto
@@ -407,18 +407,17 @@ bool cosmoO_getRawObject(CState *state, CObjObject *proto, CValue key, CValue *v
             cosmoV_pushRef(state, (CObj *)obj); // push object
             cosmoV_call(state, 1, 1);           // call the function with the 1 argument
             *val = *cosmoV_pop(state);          // set value to the return value of __index
-            return true;
+            return;
         }
 
-        if (proto->_obj.proto != NULL &&
-            cosmoO_getRawObject(state, proto->_obj.proto, key, val, obj))
-            return true;
+        // maybe the field is defined in the proto?
+        if (proto->_obj.proto != NULL) {
+            cosmoO_getRawObject(state, proto->_obj.proto, key, val, obj);
+            return;
+        }
 
         *val = cosmoV_newNil();
-        return true; // no protoobject to check against / key not found
     }
-
-    return true;
 }
 
 void cosmoO_setRawObject(CState *state, CObjObject *proto, CValue key, CValue val, CObj *obj)
@@ -519,7 +518,7 @@ bool cosmoO_getIString(CState *state, CObjObject *object, int flag, CValue *val)
     return false; // obj->proto was false, the istring doesn't exist in this object chain
 }
 
-bool cosmoO_indexObject(CState *state, CObjObject *object, CValue key, CValue *val)
+void cosmoO_indexObject(CState *state, CObjObject *object, CValue key, CValue *val)
 {
     if (cosmoO_getIString(state, object, ISTRING_INDEX, val)) {
         cosmoV_pushValue(state, *val);         // push function
@@ -527,15 +526,12 @@ bool cosmoO_indexObject(CState *state, CObjObject *object, CValue key, CValue *v
         cosmoV_pushValue(state, key);          // push key
         cosmoV_call(state, 2, 1);              // call the function with the 2 arguments
         *val = *cosmoV_pop(state);             // set value to the return value of __index
-        return true;
-    } else { // there's no __index function defined!
+    } else {                                   // there's no __index function defined!
         cosmoV_error(state, "Couldn't index object without __index function!");
     }
-
-    return false;
 }
 
-bool cosmoO_newIndexObject(CState *state, CObjObject *object, CValue key, CValue val)
+void cosmoO_newIndexObject(CState *state, CObjObject *object, CValue key, CValue val)
 {
     CValue ret; // return value for cosmoO_getIString
 
@@ -545,12 +541,9 @@ bool cosmoO_newIndexObject(CState *state, CObjObject *object, CValue key, CValue
         cosmoV_pushValue(state, key);          // push key & value pair
         cosmoV_pushValue(state, val);
         cosmoV_call(state, 3, 0);
-        return true;
     } else { // there's no __newindex function defined
         cosmoV_error(state, "Couldn't set index on object without __newindex function!");
     }
-
-    return false;
 }
 
 CObjString *cosmoO_toString(CState *state, CObj *obj)

@@ -3,6 +3,8 @@
 
 #include "cosmo.h"
 
+#include <stdarg.h>
+
 typedef enum CObjType
 {
     COBJ_STRING,
@@ -172,10 +174,10 @@ static inline CObjObject *cosmoO_grabProto(CObj *obj)
     return obj->type == COBJ_OBJECT ? (CObjObject *)obj : obj->proto;
 }
 
-bool cosmoO_getRawObject(CState *state, CObjObject *proto, CValue key, CValue *val, CObj *obj);
+void cosmoO_getRawObject(CState *state, CObjObject *proto, CValue key, CValue *val, CObj *obj);
 void cosmoO_setRawObject(CState *state, CObjObject *proto, CValue key, CValue val, CObj *obj);
-bool cosmoO_indexObject(CState *state, CObjObject *object, CValue key, CValue *val);
-bool cosmoO_newIndexObject(CState *state, CObjObject *object, CValue key, CValue val);
+void cosmoO_indexObject(CState *state, CObjObject *object, CValue key, CValue *val);
+void cosmoO_newIndexObject(CState *state, CObjObject *object, CValue key, CValue val);
 
 // sets the user-defined pointer, if a user-define integer is already defined it will be over
 // written
