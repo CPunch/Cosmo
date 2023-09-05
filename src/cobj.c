@@ -511,8 +511,6 @@ bool cosmoO_getIString(CState *state, CObjObject *object, int flag, CValue *val)
     CObjObject *obj = object;
 
     do {
-        printf("getting flag %d from obj: %p\n", flag, obj);
-        fflush(stdout);
         if (rawgetIString(state, obj, flag, val))
             return true;
     } while ((obj = obj->_obj.proto) != NULL); // sets obj to it's proto and compares it to NULL
