@@ -1,9 +1,6 @@
-
 local err, file = os.open("LICENSE.md")
-print("made file")
 if err then
   print("failed to open file")
 end
 
-print(file)
 print(file:read("a"))

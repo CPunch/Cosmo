@@ -1,0 +1,6 @@
+local err, file = os.open("test.md", "w")
+if err then
+  print("failed to open file")
+end
+
+file:write("hello world")

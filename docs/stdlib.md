@@ -59,7 +59,7 @@ Includes functions that interact with the operating system.
 
 | Name         | Type                                             | Behavior                                                                 | Example                  |
 | ------------ | ------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------ |
-| os.open | `(path<string>)` -> `<bool>, <obj>` | Opens a file at `path` and returns a file object. If the file does not exist, it will be created. | `os.open("test.txt")` -> `true, <file>` |
+| os.open | `(path<string>[, mode<string>])` -> `<bool>, <obj>` | Opens a file at `path` and returns a file object. Specify mode to be "r" or "w" optionally, defaults to "r". | `os.open("test.txt")` -> `true, <file>` |
 | os.time      | `()` -> `<number>`                               | Returns the system time in Epoch format                                  | `os.time()` -> `1.61691e+09` |
 | os.system    | `(cmd<string>)` -> `<number>`                    | Runs a system command as if it were a terminal and returns the exit code | `os.system("mkdir test")` -> `0`  |
 > -> means 'returns'
@@ -68,3 +68,5 @@ File objects have the following methods:
 | Name         | Type                                             | Behavior                                                                 | Example                  |
 | ------------ | ------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------ |
 | file:read | `(amt<number> or "a")` -> `<string>` | Reads `amt` bytes from the file and returns them as a string. If `"a"` is passed, the entire file is read. | `file:read("a")` -> `"Hello world!"` |
+| file:write | `(data<string>)` -> `<nil>` | Writes `data` to file. | `file:write("hello world!")` -> `<nil>` |
+> -> means 'returns'
