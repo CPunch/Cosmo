@@ -250,6 +250,8 @@ int fileB_read(CState *state, int nargs, CValue *args)
     FILE *file = cosmoO_getUserP(fileObj);
 
     if (IS_NUMBER(args[1])) {
+        CValue temp;
+        char *buffer;
         cosmo_Number length = cosmoV_readNumber(args[1]);
 
         // make sure the length is within the bounds of the file
@@ -258,31 +260,35 @@ int fileB_read(CState *state, int nargs, CValue *args)
         }
 
         // allocate a buffer for the read data
-        char *buffer = cosmoM_xmalloc(state, length + 1);
+        buffer = cosmoM_xmalloc(state, length + 1);
 
         // read the data
         fread(buffer, sizeof(char), length, file);
         buffer[(int)length] = '\0'; // write the NULL terminator
 
         // push the read data
-        CValue temp = cosmoV_newRef(cosmoO_takeString(state, buffer, length));
+        temp = cosmoV_newRef(cosmoO_takeString(state, buffer, length));
         cosmoV_pushValue(state, temp);
     } else if (IS_STRING(args[1])) {
         if (strcmp(cosmoV_readCString(args[1]), "a") == 0) {
+            CValue temp;
+            char *buffer;
+            long length;
+
             // get the length of the file
             fseek(file, 0, SEEK_END);
-            long length = ftell(file);
+            length = ftell(file);
             fseek(file, 0, SEEK_SET);
 
             // allocate a buffer for the read data
-            char *buffer = cosmoM_xmalloc(state, length + 1);
+            buffer = cosmoM_xmalloc(state, length + 1);
 
             // read the data
             fread(buffer, sizeof(char), length, file);
             buffer[length] = '\0'; // write the NULL terminator
 
             // push the read data
-            CValue temp = cosmoV_newRef(cosmoO_takeString(state, buffer, length));
+            temp = cosmoV_newRef(cosmoO_takeString(state, buffer, length));
             cosmoV_pushValue(state, temp);
         } else {
             cosmoV_error(state, "file:read() expected \"a\" or <number>, got %s!",
@@ -297,6 +303,10 @@ int fileB_read(CState *state, int nargs, CValue *args)
 }
 
 int fileB_write(CState *state, int nargs, CValue *args) {
+    CObjObject *fileObj;
+    CObjString *str;
+    FILE *file;
+
     if (nargs != 2) {
         cosmoV_error(state, "file:write() expected 2 arguments, got %d!", nargs);
     }
@@ -311,10 +321,10 @@ int fileB_write(CState *state, int nargs, CValue *args) {
                          cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
     }
 
-    CObjObject *fileObj = cosmoV_readObject(args[0]);
-    FILE *file = cosmoO_getUserP(fileObj);
+    fileObj = cosmoV_readObject(args[0]);
+    str = cosmoV_readString(args[1]);
 
-    CObjString *str = cosmoV_readString(args[1]);
+    file = (FILE *)cosmoO_getUserP(fileObj);
     fwrite(str->str, sizeof(char), str->length, file);
 
     return 0;
@@ -356,7 +366,7 @@ CObjObject *pushFileObj(CState *state, FILE *file)
 
 int cosmoB_osOpen(CState *state, int nargs, CValue *args)
 {
-    const char *mode = "rb";
+    const char *filePath, *mode = "rb";
     FILE *file;
 
     if (nargs >= 1) {
@@ -370,14 +380,14 @@ int cosmoB_osOpen(CState *state, int nargs, CValue *args)
             }
 
             mode = cosmoV_readCString(args[1]);
-        } else if (nargs > 2) {
+        } else if (nargs != 1) {
             cosmoV_error(state, "os.open() expected 1 or 2 arguments, got %d!", nargs);
         }
     } else {
         cosmoV_error(state, "os.open() expected 1 or 2 arguments, got %d!", nargs);
     }
 
-    const char *filePath = cosmoV_readCString(args[0]);
+    filePath = cosmoV_readCString(args[0]);
     file = fopen(filePath, mode);
     if (file == NULL) {
         cosmoV_pushBoolean(state, true);
