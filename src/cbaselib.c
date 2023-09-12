@@ -168,8 +168,17 @@ int cosmoB_ogetProto(CState *state, int nargs, CValue *args)
     if (nargs != 1)
         cosmoV_error(state, "Expected 1 argument, got %d!", nargs);
 
-    cosmoV_pushRef(state, (CObj *)cosmoV_readObject(args[0])->_obj.proto); // just return the proto
+    if (!IS_REF(args[0])) {
+        cosmoV_typeError(state, "__getter.__proto", "<object>", "%s", cosmoV_typeStr(args[0]));
+    }
 
+    CObj *proto = (CObj *)cosmoV_readRef(args[0])->proto;
+    if (proto == NULL) {
+        cosmoV_pushNil(state);
+        return 1;
+    }
+
+    cosmoV_pushRef(state, proto); // just return the proto
     return 1; // 1 result
 }
 
