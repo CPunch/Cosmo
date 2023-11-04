@@ -1032,14 +1032,8 @@ int cosmoB_vnewindexBProto(CState *state, int nargs, CValue *args)
 // vm.collect()
 int cosmoB_vcollect(CState *state, int nargs, CValue *args)
 {
-<<<<<<< HEAD
-    // now force a garbage collection
-    cosmoM_collectGarbage(state);
-
-=======
     // force a garbage collection
     cosmoM_collectGarbage(state);
->>>>>>> 409937c (fix vm.collect())
     return 0;
 }
 
