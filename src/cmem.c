@@ -165,8 +165,9 @@ static void blackenObject(CState *state, CObj *obj)
         markValue(state, err->err);
 
         // mark callframes
-        for (int i = 0; i < err->frameCount; i++)
+        for (int i = 0; i < err->frameCount; i++) {
             markObject(state, (CObj *)err->frames[i].closure);
+        }
 
         break;
     }
@@ -284,13 +285,15 @@ static void markRoots(CState *state)
     markObject(state, (CObj *)state->globals);
 
     // mark all internal strings
-    for (int i = 0; i < ISTRING_MAX; i++)
+    for (int i = 0; i < ISTRING_MAX; i++) {
         markObject(state, (CObj *)state->iStrings[i]);
+    }
 
     markTable(state, &state->registry);
 
-    for (int i = 0; i < COBJ_MAX; i++)
+    for (int i = 0; i < COBJ_MAX; i++) {
         markObject(state, (CObj *)state->protoObjects[i]);
+    }
 
     traceGrays(state);
 }

@@ -699,8 +699,9 @@ int cosmoB_sRep(CState *state, int nargs, CValue *args)
     char *newStr = cosmoM_xmalloc(state, length + 1); // + 1 for the NULL terminator
 
     // copy the string over the new buffer
-    for (int i = 0; i < times; i++)
+    for (int i = 0; i < times; i++) {
         memcpy(&newStr[i * str->length], str->str, str->length);
+    }
 
     // write the NULL terminator
     newStr[length] = '\0';

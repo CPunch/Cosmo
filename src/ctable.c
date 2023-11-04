@@ -87,8 +87,9 @@ static uint32_t getValueHash(CValue *val)
             return 0;
 
         memcpy(buf, &num, sizeof(buf));
-        for (size_t i = 0; i < sizeof(cosmo_Number) / sizeof(uint32_t); i++)
+        for (size_t i = 0; i < sizeof(cosmo_Number) / sizeof(uint32_t); i++) {
             buf[0] += buf[i];
+        }
         return buf[0];
     }
     // TODO: add support for other types

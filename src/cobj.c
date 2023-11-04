@@ -15,8 +15,9 @@ uint32_t hashString(const char *str, size_t sz)
     uint32_t hash = sz;
     size_t step = (sz >> 5) + 1;
 
-    for (size_t i = sz; i >= step; i -= step)
+    for (size_t i = sz; i >= step; i -= step) {
         hash = ((hash << 5) + (hash >> 2)) + str[i - 1];
+    }
 
     return hash;
 }
@@ -236,8 +237,9 @@ CObjError *cosmoO_newError(CState *state, CValue err)
     cerror->parserError = false;
 
     // clone the call frame
-    for (int i = 0; i < state->frameCount; i++)
+    for (int i = 0; i < state->frameCount; i++) {
         cerror->frames[i] = state->callFrame[i];
+    }
 
     return cerror;
 }

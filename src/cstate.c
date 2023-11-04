@@ -54,11 +54,13 @@ CState *cosmoV_newState()
     state->openUpvalues = NULL;
 
     // set default proto objects
-    for (int i = 0; i < COBJ_MAX; i++)
+    for (int i = 0; i < COBJ_MAX; i++) {
         state->protoObjects[i] = NULL;
+    }
 
-    for (int i = 0; i < ISTRING_MAX; i++)
+    for (int i = 0; i < ISTRING_MAX; i++) {
         state->iStrings[i] = NULL;
+    }
 
     cosmoT_initTable(state, &state->strings, 16); // init string table
     cosmoT_initTable(state, &state->registry, 16);
@@ -87,8 +89,9 @@ CState *cosmoV_newState()
     state->iStrings[ISTRING_RESERVED] = cosmoO_copyString(state, "__reserved", 10);
 
     // set the IString flags
-    for (int i = 0; i < ISTRING_MAX; i++)
+    for (int i = 0; i < ISTRING_MAX; i++) {
         state->iStrings[i]->isIString = true;
+    }
 
     state->freezeGC = 0; // unfreeze the state
     return state;
@@ -115,8 +118,9 @@ void cosmoV_freeState(CState *state)
     }
 
     // mark our internal VM strings NULL
-    for (int i = 0; i < ISTRING_MAX; i++)
+    for (int i = 0; i < ISTRING_MAX; i++) {
         state->iStrings[i] = NULL;
+    }
 
     // free our string table (the string table includes the internal VM strings)
     cosmoT_clearTable(state, &state->strings);

@@ -5,8 +5,9 @@
 
 void printIndent(int indent)
 {
-    for (int i = 0; i < indent; i++)
+    for (int i = 0; i < indent; i++) {
         printf("\t");
+    }
 }
 
 static int simpleInstruction(const char *name, int offset)

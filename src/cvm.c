@@ -26,8 +26,9 @@ void cosmoV_insert(CState *state, int indx, CValue val)
     StkPtr tmp = cosmoV_getTop(state, indx);
 
     // moves everything up
-    for (StkPtr i = state->top; i > tmp; i--)
+    for (StkPtr i = state->top; i > tmp; i--) {
         *i = *(i - 1);
+    }
 
     *tmp = val;
     state->top++;
@@ -268,8 +269,9 @@ static void callCFunction(CState *state, CosmoCFunction cfunc, int args, int nre
     state->top += nres;             // and make sure to move state->top to match
 
     // now, if the caller function expected more return values, push nils onto the stack
-    for (int i = nres; i < nresults; i++)
+    for (int i = nres; i < nresults; i++) {
         cosmoV_pushValue(state, cosmoV_newNil());
+    }
 }
 
 /*
@@ -327,8 +329,9 @@ static void rawCall(CState *state, CObjClosure *closure, int args, int nresults,
     state->top += nres; // and make sure to move state->top to match
 
     // now, if the caller function expected more return values, push nils onto the stack
-    for (int i = nres; i < nresults; i++)
+    for (int i = nres; i < nresults; i++) {
         cosmoV_pushValue(state, cosmoV_newNil());
+    }
 }
 
 // returns true if successful, false if error
@@ -377,9 +380,9 @@ void callCValue(CState *state, CValue func, int args, int nresults, int offset)
         if (nresults > 0) {
             cosmoV_pushRef(state, (CObj *)newObj);
 
-            // push the nils to fill up the expected return values
-            for (int i = 0; i < nresults - 1;
-                 i++) { // -1 since the we already pushed the important value
+            // push the nils to fill up the expected return values.
+            // -1 since the we already pushed the important value
+            for (int i = 0; i < nresults - 1;i++) {
                 cosmoV_pushValue(state, cosmoV_newNil());
             }
         }
@@ -415,8 +418,9 @@ bool cosmoV_pcall(CState *state, int args, int nresults)
 
         if (nresults > 0) {
             // push other expected results onto the stack
-            for (int i = 0; i < nresults - 1; i++)
+            for (int i = 0; i < nresults - 1; i++) {
                 cosmoV_pushValue(state, cosmoV_newNil());
+            }
         }
 
         cosmoV_freePanic(state);
