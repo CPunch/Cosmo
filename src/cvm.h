@@ -72,7 +72,8 @@ COSMO_API bool cosmoV_undump(CState *state, cosmo_Reader reader, const void *ud)
 COSMO_API void cosmoV_get(CState *state);
 
 /*
-    expects object to be pushed, then the key, and finally the new value. pops the object, key & value
+    expects object to be pushed, then the key, and finally the new value. pops the object, key &
+   value
 */
 COSMO_API void cosmoV_set(CState *state);
 

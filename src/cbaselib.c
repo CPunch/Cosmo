@@ -179,7 +179,7 @@ int cosmoB_ogetProto(CState *state, int nargs, CValue *args)
     }
 
     cosmoV_pushRef(state, proto); // just return the proto
-    return 1; // 1 result
+    return 1;                     // 1 result
 }
 
 int cosmoB_ogetKeys(CState *state, int nargs, CValue *args)
@@ -337,7 +337,8 @@ int fileB_read(CState *state, int nargs, CValue *args)
     return 1;
 }
 
-int fileB_write(CState *state, int nargs, CValue *args) {
+int fileB_write(CState *state, int nargs, CValue *args)
+{
     CObjObject *fileObj;
     CObjString *str;
     FILE *file;
@@ -365,14 +366,14 @@ int fileB_write(CState *state, int nargs, CValue *args) {
     return 0;
 }
 
-int fileB_gc(CState *state, int nargs, CValue *args) {
+int fileB_gc(CState *state, int nargs, CValue *args)
+{
     if (nargs != 1) {
         cosmoV_error(state, "file:read() expected 1 argument, got %d!", nargs);
     }
 
     if (!cosmoV_isValueUserType(state, args[0], COSMO_USER_FILE)) {
-        cosmoV_typeError(state, "file:__gc()", "<file>", "%s",
-                         cosmoV_typeStr(args[0]));
+        cosmoV_typeError(state, "file:__gc()", "<file>", "%s", cosmoV_typeStr(args[0]));
     }
 
     CObjObject *fileObj = cosmoV_readObject(args[0]);
@@ -411,7 +412,8 @@ int cosmoB_osOpen(CState *state, int nargs, CValue *args)
 
         if (nargs == 2) {
             if (!IS_STRING(args[1])) {
-                cosmoV_typeError(state, "os.open()", "<string>, <string>", "%s, %s", cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
+                cosmoV_typeError(state, "os.open()", "<string>, <string>", "%s, %s",
+                                 cosmoV_typeStr(args[0]), cosmoV_typeStr(args[1]));
             }
 
             mode = cosmoV_readCString(args[1]);

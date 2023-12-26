@@ -382,7 +382,7 @@ void callCValue(CState *state, CValue func, int args, int nresults, int offset)
 
             // push the nils to fill up the expected return values.
             // -1 since the we already pushed the important value
-            for (int i = 0; i < nresults - 1;i++) {
+            for (int i = 0; i < nresults - 1; i++) {
                 cosmoV_pushValue(state, cosmoV_newNil());
             }
         }
@@ -582,7 +582,8 @@ void cosmoV_getMethod(CState *state, CObj *obj, CValue key, CValue *val)
     }
 }
 
-bool cosmoV_isValueUserType(CState *state, CValue val, int userType) {
+bool cosmoV_isValueUserType(CState *state, CValue val, int userType)
+{
     if (!IS_OBJECT(val)) {
         return false;
     }
@@ -853,8 +854,7 @@ int cosmoV_execute(CState *state)
 
                 CObj *obj = cosmoV_readRef(*temp);
                 CObjObject *proto = cosmoO_grabProto(obj);
-                CValue val = cosmoV_newNil();          // to hold our value
-
+                CValue val = cosmoV_newNil(); // to hold our value
 
                 if (proto != NULL) {
                     // check for __index metamethod

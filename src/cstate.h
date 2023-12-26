@@ -63,13 +63,13 @@ struct CState
 
     CObjUpval *openUpvalues; // tracks all of our still open (meaning still on the stack) upvalues
     CObjTable *globals;
-    CValue *top;     // top of the stack
-    CObj *objects;   // tracks all of our allocated objects
+    CValue *top;   // top of the stack
+    CObj *objects; // tracks all of our allocated objects
     CPanic *panic;
 
     size_t allocatedBytes;
     size_t nextGC; // when allocatedBytes reaches this threshhold, trigger a GC event
-    int freezeGC; // when > 0, GC events will be ignored (for internal use)
+    int freezeGC;  // when > 0, GC events will be ignored (for internal use)
     int frameCount;
 };
 

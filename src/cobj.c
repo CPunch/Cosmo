@@ -493,7 +493,6 @@ void cosmoO_unlock(CObjObject *object)
     object->isLocked = false;
 }
 
-
 bool rawgetIString(CState *state, CObjObject *object, int flag, CValue *val)
 {
     if (readFlag(object->istringFlags, flag))

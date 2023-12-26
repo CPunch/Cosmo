@@ -168,7 +168,8 @@ void cosmoV_addRegistry(CState *state, int pairs)
 }
 
 // expects 1 key on the stack, pushes result
-void cosmoV_getRegistry(CState *state) {
+void cosmoV_getRegistry(CState *state)
+{
     CValue key = *cosmoV_pop(state);
     CValue val;
 
@@ -179,12 +180,14 @@ void cosmoV_getRegistry(CState *state) {
     cosmoV_pushValue(state, val);
 }
 
-void cosmoV_setProto(CState *state) {
+void cosmoV_setProto(CState *state)
+{
     StkPtr objVal = cosmoV_getTop(state, 1);
     StkPtr protoVal = cosmoV_getTop(state, 0);
 
     if (!IS_REF(*objVal) || !IS_OBJECT(*protoVal)) {
-        cosmoV_error(state, "cannot set %s to proto of type %s", cosmoV_typeStr(*objVal), cosmoV_typeStr(*protoVal));
+        cosmoV_error(state, "cannot set %s to proto of type %s", cosmoV_typeStr(*objVal),
+                     cosmoV_typeStr(*protoVal));
     }
 
     // actually set the protos

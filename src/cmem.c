@@ -259,7 +259,6 @@ static void sweep(CState *state)
                 cosmoV_call(state, 1, 0);
             }
 
-
             cosmoO_free(state, oldObj);
         }
     }
