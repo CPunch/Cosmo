@@ -592,8 +592,6 @@ static void group(CParseState *pstate, bool canAssign, Precedence prec)
     consume(pstate, TOKEN_RIGHT_PAREN, "Expected ')'");
 }
 
-#define WRITE_GLOBAL_OP(pstate, op, arg)
-
 static void _etterAB(CParseState *pstate, uint8_t a, int b, bool isGlobal)
 {
     writeu8(pstate, a);
