@@ -243,7 +243,7 @@ COSMO_API void cosmoB_loadObjLib(CState *state)
     cosmoV_pushString(state, "__proto");           // key
     cosmoV_pushCFunction(state, cosmoB_ogetProto); // value
 
-    cosmoV_makeTable(state, 2);
+    cosmoV_makeTable(state, 1);
 
     // make __setter table
     cosmoV_pushString(state, "__setter");

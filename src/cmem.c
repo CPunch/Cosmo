@@ -231,11 +231,11 @@ static void traceGrays(CState *state)
 
 static void sweep(CState *state)
 {
-    CObj *prev = NULL;
-    CObj *object = state->objects;
+    CObj *prev = NULL, *object = state->objects;
+
     while (object != NULL) {
         if (object->isMarked) {       // skip over it
-            object->isMarked = false; // rest to white
+            object->isMarked = false; // reset to white
             prev = object;
             object = object->next;
         } else { // free it!
