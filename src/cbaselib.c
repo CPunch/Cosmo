@@ -182,6 +182,32 @@ int cosmoB_ogetProto(CState *state, int nargs, CValue *args)
     return 1; // 1 result
 }
 
+int cosmoB_ogetKeys(CState *state, int nargs, CValue *args)
+{
+    if (nargs != 1)
+        cosmoV_error(state, "Expected 1 argument, got %d!", nargs);
+
+    if (!IS_OBJECT(args[0])) {
+        cosmoV_typeError(state, "object.__keys", "<object>", "%s", cosmoV_typeStr(args[0]));
+    }
+
+    // push keys
+    CObjObject *obj = cosmoV_readObject(args[0]);
+    int cap = cosmoT_getCapacity(&obj->tbl);
+    int indx = 0;
+    for (int i = 0; i < cap; i++) {
+        CTableEntry *entry = &obj->tbl.table[i];
+        if (IS_NIL(entry->key))
+            continue;
+
+        cosmoV_pushNumber(state, indx++);
+        cosmoV_pushValue(state, entry->key);
+    }
+
+    cosmoV_makeTable(state, indx);
+    return 1; // 1 result
+}
+
 int cosmoB_oisChild(CState *state, int nargs, CValue *args)
 {
     if (nargs != 2) {
@@ -203,9 +229,9 @@ int cosmoB_oisChild(CState *state, int nargs, CValue *args)
 
 COSMO_API void cosmoB_loadObjLib(CState *state)
 {
-    const char *identifiers[] = {"ischild"};
+    const char *identifiers[] = {"ischild", "keys"};
 
-    CosmoCFunction objLib[] = {cosmoB_oisChild};
+    CosmoCFunction objLib[] = {cosmoB_oisChild, cosmoB_ogetKeys};
 
     // make object library object
     cosmoV_pushString(state, "object");
@@ -213,11 +239,11 @@ COSMO_API void cosmoB_loadObjLib(CState *state)
     // make __getter object for debug proto
     cosmoV_pushString(state, "__getter");
 
-    // key & value pair
+    // key & value pairs
     cosmoV_pushString(state, "__proto");           // key
     cosmoV_pushCFunction(state, cosmoB_ogetProto); // value
 
-    cosmoV_makeTable(state, 1);
+    cosmoV_makeTable(state, 2);
 
     // make __setter table
     cosmoV_pushString(state, "__setter");
