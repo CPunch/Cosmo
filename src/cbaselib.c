@@ -295,14 +295,14 @@ int fileB_read(CState *state, int nargs, CValue *args)
         }
 
         // allocate a buffer for the read data
-        buffer = cosmoM_xmalloc(state, length + 1);
+        buffer = cosmoM_xmalloc(state, (size_t)length + 1);
 
         // read the data
-        fread(buffer, sizeof(char), length, file);
+        fread(buffer, sizeof(char), (size_t)length, file);
         buffer[(int)length] = '\0'; // write the NULL terminator
 
         // push the read data
-        temp = cosmoV_newRef(cosmoO_takeString(state, buffer, length));
+        temp = cosmoV_newRef(cosmoO_takeString(state, buffer, (size_t)length));
         cosmoV_pushValue(state, temp);
     } else if (IS_STRING(args[1])) {
         if (strcmp(cosmoV_readCString(args[1]), "a") == 0) {
@@ -316,17 +316,17 @@ int fileB_read(CState *state, int nargs, CValue *args)
             fseek(file, 0, SEEK_SET);
 
             // allocate a buffer for the read data
-            buffer = cosmoM_xmalloc(state, length + 1);
+            buffer = cosmoM_xmalloc(state, (size_t)length + 1);
 
             // read the data
-            fread(buffer, sizeof(char), length, file);
+            fread(buffer, sizeof(char), (size_t)length, file);
             buffer[length] = '\0'; // write the NULL terminator
 
             // push the read data
-            temp = cosmoV_newRef(cosmoO_takeString(state, buffer, length));
+            temp = cosmoV_newRef(cosmoO_takeString(state, buffer, (size_t)length));
             cosmoV_pushValue(state, temp);
         } else {
-            cosmoV_error(state, "file:read() expected \"a\" or <number>, got %s!",
+            cosmoV_error(state, "file:read() expected \"a\" or <number>, got \"%s\"!",
                          cosmoV_readCString(args[1]));
         }
     } else {
