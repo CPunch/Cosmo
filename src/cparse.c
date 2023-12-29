@@ -102,7 +102,6 @@ static int expressionPrecedence(CParseState *pstate, int needed, Precedence prec
 // returns # of pushed values onto the stack
 static int expression(CParseState *pstate, int needed, bool forceNeeded);
 static void statement(CParseState *pstate);
-static void declaration(CParseState *pstate);
 static void parseFunction(CParseState *pstate, FunctionType type);
 static void expressionStatement(CParseState *pstate);
 static ParseRule *getRule(CTokenType type);
@@ -1099,18 +1098,19 @@ static ParseRule *getRule(CTokenType type)
 // returns true if it got past the first token (aka prefix wasn't null)
 static bool parsePrecedence(CParseState *pstate, Precedence prec)
 {
+    bool canAssign;
+    ParseFunc prefix, infix;
+
     advance(pstate);
-
-    ParseFunc prefix = getRule(pstate->previous.type)->prefix;
-
-    if (prefix == NULL)
+    if ((prefix = getRule(pstate->previous.type)->prefix) == NULL)
         return false;
 
-    bool canAssign = prec <= PREC_ASSIGNMENT;
+    canAssign = prec <= PREC_ASSIGNMENT;
     prefix(pstate, canAssign, prec);
-
     while (prec <= getRule(pstate->current.type)->level) {
-        ParseFunc infix = getRule(pstate->current.type)->infix;
+        if ((infix = getRule(pstate->current.type)->infix) == NULL)
+            break;
+
         advance(pstate);
         infix(pstate, canAssign, prec);
     }
@@ -1264,7 +1264,7 @@ static void endScope(CParseState *pstate)
 static void block(CParseState *pstate)
 {
     while (!check(pstate, TOKEN_END) && !check(pstate, TOKEN_EOF) && !check(pstate, TOKEN_ERROR)) {
-        declaration(pstate);
+        statement(pstate);
     }
 
     consume(pstate, TOKEN_END, "'end' expected to end block.'");
@@ -1321,7 +1321,7 @@ static void ifStatement(CParseState *pstate)
     while (!check(pstate, TOKEN_END) && !check(pstate, TOKEN_ELSE) &&
            !check(pstate, TOKEN_ELSEIF) && !check(pstate, TOKEN_EOF) &&
            !check(pstate, TOKEN_ERROR)) {
-        declaration(pstate);
+        statement(pstate);
     }
 
     endScope(pstate);
@@ -1765,11 +1765,6 @@ static void statement(CParseState *pstate)
     expressionStatement(pstate);
 }
 
-static void declaration(CParseState *pstate)
-{
-    statement(pstate);
-}
-
 static CObjFunction *endCompiler(CParseState *pstate)
 {
     popLocals(pstate, pstate->compiler->scopeDepth + 1); // remove the locals from other scopes
@@ -1794,7 +1789,7 @@ CObjFunction *cosmoP_compileString(CState *state, const char *source, const char
     advance(&parser);
 
     while (!match(&parser, TOKEN_EOF)) {
-        declaration(&parser);
+        statement(&parser);
     }
 
     consume(&parser, TOKEN_EOF, "End of file expected!");
