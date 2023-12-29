@@ -55,7 +55,7 @@ struct CObjError
     CCallFrame *frames;
     int frameCount;
     int line;         // reserved for parser errors
-    bool parserError; // if true, cosmoV_printError will format the error to the lexer
+    bool parserError; // if true, cosmoV_printBacktrace will format the error to the lexer
 };
 
 struct CObjObject

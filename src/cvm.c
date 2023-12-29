@@ -78,7 +78,7 @@ bool cosmoV_compileString(CState *state, const char *src, const char *name)
     return false;
 }
 
-void cosmoV_printError(CState *state, CObjError *err)
+void cosmoV_printBacktrace(CState *state, CObjError *err)
 {
     // print stack trace
     for (int i = 0; i < err->frameCount; i++) {
@@ -129,7 +129,7 @@ void cosmoV_throw(CState *state)
     } else {
         cosmoV_pushValue(state, val);
         fprintf(stderr, "Unhandled panic! ");
-        cosmoV_printError(state, error);
+        cosmoV_printBacktrace(state, error);
         exit(1);
     }
 }
