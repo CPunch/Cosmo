@@ -101,7 +101,7 @@ const char *cosmoV_typeStr(CValue val)
     }
 }
 
-void printValue(CValue val)
+void cosmoV_printValue(CValue val)
 {
     switch (GET_TYPE(val)) {
     case COSMO_TNUMBER:

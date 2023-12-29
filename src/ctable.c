@@ -288,9 +288,9 @@ void cosmoT_printTable(CTable *tbl, const char *name)
     for (int i = 0; i < cap; i++) {
         CTableEntry *entry = &tbl->table[i];
         if (!(IS_NIL(entry->key))) {
-            printValue(entry->key);
+            cosmoV_printValue(entry->key);
             printf(" - ");
-            printValue(entry->val);
+            cosmoV_printValue(entry->val);
             printf("\n");
         }
     }

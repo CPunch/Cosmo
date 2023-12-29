@@ -62,7 +62,7 @@ static int constInstruction(const char *name, CChunk *chunk, int offset)
     printf("%-16s [%05d] - ", name, index);
     CValue val = chunk->constants.values[index];
 
-    printValue(val);
+    cosmoV_printValue(val);
 
     return offset + 1 + (sizeof(uint16_t) / sizeof(INSTRUCTION)); // consume opcode + uint
 }
@@ -128,7 +128,7 @@ int disasmInstr(CChunk *chunk, int offset, int indent)
         CObjFunction *cobjFunc = (CObjFunction *)cosmoV_readRef(val);
         offset += 3; // we consumed the opcode + u16
 
-        printValue(val);
+        cosmoV_printValue(val);
         printf("\n");
 
         // list the upvalues/locals that are captured

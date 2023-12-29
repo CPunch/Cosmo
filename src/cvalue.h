@@ -119,7 +119,7 @@ void initValArray(CState *state, CValueArray *val, size_t startCapacity);
 void cleanValArray(CState *state, CValueArray *array); // cleans array
 void appendValArray(CState *state, CValueArray *array, CValue val);
 
-void printValue(CValue val);
+void cosmoV_printValue(CValue val);
 COSMO_API bool cosmoV_equal(CState *state, CValue valA, CValue valB);
 COSMO_API CObjString *cosmoV_toString(CState *state, CValue val);
 COSMO_API cosmo_Number cosmoV_toNumber(CState *state, CValue val);

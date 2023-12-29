@@ -340,7 +340,7 @@ void callCValue(CState *state, CValue func, int args, int nresults, int offset)
 #ifdef VM_DEBUG
     printf("\n");
     printIndent(state->frameCount - 1);
-    printValue(func);
+    cosmoV_printValue(func);
     printf("(%d args)\n", args);
 #endif
 

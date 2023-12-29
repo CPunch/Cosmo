@@ -715,13 +715,13 @@ void printObject(CObj *o)
     case COBJ_ERROR: {
         CObjError *err = (CObjError *)o;
         printf("%p -> ", (void *)o);
-        printValue(err->err);
+        cosmoV_printValue(err->err);
         break;
     }
     case COBJ_METHOD: {
         CObjMethod *method = (CObjMethod *)o;
         printf("%p -> ", (void *)method);
-        printValue(method->func);
+        cosmoV_printValue(method->func);
         break;
     }
     case COBJ_CLOSURE: {
@@ -733,7 +733,7 @@ void printObject(CObj *o)
     case COBJ_UPVALUE: {
         CObjUpval *upval = (CObjUpval *)o;
         printf("%p -> ", (void *)upval->val);
-        printValue(*upval->val);
+        cosmoV_printValue(*upval->val);
         break;
     }
     default:

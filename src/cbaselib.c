@@ -18,7 +18,7 @@ int cosmoB_print(CState *state, int nargs, CValue *args)
             CObjString *str = cosmoV_toString(state, args[i]);
             printf("%s", cosmoO_readCString(str));
         } else { // else, thats pretty expensive for primitives, just print the raw value
-            printValue(args[i]);
+            cosmoV_printValue(args[i]);
         }
     }
     printf("\n");

@@ -203,7 +203,7 @@ void cosmoV_printStack(CState *state)
     printf("==== [[ stack dump ]] ====\n");
     for (CValue *top = state->top - 1; top >= state->stack; top--) {
         printf("%d: ", (int)(top - state->stack));
-        printValue(*top);
+        cosmoV_printValue(*top);
         printf("\n");
     }
 }
