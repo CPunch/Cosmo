@@ -1589,7 +1589,7 @@ static void forLoop(CParseState *pstate)
 
     // parse initializer
     if (!match(pstate, TOKEN_EOS)) {
-        expressionStatement(pstate);
+        statement(pstate);
         consume(pstate, TOKEN_EOS, "Expected ';' after initializer");
     }
 
@@ -1705,7 +1705,7 @@ static int expression(CParseState *pstate, int needed, bool forceNeeded)
                                 forceNeeded); // anything above assignments are an expression
 }
 
-static void expressionStatement(CParseState *pstate)
+static void statement(CParseState *pstate)
 {
     int savedPushed = pstate->compiler->pushedValues;
 
@@ -1758,11 +1758,6 @@ static void expressionStatement(CParseState *pstate)
 
     // realign the stack
     alignStack(pstate, savedPushed);
-}
-
-static void statement(CParseState *pstate)
-{
-    expressionStatement(pstate);
 }
 
 static CObjFunction *endCompiler(CParseState *pstate)
