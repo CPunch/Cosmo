@@ -69,6 +69,8 @@ static uint32_t getObjectHash(CObj *obj)
     switch (obj->type) {
     case COBJ_STRING:
         return ((CObjString *)obj)->hash;
+    case COBJ_CFUNCTION:
+        return (uint32_t)((CObjCFunction *)obj)->cfunc;
     default:
         return (uint32_t)obj; // just "hash" the pointer
     }
