@@ -1471,10 +1471,10 @@ static void functionDeclaration(CParseState *pstate)
 
 static void returnStatement(CParseState *pstate)
 {
-    if (pstate->compiler->type != FTYPE_FUNCTION && pstate->compiler->type != FTYPE_METHOD) {
-        error(pstate, "Expected 'return' in function!");
-        return;
-    }
+    // if (pstate->compiler->type != FTYPE_FUNCTION && pstate->compiler->type != FTYPE_METHOD) {
+    //     error(pstate, "Expected 'return' in function!");
+    //     return;
+    // }
 
     if (blockFollow(pstate->current)) { // does this return have a value
         writeu8(pstate, OP_NIL);

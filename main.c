@@ -50,9 +50,21 @@ static bool interpret(CState *state, const char *script, const char *mod)
 
     // cosmoV_compileString pushes the result onto the stack (COBJ_ERROR or COBJ_CLOSURE)
     if (cosmoV_compileString(state, script, mod)) {
+        if (!cosmoV_pcall(state, 0, 1)) {
             cosmoV_printBacktrace(state, cosmoV_readError(*cosmoV_pop(state)));
             return false;
         }
+
+        // if the result is nil, we don't print it
+        if (IS_NIL(*cosmoV_getTop(state, 0))) {
+            cosmoV_pop(state);
+            return true;
+        }
+
+        // otherwise, we print the result
+        cosmoV_printValue(*cosmoV_getTop(state, 0));
+        printf("\n");
+        cosmoV_pop(state);
     } else {
         cosmoV_printBacktrace(state, cosmoV_readError(*cosmoV_pop(state)));
         return false;
