@@ -1,7 +1,4 @@
 # Cosmo
-[![Check Build](https://github.com/CPunch/Cosmo/actions/workflows/check_build.yaml/badge.svg?branch=main)](https://github.com/CPunch/Cosmo/actions/workflows/check_build.yaml)
-
-## Usage
 
 ```
 Usage: ./bin/cosmo [-clsr] [args]
@@ -12,6 +9,13 @@ available options are:
 -s <in...>      compile and run <in...> script(s)
 -r              start the repl
 ```
+
+<p align="center">
+    <a href="https://github.com/CPunch/Cosmo/actions/workflows/check_build.yaml"><img src="https://github.com/CPunch/Cosmo/actions/workflows/check_build.yaml/badge.svg?branch=main" alt="Workflow"></a>
+    <a href="https://github.com/CPunch/Cosmo/blob/main/LICENSE.md"><img src="https://img.shields.io/github/license/CPunch/Cosmo" alt="License"></a>
+    <br>
+    <a href="https://asciinema.org/a/629355" target="_blank"><img src="https://asciinema.org/a/629355.svg" /></a>
+</p>
 
 ## What is a 'cosmo'?
 
