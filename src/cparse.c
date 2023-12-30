@@ -103,7 +103,6 @@ static int expressionPrecedence(CParseState *pstate, int needed, Precedence prec
 static int expression(CParseState *pstate, int needed, bool forceNeeded);
 static void statement(CParseState *pstate);
 static void parseFunction(CParseState *pstate, FunctionType type);
-static void expressionStatement(CParseState *pstate);
 static ParseRule *getRule(CTokenType type);
 static CObjFunction *endCompiler(CParseState *pstate);
 
