@@ -223,3 +223,8 @@ int disasmInstr(CChunk *chunk, int offset, int indent)
 
     return 1;
 }
+
+void cosmoG_disassemble(CObjClosure *closure)
+{
+    disasmChunk(&closure->function->chunk, closure->function->name == NULL ? UNNAMEDCHUNK : closure->function->name->str, 0);
+}
